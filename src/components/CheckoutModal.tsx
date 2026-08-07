@@ -47,10 +47,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (!isOpen || !stall) return null;
 
   // Totals calculation
-  const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + a.priceUSD, 0);
-  const subtotal = stall.basePriceUSD + addOnsTotal;
-  const taxVat18 = Math.round(subtotal * 0.18 * 100) / 100;
-  const grandTotal = subtotal + taxVat18;
+  const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + a.priceZAR, 0);
+  const subtotal = stall.basePriceZAR + addOnsTotal;
+  const taxVat15 = Math.round(subtotal * 0.15 * 100) / 100;
+  const grandTotal = subtotal + taxVat15;
   const amountToPayNow = isDepositOnly ? Math.round(grandTotal * 0.3 * 100) / 100 : grandTotal;
 
   // Step 1 -> Step 2: Validate Company and initiate session
@@ -263,17 +263,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="p-3.5 bg-black rounded-xl border border-neutral-800 text-xs font-mono space-y-1.5">
                 <div className="flex justify-between text-neutral-400">
                   <span>Booth {stall.code} ({stall.tier})</span>
-                  <span className="text-white">${stall.basePriceUSD.toLocaleString()}</span>
+                  <span className="text-white">R{stall.basePriceZAR.toLocaleString()}</span>
                 </div>
                 {selectedAddOns.length > 0 && (
                   <div className="flex justify-between text-neutral-400">
                     <span>Add-Ons ({selectedAddOns.length})</span>
-                    <span className="text-white">+${addOnsTotal.toLocaleString()}</span>
+                    <span className="text-white">+R{addOnsTotal.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-[#D4AF37] pt-1 border-t border-neutral-800">
                   <span>{isDepositOnly ? 'Deposit Due Today (30%):' : 'Amount Due Today:'}</span>
-                  <span>${amountToPayNow.toLocaleString()} USD</span>
+                  <span>R{amountToPayNow.toLocaleString()} ZAR</span>
                 </div>
               </div>
 
@@ -394,7 +394,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   onClick={handleConfirmPayment}
                   className="flex-1 py-3.5 bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#B59226] text-black font-bold text-sm rounded-xl shadow-lg hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all cursor-pointer"
                 >
-                  CONFIRM & PAY ${amountToPayNow.toLocaleString()} USD
+                  CONFIRM & PAY R{amountToPayNow.toLocaleString()} ZAR
                 </button>
               </div>
             </div>

@@ -266,7 +266,7 @@ export const FloorPlan: React.FC<FloorPlanProps> = ({
                           {stall.widthMeters}m &times; {stall.depthMeters}m
                         </div>
                         <div className="text-xs font-mono font-bold text-[#D4AF37] mt-0.5">
-                          ${stall.basePriceUSD.toLocaleString()}
+                          R{stall.basePriceZAR.toLocaleString()}
                         </div>
                       </div>
                     )}

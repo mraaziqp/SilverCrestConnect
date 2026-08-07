@@ -157,9 +157,9 @@ async function startServer() {
 
     // Calculate totals
     const addOns = MOCK_ADD_ONS.filter((a) => selectedAddOnIds.includes(a.id));
-    const addOnsTotal = addOns.reduce((sum, a) => sum + a.priceUSD, 0);
-    const subtotal = stall.basePriceUSD + addOnsTotal;
-    const taxVat = subtotal * 0.18; // 18% tax/VAT
+    const addOnsTotal = addOns.reduce((sum, a) => sum + a.priceZAR, 0);
+    const subtotal = stall.basePriceZAR + addOnsTotal;
+    const taxVat = subtotal * 0.15; // 15% SA VAT
     const totalAmount = Math.round((subtotal + taxVat) * 100) / 100;
     const amountToPay = isDepositOnly ? Math.round(totalAmount * 0.3 * 100) / 100 : totalAmount;
 
@@ -184,8 +184,8 @@ async function startServer() {
       tier: stall.tier,
       selectedAddOns: addOns,
       isDepositOnly,
-      amountPaidUSD: amountToPay,
-      totalAmountUSD: totalAmount,
+      amountPaidZAR: amountToPay,
+      totalAmountZAR: totalAmount,
       paymentStatus: 'PENDING',
       paymentMethod,
       verifiedBadgeAttached: isVerifiedEligible,
@@ -202,7 +202,7 @@ async function startServer() {
       bookingId,
       checkoutUrl: `/checkout/${bookingId}`,
       amountToPay,
-      currency: 'USD',
+      currency: 'ZAR',
       expiresAt: newBooking.expiresAt!,
       status: 'INITIATED',
       verifiedStatus: {
@@ -217,12 +217,12 @@ async function startServer() {
       session: sessionResponse,
       booking: newBooking,
       pricingBreakdown: {
-        basePriceUSD: stall.basePriceUSD,
-        addOnsTotalUSD: addOnsTotal,
-        subtotalUSD: subtotal,
-        taxVat18USD: taxVat,
-        totalUSD: totalAmount,
-        amountToPayUSD: amountToPay,
+        basePriceZAR: stall.basePriceZAR,
+        addOnsTotalZAR: addOnsTotal,
+        subtotalZAR: subtotal,
+        taxVat15ZAR: taxVat,
+        totalZAR: totalAmount,
+        amountToPayZAR: amountToPay,
         isDeposit: isDepositOnly,
       },
     });

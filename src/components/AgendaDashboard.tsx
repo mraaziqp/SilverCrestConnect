@@ -72,7 +72,7 @@ export const MOCK_AGENDA_SESSIONS: AgendaSession[] = [
         title: 'Managing Partner & VP Investment',
         company: 'Crest Capital Group',
         avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-        bio: 'Oversees $400M private equity allocations in high-growth technology and regional manufacturing hubs.',
+        bio: 'Oversees R400M private equity allocations in high-growth technology and regional manufacturing hubs.',
         trustScore: 98,
         isVerified: true,
         boothCode: 'VIP-01',

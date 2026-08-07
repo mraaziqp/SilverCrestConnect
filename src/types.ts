@@ -94,7 +94,7 @@ export interface Stall {
   widthMeters: number;
   depthMeters: number;
   tier: StallTier;
-  basePriceUSD: number;
+  basePriceZAR: number;
   status: StallStatus;
   isCorner: boolean;
   powerSupplyKw: number;
@@ -112,7 +112,7 @@ export interface AddOnOption {
   id: string;
   name: string;
   description: string;
-  priceUSD: number;
+  priceZAR: number;
 }
 
 export interface Booking {
@@ -128,8 +128,8 @@ export interface Booking {
   tier: StallTier;
   selectedAddOns: AddOnOption[];
   isDepositOnly: boolean; // 30% deposit vs full payment
-  amountPaidUSD: number;
-  totalAmountUSD: number;
+  amountPaidZAR: number;
+  totalAmountZAR: number;
   paymentStatus: PaymentStatus;
   paymentMethod?: PaymentMethod;
   paymentTransactionId?: string;

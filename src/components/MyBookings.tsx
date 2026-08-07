@@ -98,8 +98,8 @@ export const MyBookings: React.FC<MyBookingsProps> = ({ bookings, onOpenFloorpla
                   </div>
                   <div className="text-neutral-400 font-mono">
                     <div>Tier: {booking.tier.replace('_', ' ')}</div>
-                    <div>Total Package: ${booking.totalAmountUSD.toLocaleString()}</div>
-                    <div>Paid Today: ${booking.amountPaidUSD.toLocaleString()}</div>
+                    <div>Total Package: R{booking.totalAmountZAR.toLocaleString()}</div>
+                    <div>Paid Today: R{booking.amountPaidZAR.toLocaleString()}</div>
                   </div>
                 </div>
 

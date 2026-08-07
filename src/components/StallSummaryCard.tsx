@@ -107,10 +107,10 @@ export const StallSummaryCard: React.FC<StallSummaryCardProps> = ({
 
   // Calculate pricing math
   const selectedAddOnsList = MOCK_ADD_ONS.filter((a) => selectedAddOnIds.includes(a.id));
-  const addOnsTotal = selectedAddOnsList.reduce((sum, a) => sum + a.priceUSD, 0);
-  const subtotal = selectedStall.basePriceUSD + addOnsTotal;
-  const taxVat18 = Math.round(subtotal * 0.18 * 100) / 100;
-  const grandTotal = subtotal + taxVat18;
+  const addOnsTotal = selectedAddOnsList.reduce((sum, a) => sum + a.priceZAR, 0);
+  const subtotal = selectedStall.basePriceZAR + addOnsTotal;
+  const taxVat15 = Math.round(subtotal * 0.15 * 100) / 100;
+  const grandTotal = subtotal + taxVat15;
   const amountToPayNow = isDepositOnly ? Math.round(grandTotal * 0.3 * 100) / 100 : grandTotal;
 
   return (
@@ -154,7 +154,7 @@ export const StallSummaryCard: React.FC<StallSummaryCardProps> = ({
               {selectedStall.tier.replace('_', ' ')}
             </span>
             <div className="text-xs font-mono text-neutral-400 mt-1">
-              Base: <span className="text-white font-bold">${selectedStall.basePriceUSD.toLocaleString()}</span>
+              Base: <span className="text-white font-bold">R{selectedStall.basePriceZAR.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -355,7 +355,7 @@ export const StallSummaryCard: React.FC<StallSummaryCardProps> = ({
                       </div>
                     </div>
                     <span className="font-mono font-bold text-[#D4AF37] whitespace-nowrap">
-                      +${addon.priceUSD}
+                      +R{addon.priceZAR}
                     </span>
                   </div>
                 );
@@ -404,36 +404,36 @@ export const StallSummaryCard: React.FC<StallSummaryCardProps> = ({
         <div className="bg-black/90 rounded-xl p-4 border border-neutral-800 mb-6 space-y-2 text-xs font-mono">
           <div className="flex justify-between text-neutral-400">
             <span>Booth Base ({selectedStall.code})</span>
-            <span className="text-white">${selectedStall.basePriceUSD.toLocaleString()}</span>
+            <span className="text-white">R{selectedStall.basePriceZAR.toLocaleString()}</span>
           </div>
 
           {selectedAddOnsList.length > 0 && (
             <div className="flex justify-between text-neutral-400">
               <span>Add-Ons ({selectedAddOnsList.length})</span>
-              <span className="text-white">+${addOnsTotal.toLocaleString()}</span>
+              <span className="text-white">+R{addOnsTotal.toLocaleString()}</span>
             </div>
           )}
 
           <div className="flex justify-between text-neutral-400">
             <span>Subtotal</span>
-            <span className="text-white">${subtotal.toLocaleString()}</span>
+            <span className="text-white">R{subtotal.toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between text-neutral-400">
-            <span>VAT / State Tax (18%)</span>
-            <span className="text-white">${taxVat18.toLocaleString()}</span>
+            <span>VAT (15%)</span>
+            <span className="text-white">R{taxVat15.toLocaleString()}</span>
           </div>
 
           <div className="h-px bg-neutral-800 my-2" />
 
           <div className="flex justify-between text-sm font-bold text-white pt-1">
             <span>Total Package Price</span>
-            <span>${grandTotal.toLocaleString()} USD</span>
+            <span>R{grandTotal.toLocaleString()} ZAR</span>
           </div>
 
           <div className="flex justify-between items-center text-sm font-extrabold text-[#D4AF37] pt-1 bg-[#1A160A] -mx-4 -mb-4 p-3 rounded-b-xl border-t border-[#D4AF37]/30">
             <span>{isDepositOnly ? 'Due Today (30% Deposit):' : 'Amount Due Now:'}</span>
-            <span className="text-lg font-mono">${amountToPayNow.toLocaleString()}</span>
+            <span className="text-lg font-mono">R{amountToPayNow.toLocaleString()}</span>
           </div>
         </div>
       </div>

@@ -103,7 +103,7 @@ model Stall {
   widthMeters          Float         @default(3.0)
   depthMeters          Float         @default(3.0)
   tier                 StallTier     @default(STANDARD)
-  basePriceUSD         Decimal       @db.Decimal(10, 2)
+  basePriceZAR         Decimal       @db.Decimal(10, 2)
   status               StallStatus   @default(AVAILABLE)
   isCorner             Boolean       @default(false)
   powerSupplyKw        Float         @default(2.0)
@@ -164,8 +164,8 @@ model Booking {
   tier                 StallTier
   selectedAddOnsJson   Json          // Selected AddOns array
   isDepositOnly        Boolean       @default(false) // 30% deposit option
-  amountPaidUSD        Decimal       @db.Decimal(10, 2)
-  totalAmountUSD       Decimal       @db.Decimal(10, 2)
+  amountPaidZAR        Decimal       @db.Decimal(10, 2)
+  totalAmountZAR       Decimal       @db.Decimal(10, 2)
   
   paymentStatus        PaymentStatus @default(PENDING)
   paymentMethod        PaymentMethod?
