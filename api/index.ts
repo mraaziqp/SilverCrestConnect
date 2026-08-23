@@ -18,6 +18,7 @@ import type { Express } from 'express';
 import { createApp } from '../src/server/app.js';
 import { loadPayFastConfig } from '../src/server/payfast.js';
 import { Store } from '../src/server/store.js';
+import { createMailer, loadMailerConfig } from '../src/server/email/mailer.js';
 
 let cached: Promise<Express> | undefined;
 
@@ -28,7 +29,11 @@ function bootstrap(): Promise<Express> {
       await store.init();
 
       // Static assets are served by Vercel's CDN, so no distPath here.
-      return createApp({ store, payfast: loadPayFastConfig() });
+      return createApp({
+        store,
+        payfast: loadPayFastConfig(),
+        mailer: createMailer(loadMailerConfig()),
+      });
     })();
   }
   return cached;

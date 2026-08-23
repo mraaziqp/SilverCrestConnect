@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { createApp } from './src/server/app.js';
 import { loadPayFastConfig } from './src/server/payfast.js';
 import { Store } from './src/server/store.js';
+import { createMailer, loadMailerConfig } from './src/server/email/mailer.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,10 +33,12 @@ async function main(): Promise<void> {
   await store.init();
 
   const payfast = loadPayFastConfig();
+  const mailer = createMailer(loadMailerConfig());
 
   const app = await createApp({
     store,
     payfast,
+    mailer,
     distPath: isProduction ? clientDist : undefined,
     attachVite: isProduction
       ? undefined
@@ -57,6 +60,11 @@ async function main(): Promise<void> {
     console.log(
       `[Silver Crest Connect] PayFast: ${payfast.mode} mode, credentials ${
         payfast.isConfigured ? 'loaded' : 'NOT set (using sandbox defaults)'
+      }`,
+    );
+    console.log(
+      `[Silver Crest Connect] Email: ${
+        mailer.configured ? `Resend, from ${mailer.from}` : 'console driver — messages are logged, NOT delivered'
       }`,
     );
     if (!store.isPersistent) {

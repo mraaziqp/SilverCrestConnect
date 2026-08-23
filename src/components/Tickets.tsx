@@ -4,17 +4,15 @@
  * The proposal gates attendance behind a vetting step, so this section carries
  * two paths rather than a naked "buy" button:
  *   - Apply for a seat (free, opens the application form)
- *   - Already approved? Enter your reference and pay the R350 via PayFast
+ *   - Already applied? Look up your reference to see status and pay
  */
 
 import React, { useState } from 'react';
-import { ArrowRight, Check, Loader2, ShieldCheck, Ticket } from 'lucide-react';
+import { ArrowRight, Check, ShieldCheck, Ticket } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { ApplicationForm } from './ApplicationForm';
 import { EVENT } from '../config/event';
-import { api, ApiRequestError, formatZAR } from '../lib/api';
-import { redirectToPayFast } from '../lib/payfast';
-import type { CheckoutResponse } from '../types';
+import { formatZAR } from '../lib/api';
 
 const INCLUDES = [
   'Full four-hour programme access',
@@ -27,10 +25,9 @@ const INCLUDES = [
 
 interface TicketsProps {
   seatsRemaining: number | null;
-  onPaid: () => void;
 }
 
-export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, onPaid }) => {
+export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining }) => {
   const [formOpen, setFormOpen] = useState(false);
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
@@ -104,7 +101,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, onPaid }) => {
 
         {/* Pay / status panel */}
         <div className="space-y-6">
-          <PayApprovedTicket onPaid={onPaid} />
+          <ReferenceLookup />
 
           <Card className="p-7">
             <ShieldCheck className="w-5 h-5 text-gold" aria-hidden="true" />
@@ -124,47 +121,35 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, onPaid }) => {
 };
 
 /**
- * Reference-based payment entry for SMEs whose application has been approved.
- * Kept on the page rather than email-only so someone who lost the link can
- * still pay from their reference code.
+ * Reference lookup for SMEs who already applied.
+ *
+ * Sends them to /pay/:reference rather than starting a checkout inline: that
+ * page handles every funnel state, so someone still under review gets a clear
+ * "we're reviewing it" instead of a bare error.
  */
-const PayApprovedTicket: React.FC<{ onPaid: () => void }> = ({ onPaid }) => {
+const ReferenceLookup: React.FC = () => {
   const [reference, setReference] = useState('');
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmed = reference.trim().toUpperCase();
     if (!trimmed) {
-      setError('Enter the reference from your approval email.');
+      setError('Enter the reference from your email.');
       return;
     }
-
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await api<CheckoutResponse>('/api/checkout/ticket', {
-        method: 'POST',
-        body: { reference: trimmed },
-      });
-      onPaid();
-      redirectToPayFast(result);
-      // The browser navigates away here, so `busy` intentionally stays true.
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not start the payment. Please try again.');
-      setBusy(false);
-    }
+    window.location.href = `/pay/${encodeURIComponent(trimmed)}`;
   };
 
   return (
     <Card className="p-7">
       <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-        Already approved?
+        Already applied?
       </p>
-      <h4 className="mt-3 text-base font-semibold text-bone">Pay for your ticket</h4>
+      <h4 className="mt-3 text-base font-semibold text-bone">Check your status or pay</h4>
       <p className="mt-2 text-[13px] text-muted leading-relaxed">
-        Enter the reference from your approval email to pay the {formatZAR(EVENT.ticketPriceZAR)} fee.
+        Enter the reference from your email to see where your application stands, and to pay the{' '}
+        {formatZAR(EVENT.ticketPriceZAR)} fee once approved.
       </p>
 
       <form onSubmit={submit} className="mt-5" noValidate>
@@ -186,18 +171,9 @@ const PayApprovedTicket: React.FC<{ onPaid: () => void }> = ({ onPaid }) => {
         />
         <FieldError message={error ?? undefined} />
 
-        <Button type="submit" className="w-full mt-4" disabled={busy}>
-          {busy ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Redirecting to PayFast…
-            </>
-          ) : (
-            <>
-              Continue to payment
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
+        <Button type="submit" className="w-full mt-4">
+          Continue
+          <ArrowRight className="w-4 h-4" />
         </Button>
       </form>
     </Card>

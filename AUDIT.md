@@ -159,7 +159,7 @@ amount=0.001     -> Donation amount must be at least R10.
 | M1 | US data throughout a ZAR app — `EIN-98-3819203`, `US-DEL-8923019`, "Federal Tax ID Lookup", "State Secretary Registry", `+1 (555)` numbers | Replaced with South African context: CIPC registration numbers, `+27` numbers, Cape Town |
 | M2 | `"Verified™"` / VerifiedBizLink endpoints returned fabricated trust scores and fake audit results (`Math.random()` presented as a credit grade) | Removed. Vetting is now what the proposal describes: a human CIPC / digital-footprint check recorded in the dashboard |
 | M3 | `tsconfig.json` had `strict` off | `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` on; typecheck passes clean |
-| M4 | No tests | 16 unit tests covering PayFast signature encoding and currency formatting |
+| M4 | No tests | 40 unit tests covering PayFast signature encoding, input validation, email rendering and currency formatting |
 | M5 | `@google/genai` and `dotenv` declared but unused; `vite` in both dependency blocks | Dependencies pruned; `dotenv` is now genuinely used |
 | M6 | No security headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`; `x-powered-by` disabled |
 | M7 | No rate limiting on public endpoints | Fixed-window limiter on applications and checkout — verified: the 5th rapid application returns `429` |
@@ -175,7 +175,7 @@ amount=0.001     -> Donation amount must be at least R10.
 
 ```
 npm run lint     tsc --noEmit — clean
-npm test         16/16 passing
+npm test         40/40 passing
 npm run build    client + server bundle, no warnings
 ```
 
@@ -190,25 +190,51 @@ browser.
 
 ---
 
-## Known gaps
+## Resolved since the first pass
 
-These are deliberate stopping points, not oversights. Each needs a decision or a credential I do
-not have.
+The first audit closed with seven open items. Five are now done.
 
-1. **No email delivery.** Approved applicants get a reference code on screen, but nothing is emailed.
-   The funnel assumes the team emails the payment link. Wiring up a provider (Postmark, Resend,
-   SendGrid) is the single highest-value next step — it is what closes the loop between "approved"
-   and "paid".
-2. **No database.** The JSON store is right for an event of 20 people on a Node host, but it is not
-   right for Vercel serverless. See the README deployment note.
-3. **Venue is unconfirmed** — the proposal says only "Cape Town". `src/config/event.ts` reads
-   "Venue to be confirmed"; set `EVENT.venue` when it is booked.
-4. **Keynote speakers are unnamed** — the proposal lists all four as "topic to be confirmed", so the
+| Was | Now |
+| --- | --- |
+| No email delivery | Four automatic emails — application received, approval with payment link, ticket confirmation, donation receipt. Sent via Resend; without an API key they log to the console so the funnel still works end to end and a mail outage can never fail a payment. |
+| Applicant had no way to check status | `/pay/:reference` shows every funnel state in plain language and doubles as the payment button. It is where approval emails point. |
+| Supporters endpoint had no UI | A supporters wall on the landing page — named donors only, no amounts, anonymous gifts filtered server-side. Hidden entirely until there is something to show. |
+| Unknown URLs silently rendered the homepage | A real 404 page, so a truncated reference in an email reads as broken rather than as a working homepage. |
+| Storage undecided | Confirmed as a Node host. `render.yaml` provisions the disk the datastore needs — without it every deploy would wipe the records. |
+
+Test coverage went from 16 to **40**, adding the validation boundary and the
+email layer. Two of the new tests exist because the failure would be invisible:
+HTML escaping of applicant names in emails, and the plain-text part staying in
+sync with the HTML.
+
+One further defect was found and fixed during this pass:
+
+**The ITN handler acknowledged before it verified.** It replied `200 OK`
+immediately, then processed. That is the pattern PayFast documents for speed,
+but it means a failure *after* the acknowledgement — a disk error, a crash —
+loses a real payment with no retry, because PayFast has already been told the
+notification was handled. Verification now runs before the reply: a genuine
+server-side failure returns 500 so PayFast retries, while an untrusted
+notification still gets a 200 so a forged request cannot occupy a retry slot.
+The handler is idempotent, so a retry is always safe.
+
+---
+
+## Still open
+
+These need a decision or a credential, not code.
+
+1. **Venue is unconfirmed** — the proposal says only "Cape Town". `src/config/event.ts` reads
+   "Venue to be confirmed"; set `EVENT.venue` when it is booked. It appears on the page and in the
+   ticket email.
+2. **Keynote speakers are unnamed** — the proposal lists all four as "topic to be confirmed", so the
    page says the same rather than inventing names as the previous build did.
-5. **Contact details are placeholders.** `EVENT.contactEmail` is
+3. **Contact details are placeholders.** `EVENT.contactEmail` is
    `connect@silvercrestconsulting.co.za` and the social links are empty; the footer hides social
-   icons until they are filled in. Confirm these before launch.
-6. **No PayFast passphrase set.** Strongly recommended before going live — see the README checklist.
-7. **No screenshots captured.** The browser preview pane was not displayed during this session, so
-   the UI was verified structurally (computed styles, DOM, live interaction) rather than visually.
-   Worth a human eye before launch.
+   icons until they are filled in. This address is also the email sender — it must exist and its
+   domain must be verified in Resend.
+4. **No Resend API key yet.** Emails are logged, not delivered, until one is set.
+5. **No PayFast passphrase set.** Strongly recommended before going live — see the README checklist.
+6. **No screenshots captured.** The browser preview pane was not displayed during either pass, so
+   the UI was verified structurally — computed styles, DOM, live interaction through every funnel
+   state — rather than visually. Worth a human eye before launch.

@@ -1,11 +1,14 @@
 /**
- * Application shell.
+ * Application shell and routing.
  *
- * Routing is deliberately tiny — four destinations, no router dependency:
- *   /                  the landing page
+ * Routing is deliberately tiny — a handful of destinations, no router
+ * dependency:
+ *   /                  landing page
+ *   /pay/:reference    applicant status + ticket payment (approval emails link here)
  *   /payment/return    PayFast return_url
  *   /payment/cancel    PayFast cancel_url
- *   /admin             the PayFast + applications dashboard
+ *   /admin             PayFast + applications dashboard
+ *   anything else      404
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -16,9 +19,12 @@ import { About } from './components/About';
 import { Programme } from './components/Programme';
 import { Tickets } from './components/Tickets';
 import { Donate } from './components/Donate';
+import { Supporters } from './components/Supporters';
 import { ImpactStand } from './components/ImpactStand';
 import { Footer } from './components/Footer';
 import { PaymentReturn, PaymentCancelled } from './components/PaymentResult';
+import { ApplicationStatusPage } from './components/ApplicationStatusPage';
+import { NotFound } from './components/NotFound';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { api } from './lib/api';
 
@@ -29,13 +35,20 @@ interface EventSummary {
 }
 
 export default function App() {
+  // Strip a trailing slash so /admin and /admin/ resolve the same way.
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
 
+  if (path === '/') return <LandingPage />;
   if (path === '/payment/return') return <PaymentReturn />;
   if (path === '/payment/cancel') return <PaymentCancelled />;
   if (path === '/admin') return <AdminDashboard />;
 
-  return <LandingPage />;
+  const payMatch = path.match(/^\/pay\/([^/]+)$/);
+  if (payMatch) {
+    return <ApplicationStatusPage reference={decodeURIComponent(payMatch[1])} />;
+  }
+
+  return <NotFound />;
 }
 
 function LandingPage() {
@@ -43,11 +56,7 @@ function LandingPage() {
 
   const loadSummary = useCallback(async () => {
     try {
-      const result = await api<{
-        seatsRemaining: number;
-        totalRaisedZAR: number;
-        supporters: number;
-      }>('/api/event');
+      const result = await api<EventSummary>('/api/event');
       setSummary({
         seatsRemaining: result.seatsRemaining,
         totalRaisedZAR: result.totalRaisedZAR,
@@ -71,11 +80,12 @@ function LandingPage() {
         <Hero seatsRemaining={summary?.seatsRemaining ?? null} />
         <About />
         <Programme />
-        <Tickets seatsRemaining={summary?.seatsRemaining ?? null} onPaid={loadSummary} />
+        <Tickets seatsRemaining={summary?.seatsRemaining ?? null} />
         <Donate
           totalRaisedZAR={summary?.totalRaisedZAR ?? null}
           supporters={summary?.supporters ?? null}
         />
+        <Supporters />
         <ImpactStand />
       </main>
       <Footer />

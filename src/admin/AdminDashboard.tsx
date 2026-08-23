@@ -31,9 +31,17 @@ import type {
 
 const TOKEN_KEY = 'scc_admin_token';
 
+interface EmailStatus {
+  driver: string;
+  configured: boolean;
+  from: string;
+  warnings: string[];
+}
+
 interface Overview {
   stats: DashboardStats;
   payfast: PayFastConfigStatus;
+  email: EmailStatus;
   storage: { persistent: boolean; note: string };
 }
 
@@ -128,11 +136,11 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
     setError(null);
     try {
       const [o, a, p] = await Promise.all([
-        api<{ stats: DashboardStats; payfast: PayFastConfigStatus; storage: Overview['storage'] }>('/api/admin/overview', { token }),
+        api<Overview>('/api/admin/overview', { token }),
         api<{ applications: Application[] }>('/api/admin/applications', { token }),
         api<{ payments: Payment[] }>('/api/admin/payments', { token }),
       ]);
-      setOverview({ stats: o.stats, payfast: o.payfast, storage: o.storage });
+      setOverview({ stats: o.stats, payfast: o.payfast, email: o.email, storage: o.storage });
       setApplications(a.applications);
       setPayments(p.payments);
     } catch (err) {
@@ -273,12 +281,13 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
 // --------------------------------------------------------------------- tabs
 
 const OverviewTab: React.FC<{ overview: Overview }> = ({ overview }) => {
-  const { stats, payfast, storage } = overview;
+  const { stats, payfast, email, storage } = overview;
+  const allWarnings = [...payfast.warnings, ...email.warnings];
 
   return (
     <div className="space-y-8">
       {/* Warnings first — a misconfigured gateway is the thing that costs money. */}
-      {(payfast.warnings.length > 0 || !storage.persistent) && (
+      {(allWarnings.length > 0 || !storage.persistent) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.07] p-5">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -288,7 +297,7 @@ const OverviewTab: React.FC<{ overview: Overview }> = ({ overview }) => {
                 {!storage.persistent && (
                   <li className="text-[13px] text-amber-100/80 leading-relaxed">• {storage.note}</li>
                 )}
-                {payfast.warnings.map((warning) => (
+                {allWarnings.map((warning) => (
                   <li key={warning} className="text-[13px] text-amber-100/80 leading-relaxed">
                     • {warning}
                   </li>
@@ -359,6 +368,34 @@ const OverviewTab: React.FC<{ overview: Overview }> = ({ overview }) => {
           <ConfigRow label="ITN / Notify URL" value={payfast.notifyUrl} mono span />
           <ConfigRow label="Return URL" value={payfast.returnUrl} mono span />
           <ConfigRow label="Cancel URL" value={payfast.cancelUrl} mono span />
+        </dl>
+      </Card>
+
+      {/* Email delivery */}
+      <Card className="p-6 sm:p-8">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h3 className="font-display text-lg font-bold text-bone">Email delivery</h3>
+          <span
+            className={[
+              'inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[10px] uppercase tracking-[0.14em] font-semibold border',
+              email.configured
+                ? 'border-gold/40 text-gold bg-gold/8'
+                : 'border-amber-500/40 text-amber-300 bg-amber-500/8',
+            ].join(' ')}
+          >
+            {email.configured ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+            {email.configured ? 'Sending live' : 'Console only'}
+          </span>
+        </div>
+
+        <p className="mt-4 text-[13px] text-muted leading-relaxed">
+          Applicants are emailed automatically at three points: on application, on approval (with
+          the payment link), and when payment clears. Donors get a receipt.
+        </p>
+
+        <dl className="mt-7 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          <ConfigRow label="Driver" value={email.driver === 'resend' ? 'Resend' : 'Console (not delivered)'} highlight={!email.configured} />
+          <ConfigRow label="From" value={email.from} mono />
         </dl>
       </Card>
     </div>

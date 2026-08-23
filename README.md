@@ -19,6 +19,7 @@ Outreach Drive.
 | **SME funnel** | Free application → team vetting → approval → PayFast payment → digital ticket |
 | **Donations** | Custom-amount gateway open to non-attending supporters |
 | **Payments** | PayFast custom integration with signed requests and fully validated ITN callbacks |
+| **Email** | Automatic messages at every funnel step, via Resend |
 | **Dashboard** | `/admin` — PayFast config, live revenue, application review, payment ledger, CSV export |
 
 ---
@@ -36,7 +37,7 @@ npm run dev             # http://localhost:3000
 | `npm run dev` | Express + Vite middleware, client hot-reloads |
 | `npm run build` | Builds the client (`dist/`) and the server bundle (`dist/server.mjs`) |
 | `npm start` | Runs the production server from `dist/` |
-| `npm test` | Unit tests for the PayFast signing and currency formatting |
+| `npm test` | 40 unit tests — PayFast signing, validation, email rendering, currency |
 | `npm run lint` | `tsc --noEmit` |
 
 ---
@@ -54,6 +55,9 @@ the merchant key and passphrase stay server-side and the dashboard only ever sho
 | `PAYFAST_MERCHANT_KEY` | live only | Secret. Never commit. |
 | `PAYFAST_PASSPHRASE` | recommended | Must match the passphrase set in the PayFast dashboard. |
 | `ADMIN_TOKEN` | yes | Gates `/admin`. **If unset, the dashboard is disabled entirely.** |
+| `RESEND_API_KEY` | for real email | Without it, emails are logged to the console instead of sent. Nothing breaks; applicants just receive nothing. |
+| `EMAIL_FROM` | with Resend | Must be on a domain verified in Resend, or delivery fails. |
+| `EMAIL_REDIRECT_TO` | no | Staging valve: sends every email here instead of the real recipient. |
 | `DATA_DIR` | no | Where the JSON datastore is written. Defaults to `./data`. |
 | `PAYFAST_SKIP_IP_CHECK` | no | Local testing only. Disables ITN source-IP verification. |
 | `PAYFAST_SKIP_SERVER_CONFIRM` | no | Local testing only. Disables PayFast server confirmation. |
@@ -72,6 +76,36 @@ accidentally hit the live account. The dashboard states this explicitly.
 
 ---
 
+## Email
+
+Four messages go out automatically. Nothing needs to be sent by hand.
+
+| When | Message |
+| --- | --- |
+| Application submitted | Reference code, and what happens next |
+| Approved in `/admin` | Payment link to `/pay/:reference` |
+| Ticket payment clears | Ticket code and event details |
+| Donation clears | Receipt |
+
+**Without `RESEND_API_KEY` the app logs each email to the server console instead of
+sending it.** The whole funnel still works end to end — useful for local development, and it means
+a missing key can never crash a payment. `/admin` shows which driver is live.
+
+To turn on real delivery:
+
+1. Create a Resend account and **verify your sending domain** (this is the step people skip; an
+   unverified domain fails every send).
+2. Set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain.
+3. Approve a test application and confirm the email arrives.
+
+On staging, set `EMAIL_REDIRECT_TO` to your own address — every message goes there instead of to
+real applicants.
+
+The approval email is sent on the **transition into** `APPROVED`, so re-saving an already-approved
+application does not re-notify. To deliberately resend, `PATCH` with `{"status":"APPROVED","resend":true}`.
+
+---
+
 ## Going live — checklist
 
 1. Set `PAYFAST_MODE=live`.
@@ -81,10 +115,12 @@ accidentally hit the live account. The dashboard states this explicitly.
 4. Set `APP_URL` to the live **HTTPS** domain.
 5. Remove `PAYFAST_SKIP_IP_CHECK` and `PAYFAST_SKIP_SERVER_CONFIRM`.
 6. Set a strong `ADMIN_TOKEN`.
-7. Confirm the ITN URL is reachable from the public internet:
+7. Set `RESEND_API_KEY` and `EMAIL_FROM`, with the sending domain verified in Resend.
+8. Clear `EMAIL_REDIRECT_TO`.
+9. Confirm the ITN URL is reachable from the public internet:
    `https://your-domain/api/payfast/itn`
-8. Make one real R10 donation end-to-end and confirm it turns `COMPLETE` in `/admin`, then refund it
-   from the PayFast dashboard.
+10. Make one real R10 donation end-to-end, confirm it turns `COMPLETE` in `/admin` and that the
+    receipt email arrives, then refund it from the PayFast dashboard.
 
 Open `/admin` at any point — it lists every misconfiguration it can detect.
 
@@ -109,6 +145,7 @@ Applicant                 This server                    PayFast
    |                          | verify: signature, source   |
    |                          | IP, amount, PayFast confirm |
    |                          | -> COMPLETE, issue ticket   |
+   |<-- ticket email ---------|                             |
    |-- poll status ---------->|                             |
 ```
 
@@ -146,6 +183,11 @@ npm start
 The JSON datastore persists to `DATA_DIR`, so applications and payments survive restarts. Point
 `DATA_DIR` at a mounted volume.
 
+`render.yaml` is a ready-made Render blueprint — it provisions a 1 GB disk at `/var/data` and sets
+`DATA_DIR` to match. **The disk matters:** without it every deploy would wipe your applications and
+payment records. Secrets are marked `sync: false`, so set them in the Render dashboard rather than
+committing them.
+
 ### Vercel
 
 `vercel.json` builds the client to `dist/` and mounts the Express app as a serverless function at
@@ -172,6 +214,9 @@ src/
     payfast.ts            Signing + ITN verification
     store.ts              Persistence
     validate.ts           Input validation
+    email/
+      mailer.ts           Resend + console drivers
+      render.ts           Templates (HTML + plain text)
   components/             Landing page sections
   admin/                  Dashboard
   lib/                    Client fetch wrapper, PayFast hand-off
@@ -185,7 +230,17 @@ updates everywhere — page, API and dashboard.
 
 ## API
 
-### Public
+### Pages
+
+| Path | Purpose |
+| --- | --- |
+| `/` | Landing page |
+| `/pay/:reference` | Applicant status + ticket payment (approval emails link here) |
+| `/payment/return` | PayFast return URL |
+| `/payment/cancel` | PayFast cancel URL |
+| `/admin` | Dashboard |
+
+### Public API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -196,7 +251,7 @@ updates everywhere — page, API and dashboard.
 | `POST` | `/api/checkout/ticket` | Start a PayFast ticket payment |
 | `POST` | `/api/checkout/donation` | Start a PayFast donation |
 | `GET` | `/api/payments/:reference/status` | Poll a payment |
-| `GET` | `/api/supporters` | Public supporters wall |
+| `GET` | `/api/supporters` | Public supporters wall (named donors only) |
 | `POST` | `/api/payfast/itn` | PayFast callback (verified) |
 
 ### Admin — all require `Authorization: Bearer <ADMIN_TOKEN>`

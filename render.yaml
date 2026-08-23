@@ -1,0 +1,38 @@
+# Render blueprint. Deploy with: New -> Blueprint -> point at this repo.
+#
+# The disk is the important part: the JSON datastore holds applications and
+# payments, and without a mounted disk every deploy would wipe them.
+services:
+  - type: web
+    name: silver-crest-connect
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: silvercrest-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      # Set in the Render dashboard, not here — these are secrets.
+      - key: APP_URL
+        sync: false
+      - key: PAYFAST_MODE
+        sync: false
+      - key: PAYFAST_MERCHANT_ID
+        sync: false
+      - key: PAYFAST_MERCHANT_KEY
+        sync: false
+      - key: PAYFAST_PASSPHRASE
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

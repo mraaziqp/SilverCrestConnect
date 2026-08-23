@@ -34,10 +34,25 @@ import {
   requiredString,
   splitName,
 } from './validate.js';
+import {
+  createMailer,
+  describeMailer,
+  loadMailerConfig,
+  sendInBackground,
+  type Mailer,
+} from './email/mailer.js';
+import {
+  applicationApproved,
+  applicationReceived,
+  donationReceipt,
+  ticketConfirmed,
+} from './email/render.js';
 
 export interface AppOptions {
   store: Store;
   payfast: PayFastConfig;
+  /** Outbound email. Defaults to the console driver when omitted. */
+  mailer?: Mailer;
   /** Absolute path to the built client, when serving production assets. */
   distPath?: string;
   /** Attach the Vite dev middleware instead of static assets. */
@@ -49,6 +64,7 @@ const PAYABLE_STATUSES: ApplicationStatus[] = ['APPROVED'];
 
 export async function createApp(options: AppOptions): Promise<Express> {
   const { store, payfast } = options;
+  const mailer = options.mailer ?? createMailer(loadMailerConfig());
   const app = express();
 
   // Behind Vercel/Render/nginx, req.ip must come from X-Forwarded-For for the
@@ -69,7 +85,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
         (req as RawBodyRequest).rawBody = buf.toString('utf8');
       },
     }),
-    (req, res) => handleItn(req, res, store, payfast),
+    (req, res) => handleItn(req, res, store, payfast, mailer),
   );
 
   app.use(express.json({ limit: '64kb' }));
@@ -161,6 +177,17 @@ export async function createApp(options: AppOptions): Promise<Express> {
     };
 
     await store.addApplication(application);
+
+    sendInBackground(
+      mailer,
+      application.email,
+      applicationReceived({
+        contactName: application.contactName,
+        businessName: application.businessName,
+        reference: application.reference,
+      }),
+      'application-received',
+    );
 
     return res.status(201).json({
       success: true,
@@ -371,6 +398,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       success: true,
       stats: buildStats(store),
       payfast: describeConfig(payfast),
+      email: describeMailer(mailer),
       storage: {
         persistent: store.isPersistent,
         note: store.isPersistent
@@ -409,6 +437,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
       return res.status(409).json({ success: false, error: 'The event is at capacity.' });
     }
 
+    const wasApproved = application.status === 'APPROVED';
+
     const updated = await store.updateApplication(application.id, {
       status,
       reviewNote: optionalString(req.body?.reviewNote, 500) ?? application.reviewNote,
@@ -418,6 +448,39 @@ export async function createApp(options: AppOptions): Promise<Express> {
           ? makeReference('TICKET')
           : application.ticketCode,
     });
+
+    // Email the payment link only on the transition INTO approved, so
+    // re-saving an already-approved application does not re-notify them.
+    // `resend: true` in the body forces it, for when the first mail bounced.
+    if (updated && status === 'APPROVED' && (!wasApproved || req.body?.resend === true)) {
+      sendInBackground(
+        mailer,
+        updated.email,
+        applicationApproved({
+          contactName: updated.contactName,
+          businessName: updated.businessName,
+          reference: updated.reference,
+          payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
+          seatsRemaining: Math.max(0, EVENT.capacity - store.countPaidSeats()),
+        }),
+        'application-approved',
+      );
+    }
+
+    // A manual PAID (EFT or cash at the door) still deserves a ticket email.
+    if (updated && status === 'PAID' && application.status !== 'PAID' && updated.ticketCode) {
+      sendInBackground(
+        mailer,
+        updated.email,
+        ticketConfirmed({
+          contactName: updated.contactName,
+          businessName: updated.businessName,
+          ticketCode: updated.ticketCode,
+          amountZAR: EVENT.ticketPriceZAR,
+        }),
+        'ticket-confirmed-manual',
+      );
+    }
 
     return res.json({ success: true, application: updated });
   });
@@ -501,75 +564,121 @@ async function handleItn(
   res: Response,
   store: Store,
   payfast: PayFastConfig,
+  mailer: Mailer,
 ): Promise<void> {
-  // PayFast retries on any non-200, so acknowledge immediately and do the work
-  // after. A slow reply here shows up as duplicate notifications.
-  res.status(200).send('OK');
-
   const body = (req.body ?? {}) as Record<string, string>;
   const rawBody = (req as RawBodyRequest).rawBody ?? '';
   const reference = body.m_payment_id;
 
-  if (!reference) {
-    console.warn('[itn] Notification with no m_payment_id, ignoring.');
-    return;
-  }
+  // Verification runs before the reply rather than after it. Answering 200
+  // first would be faster, but it also tells PayFast the notification was
+  // handled — so if our processing then failed, the payment would be lost
+  // with no retry. PayFast re-sends on any non-200, and the handler is
+  // idempotent, so a 500 here is a safe request to try again.
+  try {
+    if (!reference) {
+      console.warn('[itn] Notification with no m_payment_id, ignoring.');
+      res.status(200).send('OK');
+      return;
+    }
 
-  const payment = store.getPayment(reference);
-  if (!payment) {
-    console.warn(`[itn] No local payment for reference ${reference}, ignoring.`);
-    return;
-  }
+    const payment = store.getPayment(reference);
+    if (!payment) {
+      // Not ours, or already pruned. Acknowledge so PayFast stops retrying.
+      console.warn(`[itn] No local payment for reference ${reference}, ignoring.`);
+      res.status(200).send('OK');
+      return;
+    }
 
-  // Already settled: PayFast re-sends notifications, and re-processing would
-  // double-count revenue and re-issue a ticket code.
-  if (payment.status === 'COMPLETE' && body.payment_status === 'COMPLETE') {
-    return;
-  }
+    // Already settled. PayFast re-sends notifications, and re-processing would
+    // double-count revenue and send a second receipt.
+    if (payment.status === 'COMPLETE' && body.payment_status === 'COMPLETE') {
+      res.status(200).send('OK');
+      return;
+    }
 
-  const verdict = await verifyItn(payfast, {
-    body,
-    rawBody,
-    sourceIp: req.ip ?? '',
-    expectedAmountZAR: payment.amountZAR,
-  });
+    const verdict = await verifyItn(payfast, {
+      body,
+      rawBody,
+      sourceIp: req.ip ?? '',
+      expectedAmountZAR: payment.amountZAR,
+    });
 
-  if (!verdict.valid) {
-    console.error(`[itn] Rejected notification for ${reference}: ${verdict.reason}`);
+    if (!verdict.valid) {
+      // A failed check means the notification is not trustworthy — record why
+      // for the dashboard, then acknowledge. Retrying would not change the
+      // verdict, and a forged request must not be able to hold a retry slot.
+      console.error(`[itn] Rejected notification for ${reference}: ${verdict.reason}`);
+      await store.updatePayment(payment.id, {
+        itnError: verdict.reason,
+        itnReceivedAt: new Date().toISOString(),
+      });
+      res.status(200).send('OK');
+      return;
+    }
+
+    const pfStatus = body.payment_status;
+    const status =
+      pfStatus === 'COMPLETE' ? 'COMPLETE' : pfStatus === 'CANCELLED' ? 'CANCELLED' : 'FAILED';
+
+    const fee = parseMoney(body.amount_fee);
+
     await store.updatePayment(payment.id, {
-      itnError: verdict.reason,
+      status,
+      pfPaymentId: body.pf_payment_id,
+      pfPaymentStatus: pfStatus,
+      amountNetZAR: parseMoney(body.amount_net),
+      // PayFast reports the fee as a negative number; store it as a cost.
+      feeZAR: fee === undefined ? undefined : Math.abs(fee),
+      itnError: undefined,
       itnReceivedAt: new Date().toISOString(),
     });
-    return;
-  }
 
-  const pfStatus = body.payment_status;
-  const status =
-    pfStatus === 'COMPLETE' ? 'COMPLETE' : pfStatus === 'CANCELLED' ? 'CANCELLED' : 'FAILED';
-
-  await store.updatePayment(payment.id, {
-    status,
-    pfPaymentId: body.pf_payment_id,
-    pfPaymentStatus: pfStatus,
-    amountNetZAR: parseMoney(body.amount_net),
-    feeZAR: parseMoney(body.amount_fee) === undefined ? undefined : Math.abs(parseMoney(body.amount_fee)!),
-    itnError: undefined,
-    itnReceivedAt: new Date().toISOString(),
-  });
-
-  // A completed ticket payment advances the application and issues the pass.
-  if (status === 'COMPLETE' && payment.kind === 'TICKET' && payment.applicationId) {
-    const application = store.getApplication(payment.applicationId);
-    if (application && application.status !== 'PAID') {
-      await store.updateApplication(application.id, {
-        status: 'PAID',
-        paymentId: payment.id,
-        ticketCode: application.ticketCode ?? makeReference('TICKET'),
-      });
+    if (status === 'COMPLETE') {
+      if (payment.kind === 'TICKET' && payment.applicationId) {
+        // A completed ticket advances the application and issues the pass.
+        const application = store.getApplication(payment.applicationId);
+        if (application && application.status !== 'PAID') {
+          const ticketCode = application.ticketCode ?? makeReference('TICKET');
+          await store.updateApplication(application.id, {
+            status: 'PAID',
+            paymentId: payment.id,
+            ticketCode,
+          });
+          sendInBackground(
+            mailer,
+            application.email,
+            ticketConfirmed({
+              contactName: application.contactName,
+              businessName: application.businessName,
+              ticketCode,
+              amountZAR: payment.amountZAR,
+            }),
+            'ticket-confirmed',
+          );
+        }
+      } else if (payment.kind === 'DONATION') {
+        sendInBackground(
+          mailer,
+          payment.email,
+          donationReceipt({
+            name: payment.name,
+            amountZAR: payment.amountZAR,
+            reference: payment.reference,
+          }),
+          'donation-receipt',
+        );
+      }
     }
-  }
 
-  console.log(`[itn] ${reference} -> ${status} (PayFast ${pfStatus}).`);
+    console.log(`[itn] ${reference} -> ${status} (PayFast ${pfStatus}).`);
+    res.status(200).send('OK');
+  } catch (err) {
+    // Something genuinely broke on our side — a disk write, say. Ask PayFast
+    // to try again rather than silently dropping a real payment.
+    console.error(`[itn] Processing failed for ${reference ?? 'unknown'}:`, err);
+    if (!res.headersSent) res.status(500).send('ERROR');
+  }
 }
 
 function parseMoney(value: string | undefined): number | undefined {
