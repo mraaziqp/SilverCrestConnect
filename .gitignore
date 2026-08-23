@@ -10,3 +10,6 @@ coverage/
 bun.lock
 silver-crest-connect.zip
 assets/.aistudio/
+
+# Local JSON datastore — contains applicant and payment records.
+data/

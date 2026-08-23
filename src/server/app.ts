@@ -1,0 +1,686 @@
+/**
+ * Express application factory.
+ *
+ * Split out from the server entrypoint so the same app can be mounted by the
+ * standalone Node server (server.ts) and by a serverless handler (api/index.ts)
+ * without duplicating route definitions.
+ */
+
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
+import path from 'path';
+import crypto from 'crypto';
+
+import { EVENT, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event.js';
+import type {
+  Application,
+  ApplicationStatus,
+  DashboardStats,
+  Payment,
+} from '../types.js';
+import { Store, makeId, makeReference } from './store.js';
+import {
+  buildPaymentFields,
+  describeConfig,
+  processUrl,
+  verifyItn,
+  type PayFastConfig,
+} from './payfast.js';
+import {
+  FieldErrors,
+  email as validEmail,
+  money,
+  optionalString,
+  phone as validPhone,
+  requiredString,
+  splitName,
+} from './validate.js';
+
+export interface AppOptions {
+  store: Store;
+  payfast: PayFastConfig;
+  /** Absolute path to the built client, when serving production assets. */
+  distPath?: string;
+  /** Attach the Vite dev middleware instead of static assets. */
+  attachVite?: (app: Express) => Promise<void>;
+}
+
+/** Statuses from which a ticket payment may be started. */
+const PAYABLE_STATUSES: ApplicationStatus[] = ['APPROVED'];
+
+export async function createApp(options: AppOptions): Promise<Express> {
+  const { store, payfast } = options;
+  const app = express();
+
+  // Behind Vercel/Render/nginx, req.ip must come from X-Forwarded-For for the
+  // ITN source-IP check and the rate limiter to see the real client.
+  app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+
+  app.use(securityHeaders);
+
+  // The ITN endpoint needs the raw body to rebuild PayFast's signature string
+  // in the exact field order it was posted, so it is parsed before the
+  // generic JSON parser and keeps a copy of the raw text.
+  app.post(
+    '/api/payfast/itn',
+    express.urlencoded({
+      extended: false,
+      verify: (req, _res, buf) => {
+        (req as RawBodyRequest).rawBody = buf.toString('utf8');
+      },
+    }),
+    (req, res) => handleItn(req, res, store, payfast),
+  );
+
+  app.use(express.json({ limit: '64kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '64kb' }));
+
+  // ------------------------------------------------------------------ public API
+
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.json({
+      status: 'ok',
+      event: EVENT.fullName,
+      presentedBy: EVENT.presentedBy,
+      persistent: store.isPersistent,
+      payfastConfigured: payfast.isConfigured,
+      payfastMode: payfast.mode,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /** Public event facts, so the client never hardcodes a second copy. */
+  app.get('/api/event', (_req: Request, res: Response) => {
+    const stats = buildStats(store);
+    res.json({
+      success: true,
+      event: {
+        name: EVENT.fullName,
+        tagline: EVENT.tagline,
+        dateLabel: EVENT.dateLabel,
+        timeLabel: EVENT.timeLabel,
+        startsAtISO: EVENT.startsAtISO,
+        venue: EVENT.venue,
+        venueCity: EVENT.venueCity,
+        ticketPriceZAR: EVENT.ticketPriceZAR,
+        capacity: EVENT.capacity,
+      },
+      seatsRemaining: stats.seatsRemaining,
+      totalRaisedZAR: stats.totalRaisedZAR,
+      supporters: stats.donationsCount,
+    });
+  });
+
+  /**
+   * SME application (funnel step 01).
+   * Applying is free — no payment is taken until the team approves.
+   */
+  app.post('/api/applications', rateLimit(5, 60_000), async (req: Request, res: Response) => {
+    const errors = new FieldErrors();
+    const body = req.body ?? {};
+
+    const businessName = requiredString(errors, 'businessName', body.businessName, { min: 2, max: 120, label: 'Business name' });
+    const contactName = requiredString(errors, 'contactName', body.contactName, { min: 2, max: 100, label: 'Contact name' });
+    const email = validEmail(errors, 'email', body.email);
+    const phone = validPhone(errors, 'phone', body.phone);
+    const industry = requiredString(errors, 'industry', body.industry, { min: 2, max: 80, label: 'Industry' });
+    const about = requiredString(errors, 'about', body.about, { min: 20, max: 1000, label: 'Business description' });
+
+    if (errors.any) {
+      return res.status(400).json({ success: false, error: 'Please correct the highlighted fields.', fieldErrors: errors.all });
+    }
+
+    // One application per email keeps the vetting list clean and stops an
+    // accidental double-submit creating two records.
+    const existing = store.findApplicationByEmail(email);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: 'An application already exists for this email address.',
+        reference: existing.reference,
+        status: existing.status,
+      });
+    }
+
+    const now = new Date().toISOString();
+    const application: Application = {
+      id: makeId('app'),
+      reference: makeReference('SCC26'),
+      businessName,
+      contactName,
+      email,
+      phone,
+      industry,
+      website: optionalString(body.website, 200),
+      registrationNumber: optionalString(body.registrationNumber, 40),
+      about,
+      lookingFor: optionalString(body.lookingFor, 300),
+      status: 'PENDING_REVIEW',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await store.addApplication(application);
+
+    return res.status(201).json({
+      success: true,
+      reference: application.reference,
+      status: application.status,
+      message: 'Application received. The Silver Crest team will review it and email you a payment link once approved.',
+    });
+  });
+
+  /** Applicant-facing status lookup, keyed on the reference we emailed them. */
+  app.get('/api/applications/:reference', (req: Request, res: Response) => {
+    const application = store.getApplication(req.params.reference);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'No application found for that reference.' });
+    }
+
+    // Deliberately narrow: internal review notes stay internal.
+    return res.json({
+      success: true,
+      application: {
+        reference: application.reference,
+        businessName: application.businessName,
+        status: application.status,
+        ticketCode: application.ticketCode,
+        createdAt: application.createdAt,
+      },
+    });
+  });
+
+  /**
+   * Starts a PayFast checkout for an approved SME's R350 ticket.
+   * The amount comes from the server config, never from the request body.
+   */
+  app.post('/api/checkout/ticket', rateLimit(10, 60_000), async (req: Request, res: Response) => {
+    const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
+    if (!reference) {
+      return res.status(400).json({ success: false, error: 'An application reference is required.' });
+    }
+
+    const application = store.getApplication(reference);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'No application found for that reference.' });
+    }
+    if (application.status === 'PAID') {
+      return res.status(409).json({ success: false, error: 'This ticket has already been paid for.' });
+    }
+    if (!PAYABLE_STATUSES.includes(application.status)) {
+      return res.status(409).json({
+        success: false,
+        error:
+          application.status === 'PENDING_REVIEW'
+            ? 'This application is still being reviewed. You will be emailed a payment link once it is approved.'
+            : 'This application is not currently eligible for payment.',
+      });
+    }
+
+    // Capacity is enforced here as well as in the admin approval step, because
+    // approvals and payments race: several approved SMEs could pay at once.
+    if (store.countPaidSeats() >= EVENT.capacity) {
+      return res.status(409).json({
+        success: false,
+        error: 'All seats for this event have been taken. Contact us to join the waiting list.',
+      });
+    }
+
+    const { first, last } = splitName(application.contactName);
+    const payment: Payment = {
+      id: makeId('pay'),
+      reference: makeReference('TKT'),
+      kind: 'TICKET',
+      amountZAR: EVENT.ticketPriceZAR,
+      status: 'PENDING',
+      name: application.contactName,
+      email: application.email,
+      applicationId: application.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await store.addPayment(payment);
+
+    const fields = buildPaymentFields(payfast, {
+      reference: payment.reference,
+      amountZAR: payment.amountZAR,
+      itemName: `${EVENT.fullName} - SME Ticket`,
+      itemDescription: `Attendance for ${application.businessName} on ${EVENT.dateLabel}. 100% funds the ${EVENT.causeShort}.`,
+      nameFirst: first,
+      nameLast: last,
+      email: application.email,
+      cellNumber: application.phone,
+      customStr1: payment.id,
+      customStr2: application.reference,
+    });
+
+    return res.json({
+      success: true,
+      paymentId: payment.id,
+      reference: payment.reference,
+      amountZAR: payment.amountZAR,
+      processUrl: processUrl(payfast),
+      fields,
+    });
+  });
+
+  /** Starts a PayFast checkout for a custom-amount donation to the outreach drive. */
+  app.post('/api/checkout/donation', rateLimit(10, 60_000), async (req: Request, res: Response) => {
+    const errors = new FieldErrors();
+    const body = req.body ?? {};
+
+    const name = requiredString(errors, 'name', body.name, { min: 2, max: 100, label: 'Your name' });
+    const email = validEmail(errors, 'email', body.email);
+    const amountZAR = money(errors, 'amount', body.amount, {
+      min: DONATION_MIN_ZAR,
+      max: DONATION_MAX_ZAR,
+      label: 'Donation amount',
+    });
+
+    if (errors.any) {
+      return res.status(400).json({ success: false, error: 'Please correct the highlighted fields.', fieldErrors: errors.all });
+    }
+
+    const { first, last } = splitName(name);
+    const payment: Payment = {
+      id: makeId('pay'),
+      reference: makeReference('DON'),
+      kind: 'DONATION',
+      amountZAR,
+      status: 'PENDING',
+      name,
+      email,
+      message: optionalString(body.message, 200),
+      anonymous: body.anonymous === true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await store.addPayment(payment);
+
+    const fields = buildPaymentFields(payfast, {
+      reference: payment.reference,
+      amountZAR,
+      itemName: `${EVENT.causeShort} - Donation`,
+      itemDescription: `Contribution towards ${EVENT.cause}.`,
+      nameFirst: first,
+      nameLast: last,
+      email,
+      customStr1: payment.id,
+    });
+
+    return res.json({
+      success: true,
+      paymentId: payment.id,
+      reference: payment.reference,
+      amountZAR,
+      processUrl: processUrl(payfast),
+      fields,
+    });
+  });
+
+  /**
+   * Polled by the return page while it waits for the ITN to land.
+   * PayFast redirects the browser back before the server callback necessarily
+   * arrives, so the UI cannot treat "returned" as "paid".
+   */
+  app.get('/api/payments/:reference/status', (req: Request, res: Response) => {
+    const payment = store.getPayment(req.params.reference);
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Payment not found.' });
+    }
+
+    const application = payment.applicationId
+      ? store.getApplication(payment.applicationId)
+      : undefined;
+
+    return res.json({
+      success: true,
+      payment: {
+        reference: payment.reference,
+        kind: payment.kind,
+        amountZAR: payment.amountZAR,
+        status: payment.status,
+        createdAt: payment.createdAt,
+      },
+      ticketCode: application?.ticketCode,
+      businessName: application?.businessName,
+    });
+  });
+
+  /** Public supporters wall — named donations only, no emails or amounts leaked. */
+  app.get('/api/supporters', (_req: Request, res: Response) => {
+    const supporters = store
+      .completedPayments()
+      .filter((p) => p.kind === 'DONATION' && !p.anonymous)
+      .slice(0, 60)
+      .map((p) => ({
+        name: p.name,
+        message: p.message,
+        at: p.updatedAt,
+      }));
+
+    res.json({ success: true, count: supporters.length, supporters });
+  });
+
+  // ------------------------------------------------------------------- admin API
+
+  app.use('/api/admin', adminAuth);
+
+  app.get('/api/admin/overview', (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      stats: buildStats(store),
+      payfast: describeConfig(payfast),
+      storage: {
+        persistent: store.isPersistent,
+        note: store.isPersistent
+          ? 'Records are written to disk.'
+          : 'In-memory only — records will not survive a restart.',
+      },
+    });
+  });
+
+  app.get('/api/admin/applications', (req: Request, res: Response) => {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    let list = store.listApplications();
+    if (status && status !== 'ALL') {
+      list = list.filter((a) => a.status === status);
+    }
+    res.json({ success: true, count: list.length, applications: list });
+  });
+
+  /** Moves an application through the vetting funnel. */
+  app.patch('/api/admin/applications/:id', async (req: Request, res: Response) => {
+    const allowed: ApplicationStatus[] = ['PENDING_REVIEW', 'APPROVED', 'PAID', 'REJECTED', 'WAITLISTED'];
+    const status = req.body?.status as ApplicationStatus | undefined;
+
+    if (!status || !allowed.includes(status)) {
+      return res.status(400).json({ success: false, error: `status must be one of: ${allowed.join(', ')}` });
+    }
+
+    const application = store.getApplication(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    // Marking someone PAID by hand is for off-platform payments (EFT, cash at
+    // the door). It still has to respect the room capacity.
+    if (status === 'PAID' && application.status !== 'PAID' && store.countPaidSeats() >= EVENT.capacity) {
+      return res.status(409).json({ success: false, error: 'The event is at capacity.' });
+    }
+
+    const updated = await store.updateApplication(application.id, {
+      status,
+      reviewNote: optionalString(req.body?.reviewNote, 500) ?? application.reviewNote,
+      reviewedAt: new Date().toISOString(),
+      ticketCode:
+        status === 'PAID' && !application.ticketCode
+          ? makeReference('TICKET')
+          : application.ticketCode,
+    });
+
+    return res.json({ success: true, application: updated });
+  });
+
+  app.get('/api/admin/payments', (req: Request, res: Response) => {
+    const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+
+    let list = store.listPayments();
+    if (kind && kind !== 'ALL') list = list.filter((p) => p.kind === kind);
+    if (status && status !== 'ALL') list = list.filter((p) => p.status === status);
+
+    res.json({ success: true, count: list.length, payments: list });
+  });
+
+  /** CSV export for reconciling against the PayFast dashboard. */
+  app.get('/api/admin/payments.csv', (_req: Request, res: Response) => {
+    const rows = [
+      ['reference', 'kind', 'status', 'amount_zar', 'net_zar', 'fee_zar', 'name', 'email', 'pf_payment_id', 'created_at'],
+      ...store.listPayments().map((p) => [
+        p.reference,
+        p.kind,
+        p.status,
+        p.amountZAR.toFixed(2),
+        p.amountNetZAR?.toFixed(2) ?? '',
+        p.feeZAR?.toFixed(2) ?? '',
+        p.name,
+        p.email,
+        p.pfPaymentId ?? '',
+        p.createdAt,
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="silvercrest-payments-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  });
+
+  // Anything still unmatched under /api is a genuine 404 and must answer with
+  // JSON. This has to come BEFORE the client middleware: otherwise Vite (dev)
+  // or the SPA fallback (prod) serves index.html for a mistyped API path, and
+  // the client's response.json() fails with a confusing parse error instead of
+  // a clear 404.
+  app.use('/api', (_req: Request, res: Response) => {
+    res.status(404).json({ success: false, error: 'Unknown API endpoint.' });
+  });
+
+  // ------------------------------------------------------------- client delivery
+
+  if (options.attachVite) {
+    await options.attachVite(app);
+  } else if (options.distPath) {
+    const distPath = options.distPath;
+    app.use(express.static(distPath, { index: false, maxAge: '1h' }));
+
+    // SPA fallback for every non-API route.
+    app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.use(errorHandler);
+
+  return app;
+}
+
+// ---------------------------------------------------------------------- handlers
+
+interface RawBodyRequest extends Request {
+  rawBody?: string;
+}
+
+/**
+ * PayFast ITN callback. This is the only thing that may mark a payment
+ * complete — the browser return URL is not trusted, because a user can
+ * navigate to it directly without paying.
+ */
+async function handleItn(
+  req: Request,
+  res: Response,
+  store: Store,
+  payfast: PayFastConfig,
+): Promise<void> {
+  // PayFast retries on any non-200, so acknowledge immediately and do the work
+  // after. A slow reply here shows up as duplicate notifications.
+  res.status(200).send('OK');
+
+  const body = (req.body ?? {}) as Record<string, string>;
+  const rawBody = (req as RawBodyRequest).rawBody ?? '';
+  const reference = body.m_payment_id;
+
+  if (!reference) {
+    console.warn('[itn] Notification with no m_payment_id, ignoring.');
+    return;
+  }
+
+  const payment = store.getPayment(reference);
+  if (!payment) {
+    console.warn(`[itn] No local payment for reference ${reference}, ignoring.`);
+    return;
+  }
+
+  // Already settled: PayFast re-sends notifications, and re-processing would
+  // double-count revenue and re-issue a ticket code.
+  if (payment.status === 'COMPLETE' && body.payment_status === 'COMPLETE') {
+    return;
+  }
+
+  const verdict = await verifyItn(payfast, {
+    body,
+    rawBody,
+    sourceIp: req.ip ?? '',
+    expectedAmountZAR: payment.amountZAR,
+  });
+
+  if (!verdict.valid) {
+    console.error(`[itn] Rejected notification for ${reference}: ${verdict.reason}`);
+    await store.updatePayment(payment.id, {
+      itnError: verdict.reason,
+      itnReceivedAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  const pfStatus = body.payment_status;
+  const status =
+    pfStatus === 'COMPLETE' ? 'COMPLETE' : pfStatus === 'CANCELLED' ? 'CANCELLED' : 'FAILED';
+
+  await store.updatePayment(payment.id, {
+    status,
+    pfPaymentId: body.pf_payment_id,
+    pfPaymentStatus: pfStatus,
+    amountNetZAR: parseMoney(body.amount_net),
+    feeZAR: parseMoney(body.amount_fee) === undefined ? undefined : Math.abs(parseMoney(body.amount_fee)!),
+    itnError: undefined,
+    itnReceivedAt: new Date().toISOString(),
+  });
+
+  // A completed ticket payment advances the application and issues the pass.
+  if (status === 'COMPLETE' && payment.kind === 'TICKET' && payment.applicationId) {
+    const application = store.getApplication(payment.applicationId);
+    if (application && application.status !== 'PAID') {
+      await store.updateApplication(application.id, {
+        status: 'PAID',
+        paymentId: payment.id,
+        ticketCode: application.ticketCode ?? makeReference('TICKET'),
+      });
+    }
+  }
+
+  console.log(`[itn] ${reference} -> ${status} (PayFast ${pfStatus}).`);
+}
+
+function parseMoney(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const num = Number.parseFloat(value);
+  return Number.isFinite(num) ? Math.round(num * 100) / 100 : undefined;
+}
+
+function buildStats(store: Store): DashboardStats {
+  const completed = store.completedPayments();
+  const tickets = completed.filter((p) => p.kind === 'TICKET');
+  const donations = completed.filter((p) => p.kind === 'DONATION');
+
+  const sum = (list: Payment[], pick: (p: Payment) => number | undefined) =>
+    Math.round(list.reduce((total, p) => total + (pick(p) ?? 0), 0) * 100) / 100;
+
+  const ticketsRevenueZAR = sum(tickets, (p) => p.amountZAR);
+  const donationsRevenueZAR = sum(donations, (p) => p.amountZAR);
+  const feesZAR = sum(completed, (p) => p.feeZAR);
+  const totalRaisedZAR = Math.round((ticketsRevenueZAR + donationsRevenueZAR) * 100) / 100;
+
+  return {
+    ticketsSold: tickets.length,
+    ticketsRevenueZAR,
+    donationsCount: donations.length,
+    donationsRevenueZAR,
+    totalRaisedZAR,
+    netRaisedZAR: Math.round((totalRaisedZAR - feesZAR) * 100) / 100,
+    feesZAR,
+    applications: store.countApplicationsByStatus(),
+    seatsRemaining: Math.max(0, EVENT.capacity - store.countPaidSeats()),
+    capacity: EVENT.capacity,
+  };
+}
+
+// -------------------------------------------------------------------- middleware
+
+/**
+ * Admin gate. Compares a bearer token against ADMIN_TOKEN in constant time.
+ * If no token is configured the admin API is closed entirely rather than
+ * left open — an unset secret must never mean "allow everyone".
+ */
+function adminAuth(req: Request, res: Response, next: NextFunction): void {
+  const expected = (process.env.ADMIN_TOKEN || '').trim();
+
+  if (!expected) {
+    res.status(503).json({
+      success: false,
+      error: 'The admin dashboard is disabled because ADMIN_TOKEN is not set on the server.',
+    });
+    return;
+  }
+
+  const header = req.get('authorization') || '';
+  const provided = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+
+  const a = Buffer.from(provided.padEnd(expected.length, '\0').slice(0, expected.length));
+  const b = Buffer.from(expected);
+
+  if (provided.length !== expected.length || !crypto.timingSafeEqual(a, b)) {
+    res.status(401).json({ success: false, error: 'Invalid admin token.' });
+    return;
+  }
+
+  next();
+}
+
+function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+}
+
+/** Small fixed-window limiter, enough to blunt casual abuse of the public forms. */
+function rateLimit(max: number, windowMs: number) {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const now = Date.now();
+    const key = req.ip ?? 'unknown';
+    const entry = hits.get(key);
+
+    if (!entry || entry.resetAt < now) {
+      hits.set(key, { count: 1, resetAt: now + windowMs });
+      // Opportunistic sweep so the map cannot grow without bound.
+      if (hits.size > 5000) {
+        for (const [k, v] of hits) if (v.resetAt < now) hits.delete(k);
+      }
+      next();
+      return;
+    }
+
+    entry.count += 1;
+    if (entry.count > max) {
+      res.status(429).json({ success: false, error: 'Too many requests. Please wait a moment and try again.' });
+      return;
+    }
+    next();
+  };
+}
+
+function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
+  console.error('[error]', err);
+  if (res.headersSent) return;
+  // Never leak a stack trace to the client.
+  res.status(500).json({ success: false, error: 'Something went wrong on our side. Please try again.' });
+}
+
+function csvCell(value: string): string {
+  const v = String(value ?? '');
+  return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}

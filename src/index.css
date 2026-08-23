@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+/*
+  Silver Crest Connect '26 — brand tokens.
+  Locked to the poster palette: true black ground, metallic warm gold,
+  crisp white headers, light-slate body copy.
+*/
+@theme {
+  --color-ink: #0A0A0A;          /* primary background */
+  --color-ink-raised: #121212;   /* cards / raised surfaces */
+  --color-ink-line: #1F1F1F;     /* hairline borders */
+  --color-gold: #C5A059;         /* primary accent */
+  --color-gold-bright: #D4AF37;  /* highlight / hover */
+  --color-gold-deep: #8A6E32;    /* pressed / gradient stop */
+  --color-bone: #FFFFFF;         /* headers, high contrast text */
+  --color-muted: #A1A1AA;        /* body paragraphs */
+
+  --font-display: 'Cinzel', 'Montserrat', Georgia, serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Keep anchored sections clear of the sticky nav. */
+    scroll-padding-top: 5.5rem;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--color-bone);
+  }
+
+  ::selection {
+    background-color: var(--color-gold);
+    color: #000000;
+  }
+
+  /* Visible focus ring for keyboard users on the dark ground. */
+  :focus-visible {
+    outline: 2px solid var(--color-gold-bright);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+@layer components {
+  /* Wide-tracked uppercase treatment used for eyebrows and the wordmark. */
+  .tracking-brand {
+    letter-spacing: 0.28em;
+  }
+
+  .btn-gold {
+    background-color: var(--color-gold);
+    color: #000000;
+    font-weight: 700;
+  }
+  .btn-gold:hover:not(:disabled) {
+    background-color: var(--color-gold-bright);
+  }
+  .btn-gold:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-outline {
+    border: 1px solid rgba(197, 160, 89, 0.55);
+    color: var(--color-bone);
+    background-color: transparent;
+    font-weight: 600;
+  }
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--color-gold);
+    background-color: rgba(197, 160, 89, 0.09);
+  }
+
+  /* Thin gold rule used to separate major sections. */
+  .rule-gold {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(197, 160, 89, 0.45),
+      transparent
+    );
+  }
+}
+
+/* Respect users who have asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
