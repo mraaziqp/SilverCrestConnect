@@ -739,15 +739,22 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
   const header = req.get('authorization') || '';
   const provided = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
 
-  const a = Buffer.from(provided.padEnd(expected.length, '\0').slice(0, expected.length));
-  const b = Buffer.from(expected);
-
-  if (provided.length !== expected.length || !crypto.timingSafeEqual(a, b)) {
+  // Compare digests rather than the raw strings. Hashing gives both sides a
+  // fixed 32-byte length, so timingSafeEqual can never throw on a length
+  // mismatch — padding the strings instead would compare characters against
+  // bytes and blow up on any non-ASCII token, turning a 401 into a 500.
+  if (!timingSafeCompare(provided, expected)) {
     res.status(401).json({ success: false, error: 'Invalid admin token.' });
     return;
   }
 
   next();
+}
+
+/** Constant-time string comparison that is safe for any input length. */
+export function timingSafeCompare(a: string, b: string): boolean {
+  const digest = (value: string) => crypto.createHash('sha256').update(value, 'utf8').digest();
+  return crypto.timingSafeEqual(digest(a), digest(b));
 }
 
 function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
