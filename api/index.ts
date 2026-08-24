@@ -29,10 +29,12 @@ function bootstrap(): Promise<Express> {
       await store.init();
 
       // Static assets are served by Vercel's CDN, so no distPath here.
+      const mailerConfig = loadMailerConfig();
       return createApp({
         store,
         payfast: loadPayFastConfig(),
-        mailer: createMailer(loadMailerConfig()),
+        mailer: createMailer(mailerConfig),
+        mailerConfig,
       });
     })();
   }

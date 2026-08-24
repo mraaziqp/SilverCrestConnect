@@ -159,7 +159,7 @@ amount=0.001     -> Donation amount must be at least R10.
 | M1 | US data throughout a ZAR app — `EIN-98-3819203`, `US-DEL-8923019`, "Federal Tax ID Lookup", "State Secretary Registry", `+1 (555)` numbers | Replaced with South African context: CIPC registration numbers, `+27` numbers, Cape Town |
 | M2 | `"Verified™"` / VerifiedBizLink endpoints returned fabricated trust scores and fake audit results (`Math.random()` presented as a credit grade) | Removed. Vetting is now what the proposal describes: a human CIPC / digital-footprint check recorded in the dashboard |
 | M3 | `tsconfig.json` had `strict` off | `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` on; typecheck passes clean |
-| M4 | No tests | 40 unit tests covering PayFast signature encoding, input validation, email rendering and currency formatting |
+| M4 | No tests | 50 tests covering PayFast signature encoding, input validation, email rendering and currency formatting, plus an SMTP integration test that delivers a real message to a stub server on localhost |
 | M5 | `@google/genai` and `dotenv` declared but unused; `vite` in both dependency blocks | Dependencies pruned; `dotenv` is now genuinely used |
 | M6 | No security headers | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`; `x-powered-by` disabled |
 | M7 | No rate limiting on public endpoints | Fixed-window limiter on applications and checkout — verified: the 5th rapid application returns `429` |
@@ -175,7 +175,7 @@ amount=0.001     -> Donation amount must be at least R10.
 
 ```
 npm run lint     tsc --noEmit — clean
-npm test         40/40 passing
+npm test         50/50 passing
 npm run build    client + server bundle, no warnings
 ```
 
@@ -196,14 +196,16 @@ The first audit closed with seven open items. Five are now done.
 
 | Was | Now |
 | --- | --- |
-| No email delivery | Four automatic emails — application received, approval with payment link, ticket confirmation, donation receipt. Sent via Resend; without an API key they log to the console so the funnel still works end to end and a mail outage can never fail a payment. |
+| No email delivery | Four automatic emails — application received, approval with payment link, ticket confirmation, donation receipt. Delivered over SMTP through the client's existing Microsoft 365 mailbox (Resend remains available as an alternative driver); with neither configured they log to the console, so the funnel still works end to end and a mail outage can never fail a payment. |
 | Applicant had no way to check status | `/pay/:reference` shows every funnel state in plain language and doubles as the payment button. It is where approval emails point. |
 | Supporters endpoint had no UI | A supporters wall on the landing page — named donors only, no amounts, anonymous gifts filtered server-side. Hidden entirely until there is something to show. |
 | Unknown URLs silently rendered the homepage | A real 404 page, so a truncated reference in an email reads as broken rather than as a working homepage. |
 | Storage undecided | Confirmed as a Node host. `render.yaml` provisions the disk the datastore needs — without it every deploy would wipe the records. |
 
-Test coverage went from 16 to **40**, adding the validation boundary and the
-email layer. Two of the new tests exist because the failure would be invisible:
+Test coverage went from 16 to **50**, adding the validation boundary, the email
+layer, and an SMTP integration test that runs a real (if minimal) mail server on
+localhost so the transport is genuinely exercised rather than mocked — it caught
+two defects a mock would have passed. Two of the new tests exist because the failure would be invisible:
 HTML escaping of applicant names in emails, and the plain-text part staying in
 sync with the HTML.
 
@@ -233,7 +235,9 @@ These need a decision or a credential, not code.
    `EVENT.contactEmail` is `connect@scconnect.co.za`. That address is also the email sender, so it
    needs a real inbox or alias behind it for replies, and the domain needs verifying in Resend.
    Social links are still empty; the footer hides those icons until they are filled in.
-4. **No Resend API key yet.** Emails are logged, not delivered, until one is set.
+4. **SMTP credentials not yet supplied.** Emails are logged, not delivered, until `SMTP_USER` and
+   `SMTP_PASS` are set. Two Microsoft-side prerequisites also have to be met — Authenticated SMTP
+   enabled on the mailbox, and an app password if the account uses MFA. See the README.
 5. **No PayFast passphrase set.** Strongly recommended before going live — see the README checklist.
 6. **No screenshots captured.** The browser preview pane was not displayed during either pass, so
    the UI was verified structurally — computed styles, DOM, live interaction through every funnel

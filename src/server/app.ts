@@ -40,6 +40,7 @@ import {
   loadMailerConfig,
   sendInBackground,
   type Mailer,
+  type MailerConfig,
 } from './email/mailer.js';
 import {
   applicationApproved,
@@ -53,6 +54,8 @@ export interface AppOptions {
   payfast: PayFastConfig;
   /** Outbound email. Defaults to the console driver when omitted. */
   mailer?: Mailer;
+  /** Mail settings, used only to report configuration health in /admin. */
+  mailerConfig?: MailerConfig;
   /** Absolute path to the built client, when serving production assets. */
   distPath?: string;
   /** Attach the Vite dev middleware instead of static assets. */
@@ -64,7 +67,8 @@ const PAYABLE_STATUSES: ApplicationStatus[] = ['APPROVED'];
 
 export async function createApp(options: AppOptions): Promise<Express> {
   const { store, payfast } = options;
-  const mailer = options.mailer ?? createMailer(loadMailerConfig());
+  const mailerConfig = options.mailerConfig ?? loadMailerConfig();
+  const mailer = options.mailer ?? createMailer(mailerConfig);
   const app = express();
 
   // Behind Vercel/Render/nginx, req.ip must come from X-Forwarded-For for the
@@ -398,7 +402,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       success: true,
       stats: buildStats(store),
       payfast: describeConfig(payfast),
-      email: describeMailer(mailer),
+      email: describeMailer(mailer, mailerConfig),
       storage: {
         persistent: store.isPersistent,
         note: store.isPersistent

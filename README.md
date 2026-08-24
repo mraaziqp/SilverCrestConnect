@@ -19,7 +19,7 @@ Outreach Drive.
 | **SME funnel** | Free application → team vetting → approval → PayFast payment → digital ticket |
 | **Donations** | Custom-amount gateway open to non-attending supporters |
 | **Payments** | PayFast custom integration with signed requests and fully validated ITN callbacks |
-| **Email** | Automatic messages at every funnel step, via Resend |
+| **Email** | Automatic messages at every funnel step, via SMTP (Microsoft 365) or Resend |
 | **Dashboard** | `/admin` — PayFast config, live revenue, application review, payment ledger, CSV export |
 
 ---
@@ -55,9 +55,13 @@ the merchant key and passphrase stay server-side and the dashboard only ever sho
 | `PAYFAST_MERCHANT_KEY` | live only | Secret. Never commit. |
 | `PAYFAST_PASSPHRASE` | recommended | Must match the passphrase set in the PayFast dashboard. |
 | `ADMIN_TOKEN` | yes | Gates `/admin`. **If unset, the dashboard is disabled entirely.** |
-| `RESEND_API_KEY` | for real email | Without it, emails are logged to the console instead of sent. Nothing breaks; applicants just receive nothing. |
-| `EMAIL_FROM` | with Resend | Must be on a domain verified in Resend, or delivery fails. |
+| `SMTP_HOST` | for real email | e.g. `smtp.office365.com`. Takes priority over `RESEND_API_KEY`. |
+| `SMTP_PORT` | no | `587` (STARTTLS, default) or `465` (implicit TLS). |
+| `SMTP_USER` / `SMTP_PASS` | with SMTP | The mailbox address and its password — an **app password** if the account has MFA. |
+| `EMAIL_FROM` | with SMTP | Must match `SMTP_USER`, or be an alias it has "Send As" rights on. |
+| `EMAIL_REPLY_TO` | no | Where applicant replies land. Defaults to the contact address. |
 | `EMAIL_REDIRECT_TO` | no | Staging valve: sends every email here instead of the real recipient. |
+| `RESEND_API_KEY` | alternative | Only used when `SMTP_HOST` is empty. |
 | `DATA_DIR` | no | Where the JSON datastore is written. Defaults to `./data`. |
 | `PAYFAST_SKIP_IP_CHECK` | no | Local testing only. Disables ITN source-IP verification. |
 | `PAYFAST_SKIP_SERVER_CONFIRM` | no | Local testing only. Disables PayFast server confirmation. |
@@ -87,46 +91,63 @@ Four messages go out automatically. Nothing needs to be sent by hand.
 | Ticket payment clears | Ticket code and event details |
 | Donation clears | Receipt |
 
-**Without `RESEND_API_KEY` the app logs each email to the server console instead of
-sending it.** The whole funnel still works end to end — useful for local development, and it means
-a missing key can never crash a payment. `/admin` shows which driver is live.
+The driver is chosen from what is configured: **`SMTP_HOST` wins, then
+`RESEND_API_KEY`, otherwise console.** With nothing set, each email is logged to
+the server console instead of sent — the funnel still works end to end, which
+makes local development easy and means a mail outage can never fail a payment.
+`/admin` shows which driver is live and flags misconfiguration.
 
-To turn on real delivery:
+### Microsoft 365 setup
 
-1. Create a Resend account and **verify `scconnect.co.za`** (this is the step people skip; an
-   unverified domain fails every send). See the DNS section below.
-2. Set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain.
-3. Approve a test application and confirm the email arrives.
+```bash
+SMTP_HOST="smtp.office365.com"
+SMTP_PORT="587"
+SMTP_USER="connect@scconnect.co.za"
+SMTP_PASS="<app password>"
+EMAIL_FROM="connect@scconnect.co.za"
+```
 
-### DNS for scconnect.co.za
+**Three things must be true, or sending fails.** All three are on the Microsoft
+side, not in this code:
 
-Resend generates these records when you add the domain — the DKIM key is unique to your account,
-so copy the real values from the Resend dashboard rather than from here. The shapes are:
+1. **SMTP AUTH must be enabled for the mailbox.** It is *off by default* on new
+   tenants. Microsoft 365 admin → Users → Active users → select the user →
+   Mail → Manage email apps → tick **Authenticated SMTP**. This is the single
+   most common cause of a `535` failure.
+2. **Use an app password if the account has MFA.** The normal sign-in password
+   is rejected. If app passwords are unavailable, security defaults are
+   blocking them and a tenant admin has to allow legacy authentication for
+   that mailbox.
+3. **`EMAIL_FROM` must match `SMTP_USER`.** Microsoft rejects sending as any
+   other address with `5.7.60` unless the mailbox holds explicit *Send As*
+   permission on that alias. `/admin` warns when the two differ.
 
-| Type | Name | Value | Notes |
-| --- | --- | --- | --- |
-| MX | `send` | `feedback-smtp.<region>.amazonses.com` | Priority 10. Region is shown in Resend. |
-| TXT | `send` | `v=spf1 include:amazonses.com ~all` | SPF for the sending subdomain |
-| TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQ...` | DKIM. Long key, copy exactly. |
-| TXT | `_dmarc` | `v=DMARC1; p=none;` | Recommended, not required |
+The server tests the connection on startup, so a wrong password shows up in the
+logs immediately rather than on the first real applicant:
 
-Two things that bite people:
+```
+[Silver Crest Connect] SMTP connection verified.
+```
 
-- **The MX and SPF records go on the `send` subdomain, not the root.** That is deliberate — it
-  keeps Resend clear of whatever handles mail on the root domain. If a root SPF record already
-  exists, do not add a second one; a domain may only have one.
-- **DNS propagation is not instant.** Verification can take anything from a few minutes to a few
-  hours. Resend re-checks automatically.
+Common failures are translated into something actionable rather than a bare
+SMTP code — a refused connection names `SMTP_HOST`/`SMTP_PORT`, a `535` names
+SMTP AUTH and app passwords, a `5.7.60` names *Send As*.
 
-Once verified, `connect@scconnect.co.za` works as a *sender* even with no mailbox behind it — but
-replies would vanish. Point it at a real inbox or an alias, since `EMAIL_REPLY_TO` uses the same
-address.
+### Sending limits
 
-On staging, set `EMAIL_REDIRECT_TO` to your own address — every message goes there instead of to
-real applicants.
+Microsoft 365 allows roughly **30 messages a minute** and **10,000 recipients a
+day**. The transport is rate limited to 25/minute to stay inside that. For
+context this event sends 3 emails per applicant across 15–20 SMEs, so the
+ceiling is nowhere near relevant.
 
-The approval email is sent on the **transition into** `APPROVED`, so re-saving an already-approved
-application does not re-notify. To deliberately resend, `PATCH` with `{"status":"APPROVED","resend":true}`.
+### Testing safely
+
+Set `EMAIL_REDIRECT_TO` to your own address on staging — every message goes
+there instead of to real applicants, and `/admin` warns while it is on.
+
+The approval email fires on the **transition into** `APPROVED`, so re-saving an
+already-approved application does not re-notify. To deliberately resend, `PATCH`
+with `{"status":"APPROVED","resend":true}`.
 
 ---
 
@@ -139,7 +160,8 @@ application does not re-notify. To deliberately resend, `PATCH` with `{"status":
 4. Set `APP_URL` to the live **HTTPS** domain.
 5. Remove `PAYFAST_SKIP_IP_CHECK` and `PAYFAST_SKIP_SERVER_CONFIRM`.
 6. Set a strong `ADMIN_TOKEN`.
-7. Set `RESEND_API_KEY` and `EMAIL_FROM`, with the sending domain verified in Resend.
+7. Set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` and `EMAIL_FROM`; confirm the log
+   line reads `SMTP connection verified.`
 8. Clear `EMAIL_REDIRECT_TO`.
 9. Confirm the ITN URL is reachable from the public internet:
    `https://your-domain/api/payfast/itn`

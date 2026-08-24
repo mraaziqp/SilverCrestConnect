@@ -33,12 +33,14 @@ async function main(): Promise<void> {
   await store.init();
 
   const payfast = loadPayFastConfig();
-  const mailer = createMailer(loadMailerConfig());
+  const mailerConfig = loadMailerConfig();
+  const mailer = createMailer(mailerConfig);
 
   const app = await createApp({
     store,
     payfast,
     mailer,
+    mailerConfig,
     distPath: isProduction ? clientDist : undefined,
     attachVite: isProduction
       ? undefined
@@ -64,9 +66,20 @@ async function main(): Promise<void> {
     );
     console.log(
       `[Silver Crest Connect] Email: ${
-        mailer.configured ? `Resend, from ${mailer.from}` : 'console driver — messages are logged, NOT delivered'
+        mailer.configured
+          ? `${mailer.driver}${mailerConfig.smtp ? ` (${mailerConfig.smtp.host}:${mailerConfig.smtp.port})` : ''}, from ${mailer.from}`
+          : 'console driver — messages are logged, NOT delivered'
       }`,
     );
+
+    // Prove the credentials work now rather than on the first real applicant.
+    void mailer.verify?.().then((result) => {
+      if (result.ok) {
+        console.log('[Silver Crest Connect] SMTP connection verified.');
+      } else {
+        console.error(`[Silver Crest Connect] SMTP verification FAILED: ${result.error}`);
+      }
+    });
     if (!store.isPersistent) {
       console.warn('[Silver Crest Connect] Datastore is memory-only — records will not survive a restart.');
     }
