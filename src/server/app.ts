@@ -103,6 +103,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       event: EVENT.fullName,
       presentedBy: EVENT.presentedBy,
       persistent: store.isPersistent,
+      storage: store.storageNote,
       payfastConfigured: payfast.isConfigured,
       payfastMode: payfast.mode,
       timestamp: new Date().toISOString(),
@@ -405,9 +406,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       email: describeMailer(mailer, mailerConfig),
       storage: {
         persistent: store.isPersistent,
-        note: store.isPersistent
-          ? 'Records are written to disk.'
-          : 'In-memory only — records will not survive a restart.',
+        note: store.storageNote,
       },
     });
   });

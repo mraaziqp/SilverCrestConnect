@@ -25,6 +25,16 @@ interface Database {
 
 const EMPTY: Database = { applications: [], payments: [] };
 
+/**
+ * True when the filesystem is writable but thrown away between invocations —
+ * a serverless platform. Writes succeed, which makes a plain "can I write?"
+ * check report healthy right up until the records disappear, so this has to
+ * be detected from the environment instead.
+ */
+export function detectEphemeralFilesystem(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.VERCEL || env.AWS_LAMBDA_FUNCTION_NAME || env.FUNCTIONS_WORKER_RUNTIME);
+}
+
 export class Store {
   private db: Database = { ...EMPTY, applications: [], payments: [] };
   private file: string;
@@ -32,8 +42,12 @@ export class Store {
   private writeChain: Promise<void> = Promise.resolve();
   private loaded = false;
 
-  constructor(dataDir: string) {
+  /** Writes land somewhere that will not survive the next request. */
+  readonly ephemeral: boolean;
+
+  constructor(dataDir: string, ephemeral = detectEphemeralFilesystem()) {
     this.file = path.join(dataDir, 'silvercrest.json');
+    this.ephemeral = ephemeral;
   }
 
   /** Reads the database off disk. Safe to call more than once. */
@@ -66,8 +80,23 @@ export class Store {
     }
   }
 
+  /**
+   * Records will still be here after a restart. False on a read-only disk and
+   * false on serverless, where the write succeeds but the disk does not last.
+   */
   get isPersistent(): boolean {
-    return this.persistent;
+    return this.persistent && !this.ephemeral;
+  }
+
+  /** Human-readable explanation for the dashboard. */
+  get storageNote(): string {
+    if (this.ephemeral) {
+      return 'Serverless filesystem detected. Writes succeed but are discarded between requests, so applications and payments WILL be lost. Deploy to a host with a persistent disk, or move the store to a database, before taking real payments.';
+    }
+    if (!this.persistent) {
+      return 'The data directory is not writable — running in memory only. Records will be lost on restart.';
+    }
+    return 'Records are written to disk.';
   }
 
   /** Queues a write. Callers await this so a request only returns once saved. */

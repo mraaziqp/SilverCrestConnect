@@ -28,6 +28,13 @@ function bootstrap(): Promise<Express> {
       const store = new Store(process.env.DATA_DIR || '/tmp/silvercrest');
       await store.init();
 
+      if (!store.isPersistent) {
+        // Loud, because the failure is silent otherwise: writes succeed, the
+        // applicant sees a success page, and the record is gone by the next
+        // request. A paid ticket can be lost this way.
+        console.error(`[storage] ${store.storageNote}`);
+      }
+
       // Static assets are served by Vercel's CDN, so no distPath here.
       const mailerConfig = loadMailerConfig();
       return createApp({
