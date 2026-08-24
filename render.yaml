@@ -1,27 +1,50 @@
 # Render blueprint. Deploy with: New -> Blueprint -> point at this repo.
 #
-# The disk is the important part: the JSON datastore holds applications and
-# payments, and without a mounted disk every deploy would wipe them.
+# Two things here are load-bearing:
+#
+#   1. The disk. The JSON datastore holds applications and payments. Without a
+#      mounted disk every deploy would wipe them — and a disk requires a paid
+#      instance type, so the free tier genuinely cannot run this.
+#   2. plan: starter, not free. Free instances also spin down when idle, and a
+#      PayFast ITN callback arriving at a sleeping instance would be delayed
+#      or missed.
 services:
   - type: web
     name: silver-crest-connect
     runtime: node
+    # Closest Render region to Cape Town. Oregon (the default) adds roughly
+    # 250ms per request for South African visitors.
+    region: frankfurt
     plan: starter
+    branch: main
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
+
     disk:
       name: silvercrest-data
       mountPath: /var/data
       sizeGB: 1
+
     envVars:
       - key: NODE_ENV
         value: production
+      # Must match the disk mountPath above.
       - key: DATA_DIR
         value: /var/data
-      # Set in the Render dashboard, not here — these are secrets.
+      - key: NODE_VERSION
+        value: "22"
+
+      # Everything below is set in the Render dashboard, not committed here.
+      # sync: false means "prompt me, do not read a value from this file".
+
+      # The live HTTPS URL. PayFast builds its return, cancel and ITN
+      # callback URLs from this, so it must be exact.
       - key: APP_URL
         sync: false
+
+      # PayFast. Keep PAYFAST_MODE on "sandbox" until a test payment has gone
+      # end to end, then switch to "live".
       - key: PAYFAST_MODE
         sync: false
       - key: PAYFAST_MERCHANT_ID
@@ -30,9 +53,16 @@ services:
         sync: false
       - key: PAYFAST_PASSPHRASE
         sync: false
+
+      # Gates /admin. Without it the dashboard is disabled entirely.
       - key: ADMIN_TOKEN
         sync: false
+
+      # Microsoft 365 SMTP. EMAIL_FROM must match SMTP_USER unless that
+      # mailbox holds "Send As" rights on the alias.
       - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
         sync: false
       - key: SMTP_USER
         sync: false
