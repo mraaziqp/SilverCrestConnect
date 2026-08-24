@@ -34,7 +34,7 @@ export interface SendResult {
 
 export interface MailerConfig {
   apiKey: string;
-  /** e.g. "Silver Crest Connect <connect@silvercrestconsulting.co.za>" */
+  /** e.g. "Silver Crest Connect <connect@scconnect.co.za>" */
   from: string;
   /** Where applicant replies should land. */
   replyTo: string;

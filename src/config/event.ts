@@ -13,7 +13,10 @@ export const EVENT = {
   tagline: 'Building Business. Strengthening Community.',
   presentedBy: 'Silver Crest Consulting',
   hosts: ['Wesley Bosman', 'Saadiqah'],
-  website: 'https://www.silvercrestconsulting.co.za',
+  /** This event's own site. */
+  website: 'https://scconnect.co.za',
+  /** The parent consulting business (from the proposal). */
+  companyWebsite: 'https://www.silvercrestconsulting.co.za',
 
   /** 24 October 2026, 09:00 - 13:00 (SAST) */
   date: '2026-10-24',
@@ -40,7 +43,7 @@ export const EVENT = {
   cause: "Silver Crest's Year-End Community Outreach Drive",
   causeShort: 'Year-End Community Outreach Drive',
 
-  contactEmail: 'connect@silvercrestconsulting.co.za',
+  contactEmail: 'connect@scconnect.co.za',
   contactPhone: '',
 
   social: {

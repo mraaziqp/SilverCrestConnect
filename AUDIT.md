@@ -229,10 +229,10 @@ These need a decision or a credential, not code.
    ticket email.
 2. **Keynote speakers are unnamed** — the proposal lists all four as "topic to be confirmed", so the
    page says the same rather than inventing names as the previous build did.
-3. **Contact details are placeholders.** `EVENT.contactEmail` is
-   `connect@silvercrestconsulting.co.za` and the social links are empty; the footer hides social
-   icons until they are filled in. This address is also the email sender — it must exist and its
-   domain must be verified in Resend.
+3. **Sender mailbox and social links.** The domain is confirmed as `scconnect.co.za` and
+   `EVENT.contactEmail` is `connect@scconnect.co.za`. That address is also the email sender, so it
+   needs a real inbox or alias behind it for replies, and the domain needs verifying in Resend.
+   Social links are still empty; the footer hides those icons until they are filled in.
 4. **No Resend API key yet.** Emails are logged, not delivered, until one is set.
 5. **No PayFast passphrase set.** Strongly recommended before going live — see the README checklist.
 6. **No screenshots captured.** The browser preview pane was not displayed during either pass, so

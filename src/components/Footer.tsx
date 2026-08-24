@@ -49,7 +49,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href={EVENT.website}
+                  href={EVENT.companyWebsite}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 text-[13px] text-muted hover:text-gold transition-colors"

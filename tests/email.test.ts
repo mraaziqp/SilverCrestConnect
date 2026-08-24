@@ -157,10 +157,10 @@ test('mailer uses Resend when an API key is present', () => {
 
 test('a bare EMAIL_FROM gains a display name', () => {
   const config = loadMailerConfig({
-    EMAIL_FROM: 'connect@silvercrestconsulting.co.za',
+    EMAIL_FROM: 'connect@scconnect.co.za',
     EMAIL_FROM_NAME: 'Silver Crest Connect',
   } as NodeJS.ProcessEnv);
-  assert.equal(config.from, 'Silver Crest Connect <connect@silvercrestconsulting.co.za>');
+  assert.equal(config.from, 'Silver Crest Connect <connect@scconnect.co.za>');
 });
 
 test('an EMAIL_FROM that already has a display name is left alone', () => {

@@ -93,10 +93,34 @@ a missing key can never crash a payment. `/admin` shows which driver is live.
 
 To turn on real delivery:
 
-1. Create a Resend account and **verify your sending domain** (this is the step people skip; an
-   unverified domain fails every send).
+1. Create a Resend account and **verify `scconnect.co.za`** (this is the step people skip; an
+   unverified domain fails every send). See the DNS section below.
 2. Set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain.
 3. Approve a test application and confirm the email arrives.
+
+### DNS for scconnect.co.za
+
+Resend generates these records when you add the domain — the DKIM key is unique to your account,
+so copy the real values from the Resend dashboard rather than from here. The shapes are:
+
+| Type | Name | Value | Notes |
+| --- | --- | --- | --- |
+| MX | `send` | `feedback-smtp.<region>.amazonses.com` | Priority 10. Region is shown in Resend. |
+| TXT | `send` | `v=spf1 include:amazonses.com ~all` | SPF for the sending subdomain |
+| TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQ...` | DKIM. Long key, copy exactly. |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` | Recommended, not required |
+
+Two things that bite people:
+
+- **The MX and SPF records go on the `send` subdomain, not the root.** That is deliberate — it
+  keeps Resend clear of whatever handles mail on the root domain. If a root SPF record already
+  exists, do not add a second one; a domain may only have one.
+- **DNS propagation is not instant.** Verification can take anything from a few minutes to a few
+  hours. Resend re-checks automatically.
+
+Once verified, `connect@scconnect.co.za` works as a *sender* even with no mailbox behind it — but
+replies would vanish. Point it at a real inbox or an alias, since `EMAIL_REPLY_TO` uses the same
+address.
 
 On staging, set `EMAIL_REDIRECT_TO` to your own address — every message goes there instead of to
 real applicants.
