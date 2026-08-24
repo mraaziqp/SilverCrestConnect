@@ -1,169 +1,123 @@
-export type StallTier = 'STANDARD' | 'PREMIUM' | 'PLATINUM' | 'VIP_ISLAND';
+/**
+ * Domain types shared by the React client and the Express server.
+ * Keep this file free of runtime imports so it can be pulled into either side.
+ */
 
-export type StallStatus = 'AVAILABLE' | 'RESERVED' | 'BOOKED' | 'ON_HOLD';
+/** Where an SME sits in the vetting funnel (proposal, section 04). */
+export type ApplicationStatus =
+  | 'PENDING_REVIEW' // submitted, awaiting CIPC / digital footprint check
+  | 'APPROVED'       // vetted, payment link issued
+  | 'PAID'           // R350 settled, digital ticket issued
+  | 'REJECTED'       // did not meet the SME criteria
+  | 'WAITLISTED';    // approved but the room is full
 
-export type UserRole = 'ATTENDEE' | 'EXHIBITOR' | 'SPONSOR' | 'ADMIN';
+export type PaymentStatus = 'PENDING' | 'COMPLETE' | 'FAILED' | 'CANCELLED';
 
-export type PaymentStatus = 'PENDING' | 'RESERVED' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+export type PaymentKind = 'TICKET' | 'DONATION';
 
-export type PaymentMethod = 'CREDIT_CARD' | 'BANK_WIRE' | 'APPLE_PAY' | 'CORPORATE_INVOICE';
-
-export interface VerifiedBadge {
+export interface Application {
   id: string;
-  companyName: string;
-  registrationNumber: string;
-  taxId: string;
-  trustScore: number; // e.g. 98/100
-  badgeTier: 'GOLD_TIER' | 'PLATINUM_TIER' | 'VERIFIED_LEADER';
-  verifiedAt: string;
-  expiresAt: string;
-  issuer: 'Verified Platform Inc.';
-  isVerified: boolean;
-}
-
-export interface AttendeeProfile {
-  id: string;
-  name: string;
-  title: string;
-  companyName: string;
+  /** Human-readable reference shown to the applicant, e.g. SCC26-A7F3K2. */
+  reference: string;
+  businessName: string;
+  contactName: string;
+  email: string;
+  phone: string;
   industry: string;
-  email: string;
-  phone?: string;
-  linkedin?: string;
-  bio: string;
-  avatarUrl: string;
-  role: 'ATTENDEE' | 'EXHIBITOR' | 'SPEAKER' | 'SPONSOR';
-  trustScore: number;
-  isVerified: boolean;
-  qrCodeData: string;
-  boothCode?: string;
-  lookingFor: string[];
-}
-
-export interface Connection {
-  id: string;
-  attendeeId: string;
-  connectedAt: string;
-  notes?: string;
-  tags?: string[];
-}
-
-export interface CoffeeMeetingRequest {
-  id: string;
-  location: string; // e.g. "Hall A Executive Lounge"
-  date: string;
-  time: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
-  note?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  content: string;
-  timestamp: string;
-  meetingRequest?: CoffeeMeetingRequest;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  companyName: string;
-  role: UserRole;
-  phone?: string;
   website?: string;
-  industry?: string;
-  verifiedBadge?: VerifiedBadge;
+  /** CIPC registration number, optional at application time. */
+  registrationNumber?: string;
+  /** Free-text: what the business does and what it wants from the room. */
+  about: string;
+  /** What the applicant hopes to get out of the event. */
+  lookingFor?: string;
+  status: ApplicationStatus;
+  /** Internal note captured by the Silver Crest team during vetting. */
+  reviewNote?: string;
+  reviewedAt?: string;
   createdAt: string;
+  updatedAt: string;
+  /** Set once the R350 ticket payment completes. */
+  paymentId?: string;
+  ticketCode?: string;
 }
 
-export interface StallAmenity {
+export interface Payment {
   id: string;
+  /** The m_payment_id we hand to PayFast; unique per attempt. */
+  reference: string;
+  kind: PaymentKind;
+  /** Rands, 2dp. */
+  amountZAR: number;
+  status: PaymentStatus;
+  /** Payer details captured before redirecting to PayFast. */
   name: string;
-  icon: string;
-}
-
-export interface Stall {
-  id: string;
-  code: string; // e.g., "A-101", "VIP-01"
-  hall: 'Hall A - Main Innovation' | 'Hall B - Tech & SME' | 'VIP Central Atrium';
-  row: number;
-  col: number;
-  widthMeters: number;
-  depthMeters: number;
-  tier: StallTier;
-  basePriceZAR: number;
-  status: StallStatus;
-  isCorner: boolean;
-  powerSupplyKw: number;
-  wifiSpeedMbps: number;
-  amenities: string[];
-  currentHoldExpiresAt?: string; // ISO string for 10-min reservation lock
-  heldByUserId?: string;
-  bookedByUserId?: string;
-  bookedCompany?: string;
-  bookedCompanyLogo?: string;
-  verifiedBadgeId?: string;
-}
-
-export interface AddOnOption {
-  id: string;
-  name: string;
-  description: string;
-  priceZAR: number;
-}
-
-export interface Booking {
-  id: string;
-  bookingCode: string; // e.g., "SCC-2026-X892"
-  userId: string;
-  userName: string;
-  userEmail: string;
-  companyName: string;
-  stallId: string;
-  stallCode: string;
-  stallHall: string;
-  tier: StallTier;
-  selectedAddOns: AddOnOption[];
-  isDepositOnly: boolean; // 30% deposit vs full payment
-  amountPaidZAR: number;
-  totalAmountZAR: number;
-  paymentStatus: PaymentStatus;
-  paymentMethod?: PaymentMethod;
-  paymentTransactionId?: string;
-  verifiedBadgeAttached: boolean;
-  qrCodeUrl: string;
-  invoiceNumber: string;
-  createdAt: string;
-  expiresAt?: string;
-}
-
-export interface CheckoutSessionRequest {
-  stallId: string;
-  userId: string;
-  companyName: string;
   email: string;
-  phone?: string;
-  website?: string;
-  taxId?: string;
-  selectedAddOnIds: string[];
-  isDepositOnly: boolean;
-  paymentMethod: PaymentMethod;
+  /** Set for TICKET payments. */
+  applicationId?: string;
+  /** Optional public dedication shown on the supporters wall. */
+  message?: string;
+  /** True when the donor asked to stay anonymous. */
+  anonymous?: boolean;
+  /** PayFast's own transaction id, populated by the ITN callback. */
+  pfPaymentId?: string;
+  /** Raw payment_status string PayFast last sent us. */
+  pfPaymentStatus?: string;
+  /** Net amount after PayFast fees, from the ITN payload. */
+  amountNetZAR?: number;
+  feeZAR?: number;
+  /** Why an ITN was rejected, if it was. Surfaced in the admin dashboard. */
+  itnError?: string;
+  itnReceivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface CheckoutSessionResponse {
-  sessionId: string;
-  bookingId: string;
-  checkoutUrl: string;
-  amountToPay: number;
-  currency: string;
-  expiresAt: string;
-  status: 'INITIATED' | 'COMPLETED' | 'FAILED';
-  verifiedStatus: {
-    isVerified: boolean;
-    trustScore: number;
-    badgeTier?: string;
-  };
+/** Shape returned by POST /api/checkout/* — the client auto-posts this to PayFast. */
+export interface CheckoutResponse {
+  success: true;
+  paymentId: string;
+  reference: string;
+  amountZAR: number;
+  /** PayFast process endpoint (sandbox or live). */
+  processUrl: string;
+  /** Every field to render as a hidden input, signature included. */
+  fields: Record<string, string>;
+}
+
+export interface ApiError {
+  success: false;
+  error: string;
+  /** Per-field validation messages, keyed by field name. */
+  fieldErrors?: Record<string, string>;
+}
+
+/** Aggregate figures shown on the admin dashboard and the public impact meter. */
+export interface DashboardStats {
+  ticketsSold: number;
+  ticketsRevenueZAR: number;
+  donationsCount: number;
+  donationsRevenueZAR: number;
+  totalRaisedZAR: number;
+  netRaisedZAR: number;
+  feesZAR: number;
+  applications: Record<ApplicationStatus, number>;
+  seatsRemaining: number;
+  capacity: number;
+}
+
+/** Non-secret PayFast configuration echoed to the admin dashboard. */
+export interface PayFastConfigStatus {
+  configured: boolean;
+  mode: 'sandbox' | 'live';
+  merchantId: string;
+  /** Masked — never the real key. */
+  merchantKeyMasked: string;
+  passphraseSet: boolean;
+  processUrl: string;
+  notifyUrl: string;
+  returnUrl: string;
+  cancelUrl: string;
+  /** Problems that would break a live payment, e.g. missing passphrase. */
+  warnings: string[];
 }
