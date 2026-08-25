@@ -13,7 +13,8 @@
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "clean": "rimraf dist",
-    "dev:watch": "tsx watch --clear-screen=false server.ts"
+    "dev:watch": "tsx watch --clear-screen=false server.ts",
+    "test:email": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
