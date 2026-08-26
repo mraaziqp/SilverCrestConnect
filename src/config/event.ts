@@ -104,11 +104,29 @@ export const PROGRAMME = [
 ];
 
 /** The three-step vetting funnel (proposal, section 04). */
-export const FUNNEL_STEPS = [
-  { step: '01', title: 'Application Form', body: 'Business owners submit a concise online application with company details and industry sector.' },
-  { step: '02', title: 'Verification Check', body: 'The Silver Crest team runs a quick review to confirm active SME status and maintain exclusivity.' },
-  { step: '03', title: 'Approval & Ticket', body: `Approved SMEs receive a secure payment link to finalise the R${EVENT.ticketPriceZAR} fee, followed by their official digital event ticket.` },
-] as const;
+/**
+ * The public join funnel.
+ *
+ * `body` is a function of the ticket price rather than a fixed string: the
+ * price is editable in the dashboard, and a hardcoded amount here would keep
+ * advertising the old one. Numbering is derived from position so a step can be
+ * added or removed without leaving the sequence wrong.
+ */
+export const FUNNEL_STEPS: ReadonlyArray<{
+  title: string;
+  body: (priceZAR: number) => string;
+}> = [
+  {
+    title: 'Application Form',
+    body: () =>
+      'Business owners submit a concise online application with company details and industry sector.',
+  },
+  {
+    title: 'Approval & Ticket',
+    body: (priceZAR) =>
+      `Approved SMEs receive a secure payment link to finalise the R${priceZAR} fee, followed by their official digital event ticket.`,
+  },
+];
 
 /** On-site activation (proposal, section 05) — coffee cup removed. */
 export const IMPACT_ITEMS = [

@@ -82,7 +82,10 @@ function LandingPage() {
           event={summary?.event}
         />
         <About event={summary?.event} />
-        <Programme welcomePack={summary?.welcomePack} />
+        <Programme
+          welcomePack={summary?.welcomePack}
+          ticketPriceZAR={summary?.event?.ticketPriceZAR}
+        />
         <Tickets
           seatsRemaining={summary?.seatsRemaining ?? null}
           event={summary?.event}

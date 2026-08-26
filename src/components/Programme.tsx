@@ -1,19 +1,29 @@
 /**
- * Event details: the 4-hour agenda and the three-step vetting funnel.
- * Both come straight from the proposal so the page and the PDF cannot drift.
+ * Event details: the join funnel and what every registered SME receives.
+ *
+ * The step count in the heading is derived from the list, so removing or
+ * adding a step cannot leave the wording saying the wrong number.
  */
 
 import React from 'react';
 import { Section, SectionHeading, Card } from './Brand';
-import { FUNNEL_STEPS, WELCOME_PACK as DEFAULT_WELCOME_PACK } from '../config/event';
+import { EVENT, FUNNEL_STEPS, WELCOME_PACK as DEFAULT_WELCOME_PACK } from '../config/event';
 import type { WelcomePackItem } from '../types';
+
+const STEP_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five'] as const;
 
 interface ProgrammeProps {
   welcomePack?: WelcomePackItem[];
+  /** Live ticket price, so the copy follows what the dashboard is set to. */
+  ticketPriceZAR?: number;
 }
 
-export const Programme: React.FC<ProgrammeProps> = ({ welcomePack = DEFAULT_WELCOME_PACK }) => {
+export const Programme: React.FC<ProgrammeProps> = ({
+  welcomePack = DEFAULT_WELCOME_PACK,
+  ticketPriceZAR = EVENT.ticketPriceZAR,
+}) => {
   const packItems = welcomePack && welcomePack.length > 0 ? welcomePack : DEFAULT_WELCOME_PACK;
+  const stepWord = STEP_WORDS[FUNNEL_STEPS.length] ?? String(FUNNEL_STEPS.length);
 
   return (
     <Section id="how-to-join" className="border-t border-white/5">
@@ -23,21 +33,25 @@ export const Programme: React.FC<ProgrammeProps> = ({ welcomePack = DEFAULT_WELC
           eyebrow="How to Join"
           title={
             <>
-              Three steps to your <span className="text-gold">seat</span>
+              {stepWord} steps to your <span className="text-gold">seat</span>
             </>
           }
-          lead="Seats are vetted to keep the room exclusive and the introductions worth making. Applying is free — you only pay once you are approved."
+          lead="Seats are limited to keep the room worth being in. Applying is free — you only pay once you are approved."
         />
 
-        <ol className="mt-12 grid gap-6 md:grid-cols-3">
-          {FUNNEL_STEPS.map((step) => (
-            <li key={step.step}>
+        {/* Two cards would stretch oddly across the full width, so the list is
+            capped and centred. */}
+        <ol className="mt-12 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+          {FUNNEL_STEPS.map((step, index) => (
+            <li key={step.title}>
               <Card className="h-full p-7">
                 <span className="font-display text-3xl font-bold text-gold/35 leading-none">
-                  {step.step}
+                  {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3 className="mt-5 text-base font-semibold text-bone">{step.title}</h3>
-                <p className="mt-3 text-[13.5px] text-muted leading-relaxed">{step.body}</p>
+                <p className="mt-3 text-[13.5px] text-muted leading-relaxed">
+                  {step.body(ticketPriceZAR)}
+                </p>
               </Card>
             </li>
           ))}
