@@ -16,6 +16,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import type { DataStore } from './store-types.js';
 import type {
   Application,
   ApplicationStatus,
@@ -97,6 +98,13 @@ function pruneSettings(merged: Record<string, unknown>, defaults: EventSettings)
   return out as unknown as EventSettings;
 }
 
+/** Default editable content, shared with the Firestore driver for seeding. */
+export const DEFAULT_CONTENT = {
+  programme: DEFAULT_PROGRAMME as unknown as ProgrammeItem[],
+  welcomePack: DEFAULT_WELCOME_PACK as unknown as WelcomePackItem[],
+  impactItems: DEFAULT_IMPACT_ITEMS as unknown as ImpactItem[],
+};
+
 function emptyDatabase(): Database {
   return {
     applications: [],
@@ -118,7 +126,9 @@ export function detectEphemeralFilesystem(env: NodeJS.ProcessEnv = process.env):
   return Boolean(env.VERCEL || env.AWS_LAMBDA_FUNCTION_NAME || env.FUNCTIONS_WORKER_RUNTIME);
 }
 
-export class Store {
+export class JsonStore implements DataStore {
+  readonly driver = 'json' as const;
+
   private db: Database = emptyDatabase();
   private file: string;
   private persistent = true;
@@ -209,17 +219,17 @@ export class Store {
 
   // ---------------------------------------------------------------- applications
 
-  listApplications(): Application[] {
+  async listApplications(): Promise<Application[]> {
     return [...this.db.applications].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  getApplication(idOrReference: string): Application | undefined {
+  async getApplication(idOrReference: string): Promise<Application | undefined> {
     return this.db.applications.find(
       (a) => a.id === idOrReference || a.reference === idOrReference,
     );
   }
 
-  findApplicationByEmail(email: string): Application | undefined {
+  async findApplicationByEmail(email: string): Promise<Application | undefined> {
     const needle = email.trim().toLowerCase();
     return this.db.applications.find((a) => a.email.toLowerCase() === needle);
   }
@@ -246,7 +256,7 @@ export class Store {
     return this.db.applications[index];
   }
 
-  countApplicationsByStatus(): Record<ApplicationStatus, number> {
+  async countApplicationsByStatus(): Promise<Record<ApplicationStatus, number>> {
     const counts: Record<ApplicationStatus, number> = {
       PENDING_REVIEW: 0,
       APPROVED: 0,
@@ -261,17 +271,17 @@ export class Store {
   }
 
   /** Seats are consumed only once a ticket is actually paid for. */
-  countPaidSeats(): number {
+  async countPaidSeats(): Promise<number> {
     return this.db.applications.filter((a) => a.status === 'PAID').length;
   }
 
   // -------------------------------------------------------------------- payments
 
-  listPayments(): Payment[] {
+  async listPayments(): Promise<Payment[]> {
     return [...this.db.payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  getPayment(idOrReference: string): Payment | undefined {
+  async getPayment(idOrReference: string): Promise<Payment | undefined> {
     return this.db.payments.find(
       (p) => p.id === idOrReference || p.reference === idOrReference,
     );
@@ -296,13 +306,13 @@ export class Store {
     return this.db.payments[index];
   }
 
-  completedPayments(): Payment[] {
+  async completedPayments(): Promise<Payment[]> {
     return this.db.payments.filter((p) => p.status === 'COMPLETE');
   }
 
   // ----------------------------------------------------------- event settings & content
 
-  getSettings(): EventSettings {
+  async getSettings(): Promise<EventSettings> {
     return { ...this.db.settings };
   }
 
@@ -315,7 +325,7 @@ export class Store {
     return { ...this.db.settings };
   }
 
-  getProgramme(): ProgrammeItem[] {
+  async getProgramme(): Promise<ProgrammeItem[]> {
     return [...this.db.programme];
   }
 
@@ -328,7 +338,7 @@ export class Store {
     return [...this.db.programme];
   }
 
-  getWelcomePack(): WelcomePackItem[] {
+  async getWelcomePack(): Promise<WelcomePackItem[]> {
     return [...this.db.welcomePack];
   }
 
@@ -341,7 +351,7 @@ export class Store {
     return [...this.db.welcomePack];
   }
 
-  getImpactItems(): ImpactItem[] {
+  async getImpactItems(): Promise<ImpactItem[]> {
     return [...this.db.impactItems];
   }
 

@@ -13,3 +13,7 @@ assets/.aistudio/
 
 # Local JSON datastore — contains applicant and payment records.
 data/
+
+# Service account keys — NEVER commit.
+secrets/
+*service-account*.json

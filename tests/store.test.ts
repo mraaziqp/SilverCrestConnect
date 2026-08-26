@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
-import { Store, detectEphemeralFilesystem, makeReference } from '../src/server/store.ts';
+import { JsonStore, detectEphemeralFilesystem, makeReference } from '../src/server/store.ts';
 
 test('serverless environments are detected as ephemeral', () => {
   assert.equal(detectEphemeralFilesystem({ VERCEL: '1' } as NodeJS.ProcessEnv), true);
@@ -25,7 +25,7 @@ test('serverless environments are detected as ephemeral', () => {
 
 test('an ephemeral store reports NOT persistent even though writes succeed', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'scc-eph-'));
-  const store = new Store(dir, true);
+  const store = new JsonStore(dir, true);
   await store.init();
 
   // The write genuinely works...
@@ -40,7 +40,7 @@ test('an ephemeral store reports NOT persistent even though writes succeed', asy
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
-  assert.equal(store.getPayment('DON-1')?.reference, 'DON-1');
+  assert.equal((await store.getPayment('DON-1'))?.reference, 'DON-1');
 
   // ...but it must not be advertised as durable.
   assert.equal(store.isPersistent, false, 'serverless must never report persistent');
@@ -52,7 +52,7 @@ test('an ephemeral store reports NOT persistent even though writes succeed', asy
 test('a normal directory reports persistent and survives a reload', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'scc-disk-'));
 
-  const first = new Store(dir, false);
+  const first = new JsonStore(dir, false);
   await first.init();
   assert.equal(first.isPersistent, true);
   assert.equal(first.storageNote, 'Records are written to disk.');
@@ -72,9 +72,9 @@ test('a normal directory reports persistent and survives a reload', async () => 
   });
 
   // A fresh Store over the same directory stands in for a restart.
-  const second = new Store(dir, false);
+  const second = new JsonStore(dir, false);
   await second.init();
-  assert.equal(second.getApplication('SCC26-KEEP01')?.businessName, 'Persisted Co');
+  assert.equal((await second.getApplication('SCC26-KEEP01'))?.businessName, 'Persisted Co');
 
   await fs.rm(dir, { recursive: true, force: true });
 });

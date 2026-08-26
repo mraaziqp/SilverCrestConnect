@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 
 import { createApp } from './src/server/app.js';
 import { loadPayFastConfig } from './src/server/payfast.js';
-import { Store } from './src/server/store.js';
+import { createStore } from './src/server/store-factory.js';
 import { createMailer, loadMailerConfig } from './src/server/email/mailer.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -29,8 +29,9 @@ const HOST = process.env.HOST || '0.0.0.0';
 const isProduction = process.env.NODE_ENV === 'production';
 
 async function main(): Promise<void> {
-  const store = new Store(process.env.DATA_DIR || path.join(projectRoot, 'data'));
-  await store.init();
+  // createStore picks Firestore when credentials are configured, and the
+  // local JSON file otherwise.
+  const store = await createStore(process.env, path.join(projectRoot, 'data'));
 
   const payfast = loadPayFastConfig();
   const mailerConfig = loadMailerConfig();

@@ -20,7 +20,8 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
 } from '../types.js';
-import { Store, makeId, makeReference } from './store.js';
+import { makeId, makeReference } from './store.js';
+import type { DataStore } from './store-types.js';
 import {
   buildPaymentFields,
   describeConfig,
@@ -55,7 +56,7 @@ import {
 } from './email/render.js';
 
 export interface AppOptions {
-  store: Store;
+  store: DataStore;
   payfast: PayFastConfig;
   /** Outbound email. Defaults to the console driver when omitted. */
   mailer?: Mailer;
@@ -102,7 +103,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   // ------------------------------------------------------------------ public API
 
-  app.get('/api/health', (_req: Request, res: Response) => {
+  app.get('/api/health', async (_req: Request, res: Response) => {
     res.json({
       status: 'ok',
       event: EVENT.fullName,
@@ -116,14 +117,14 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   /** Public event facts, so the client never hardcodes a second copy. */
-  app.get('/api/event', (_req: Request, res: Response) => {
-    const stats = buildStats(store);
-    const settings = store.getSettings();
+  app.get('/api/event', async (_req: Request, res: Response) => {
+    const stats = await buildStats(store);
+    const settings = await store.getSettings();
     res.json({
       success: true,
       event: settings,
-      welcomePack: store.getWelcomePack(),
-      impactItems: store.getImpactItems(),
+      welcomePack: await store.getWelcomePack(),
+      impactItems: await store.getImpactItems(),
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
@@ -151,7 +152,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     // One application per email keeps the vetting list clean and stops an
     // accidental double-submit creating two records.
-    const existing = store.findApplicationByEmail(email);
+    const existing = await store.findApplicationByEmail(email);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -201,8 +202,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   /** Applicant-facing status lookup, keyed on the reference we emailed them. */
-  app.get('/api/applications/:reference', (req: Request, res: Response) => {
-    const application = store.getApplication(req.params.reference);
+  app.get('/api/applications/:reference', async (req: Request, res: Response) => {
+    const application = await store.getApplication(req.params.reference);
     if (!application) {
       return res.status(404).json({ success: false, error: 'No application found for that reference.' });
     }
@@ -219,8 +220,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
         ticketCode: application.ticketCode,
         createdAt: application.createdAt,
       },
-      event: store.getSettings(),
-      programme: isPaid ? store.getProgramme() : undefined,
+      event: await store.getSettings(),
+      programme: isPaid ? await store.getProgramme() : undefined,
     });
   });
 
@@ -234,7 +235,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       return res.status(400).json({ success: false, error: 'An application reference is required.' });
     }
 
-    const application = store.getApplication(reference);
+    const application = await store.getApplication(reference);
     if (!application) {
       return res.status(404).json({ success: false, error: 'No application found for that reference.' });
     }
@@ -253,7 +254,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     // Capacity is enforced here as well as in the admin approval step, because
     // approvals and payments race: several approved SMEs could pay at once.
-    if (store.countPaidSeats() >= store.getSettings().capacity) {
+    if (await store.countPaidSeats() >= (await store.getSettings()).capacity) {
       return res.status(409).json({
         success: false,
         error: 'All seats for this event have been taken. Contact us to join the waiting list.',
@@ -265,7 +266,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       id: makeId('pay'),
       reference: makeReference('TKT'),
       kind: 'TICKET',
-      amountZAR: store.getSettings().ticketPriceZAR,
+      amountZAR: (await store.getSettings()).ticketPriceZAR,
       status: 'PENDING',
       name: application.contactName,
       email: application.email,
@@ -357,14 +358,14 @@ export async function createApp(options: AppOptions): Promise<Express> {
    * PayFast redirects the browser back before the server callback necessarily
    * arrives, so the UI cannot treat "returned" as "paid".
    */
-  app.get('/api/payments/:reference/status', (req: Request, res: Response) => {
-    const payment = store.getPayment(req.params.reference);
+  app.get('/api/payments/:reference/status', async (req: Request, res: Response) => {
+    const payment = await store.getPayment(req.params.reference);
     if (!payment) {
       return res.status(404).json({ success: false, error: 'Payment not found.' });
     }
 
     const application = payment.applicationId
-      ? store.getApplication(payment.applicationId)
+      ? await store.getApplication(payment.applicationId)
       : undefined;
 
     return res.json({
@@ -382,9 +383,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   /** Public supporters wall — named donations only, no emails or amounts leaked. */
-  app.get('/api/supporters', (_req: Request, res: Response) => {
-    const supporters = store
-      .completedPayments()
+  app.get('/api/supporters', async (_req: Request, res: Response) => {
+    const supporters = (await store.completedPayments())
       .filter((p) => p.kind === 'DONATION' && !p.anonymous)
       .slice(0, 60)
       .map((p) => ({
@@ -400,10 +400,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   app.use('/api/admin', adminAuth);
 
-  app.get('/api/admin/overview', (_req: Request, res: Response) => {
+  app.get('/api/admin/overview', async (_req: Request, res: Response) => {
     res.json({
       success: true,
-      stats: buildStats(store),
+      stats: await buildStats(store),
       payfast: describeConfig(payfast),
       email: describeMailer(mailer, mailerConfig),
       storage: {
@@ -413,9 +413,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
     });
   });
 
-  app.get('/api/admin/applications', (req: Request, res: Response) => {
+  app.get('/api/admin/applications', async (req: Request, res: Response) => {
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-    let list = store.listApplications();
+    let list = await store.listApplications();
     if (status && status !== 'ALL') {
       list = list.filter((a) => a.status === status);
     }
@@ -431,14 +431,14 @@ export async function createApp(options: AppOptions): Promise<Express> {
       return res.status(400).json({ success: false, error: `status must be one of: ${allowed.join(', ')}` });
     }
 
-    const application = store.getApplication(req.params.id);
+    const application = await store.getApplication(req.params.id);
     if (!application) {
       return res.status(404).json({ success: false, error: 'Application not found.' });
     }
 
     // Marking someone PAID by hand is for off-platform payments (EFT, cash at
     // the door). It still has to respect the room capacity.
-    if (status === 'PAID' && application.status !== 'PAID' && store.countPaidSeats() >= store.getSettings().capacity) {
+    if (status === 'PAID' && application.status !== 'PAID' && await store.countPaidSeats() >= (await store.getSettings()).capacity) {
       return res.status(409).json({ success: false, error: 'The event is at capacity.' });
     }
 
@@ -466,7 +466,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
           businessName: updated.businessName,
           reference: updated.reference,
           payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
-          seatsRemaining: Math.max(0, store.getSettings().capacity - store.countPaidSeats()),
+          seatsRemaining: Math.max(0, (await store.getSettings()).capacity - await store.countPaidSeats()),
         }),
         'application-approved',
       );
@@ -481,7 +481,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
           contactName: updated.contactName,
           businessName: updated.businessName,
           ticketCode: updated.ticketCode,
-          amountZAR: store.getSettings().ticketPriceZAR,
+          amountZAR: (await store.getSettings()).ticketPriceZAR,
         }),
         'ticket-confirmed-manual',
       );
@@ -490,11 +490,11 @@ export async function createApp(options: AppOptions): Promise<Express> {
     return res.json({ success: true, application: updated });
   });
 
-  app.get('/api/admin/payments', (req: Request, res: Response) => {
+  app.get('/api/admin/payments', async (req: Request, res: Response) => {
     const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
 
-    let list = store.listPayments();
+    let list = await store.listPayments();
     if (kind && kind !== 'ALL') list = list.filter((p) => p.kind === kind);
     if (status && status !== 'ALL') list = list.filter((p) => p.status === status);
 
@@ -502,10 +502,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   /** CSV export for reconciling against the PayFast dashboard. */
-  app.get('/api/admin/payments.csv', (_req: Request, res: Response) => {
+  app.get('/api/admin/payments.csv', async (_req: Request, res: Response) => {
     const rows = [
       ['reference', 'kind', 'status', 'amount_zar', 'net_zar', 'fee_zar', 'name', 'email', 'pf_payment_id', 'created_at'],
-      ...store.listPayments().map((p) => [
+      ...(await store.listPayments()).map((p) => [
         p.reference,
         p.kind,
         p.status,
@@ -527,20 +527,20 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   // --- Dynamic Content & Settings Management ---
 
-  app.get('/api/admin/settings', (_req: Request, res: Response) => {
+  app.get('/api/admin/settings', async (_req: Request, res: Response) => {
     res.json({
       success: true,
-      settings: store.getSettings(),
-      programme: store.getProgramme(),
-      welcomePack: store.getWelcomePack(),
-      impactItems: store.getImpactItems(),
+      settings: await store.getSettings(),
+      programme: await store.getProgramme(),
+      welcomePack: await store.getWelcomePack(),
+      impactItems: await store.getImpactItems(),
     });
   });
 
   app.put('/api/admin/settings', async (req: Request, res: Response) => {
     // Validated rather than written through: a typo here would otherwise
     // persist a broken price or capacity and take checkout down for everyone.
-    const { settings, errors } = validateSettings(req.body, store.getSettings());
+    const { settings, errors } = validateSettings(req.body, await store.getSettings());
 
     if (Object.keys(settings).length === 0 && Object.keys(errors).length > 0) {
       return res.status(400).json({
@@ -576,9 +576,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   /** Broadcast the latest programme schedule via email to all paid attendees. */
   app.post('/api/admin/programme/broadcast', async (req: Request, res: Response) => {
-    const paidAttendees = store.listApplications().filter((a) => a.status === 'PAID');
-    const programme = store.getProgramme();
-    const settings = store.getSettings();
+    const paidAttendees = (await store.listApplications()).filter((a) => a.status === 'PAID');
+    const programme = await store.getProgramme();
+    const settings = await store.getSettings();
     const customMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : undefined;
 
     let sentCount = 0;
@@ -628,7 +628,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
   app.post('/api/admin/upload-logo', async (req: Request, res: Response) => {
     const { settings, errors } = validateSettings(
       { customLogoUrl: req.body?.logoUrl },
-      store.getSettings(),
+      await store.getSettings(),
     );
     if (errors.customLogoUrl) {
       return res.status(400).json({ success: false, error: errors.customLogoUrl });
@@ -643,7 +643,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
   // or the SPA fallback (prod) serves index.html for a mistyped API path, and
   // the client's response.json() fails with a confusing parse error instead of
   // a clear 404.
-  app.use('/api', (_req: Request, res: Response) => {
+  app.use('/api', async (_req: Request, res: Response) => {
     res.status(404).json({ success: false, error: 'Unknown API endpoint.' });
   });
 
@@ -656,7 +656,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
     app.use(express.static(distPath, { index: false, maxAge: '1h' }));
 
     // SPA fallback for every non-API route.
-    app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
+    app.get(/^\/(?!api\/).*/, async (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
@@ -680,7 +680,7 @@ interface RawBodyRequest extends Request {
 async function handleItn(
   req: Request,
   res: Response,
-  store: Store,
+  store: DataStore,
   payfast: PayFastConfig,
   mailer: Mailer,
 ): Promise<void> {
@@ -700,7 +700,7 @@ async function handleItn(
       return;
     }
 
-    const payment = store.getPayment(reference);
+    const payment = await store.getPayment(reference);
     if (!payment) {
       // Not ours, or already pruned. Acknowledge so PayFast stops retrying.
       console.warn(`[itn] No local payment for reference ${reference}, ignoring.`);
@@ -755,7 +755,7 @@ async function handleItn(
     if (status === 'COMPLETE') {
       if (payment.kind === 'TICKET' && payment.applicationId) {
         // A completed ticket advances the application and issues the pass.
-        const application = store.getApplication(payment.applicationId);
+        const application = await store.getApplication(payment.applicationId);
         if (application && application.status !== 'PAID') {
           const ticketCode = application.ticketCode ?? makeReference('TICKET');
           await store.updateApplication(application.id, {
@@ -805,9 +805,9 @@ function parseMoney(value: string | undefined): number | undefined {
   return Number.isFinite(num) ? Math.round(num * 100) / 100 : undefined;
 }
 
-function buildStats(store: Store): DashboardStats {
-  const settings = store.getSettings();
-  const completed = store.completedPayments();
+async function buildStats(store: DataStore): Promise<DashboardStats> {
+  const settings = await store.getSettings();
+  const completed = await store.completedPayments();
   const tickets = completed.filter((p) => p.kind === 'TICKET');
   const donations = completed.filter((p) => p.kind === 'DONATION');
 
@@ -827,8 +827,8 @@ function buildStats(store: Store): DashboardStats {
     totalRaisedZAR,
     netRaisedZAR: Math.round((totalRaisedZAR - feesZAR) * 100) / 100,
     feesZAR,
-    applications: store.countApplicationsByStatus(),
-    seatsRemaining: Math.max(0, settings.capacity - store.countPaidSeats()),
+    applications: await store.countApplicationsByStatus(),
+    seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
     capacity: settings.capacity,
   };
 }

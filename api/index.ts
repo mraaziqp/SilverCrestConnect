@@ -17,7 +17,7 @@ import type { Express } from 'express';
 
 import { createApp } from '../src/server/app.js';
 import { loadPayFastConfig } from '../src/server/payfast.js';
-import { Store } from '../src/server/store.js';
+import { createStore } from '../src/server/store-factory.js';
 import { createMailer, loadMailerConfig } from '../src/server/email/mailer.js';
 
 let cached: Promise<Express> | undefined;
@@ -25,8 +25,7 @@ let cached: Promise<Express> | undefined;
 function bootstrap(): Promise<Express> {
   if (!cached) {
     cached = (async () => {
-      const store = new Store(process.env.DATA_DIR || '/tmp/silvercrest');
-      await store.init();
+      const store = await createStore(process.env, '/tmp/silvercrest');
 
       if (!store.isPersistent) {
         // Loud, because the failure is silent otherwise: writes succeed, the
