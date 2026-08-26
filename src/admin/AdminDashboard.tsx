@@ -11,27 +11,25 @@ import {
   AlertTriangle,
   Banknote,
   Calendar,
-  Check,
   CheckCircle2,
   Download,
+  FileText,
   HandCoins,
   Image,
   ListChecks,
   Loader2,
   LogOut,
-  MapPin,
   Package,
   Plus,
   RefreshCw,
   Save,
   Send,
-  Settings,
   Sliders,
   Ticket,
   Trash2,
   Users,
 } from 'lucide-react';
-import { Monogram, Button, Card, FieldError } from '../components/Brand';
+import { Monogram, Button, Card } from '../components/Brand';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import type {
   Application,

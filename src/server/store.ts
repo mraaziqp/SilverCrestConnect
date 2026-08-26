@@ -76,14 +76,37 @@ interface Database {
   impactItems: ImpactItem[];
 }
 
-const EMPTY: Database = {
-  applications: [],
-  payments: [],
-  settings: { ...DEFAULT_SETTINGS },
-  programme: [...DEFAULT_PROGRAMME],
-  welcomePack: [...DEFAULT_WELCOME_PACK],
-  impactItems: [...DEFAULT_IMPACT_ITEMS],
-};
+/**
+ * A fresh database with the built-in defaults.
+ *
+ * A function rather than a shared constant: the defaults contain arrays and
+ * objects, and a single shared instance would let one Store mutate the
+ * defaults out from under the next one.
+ */
+/**
+ * Keeps only the keys the current EventSettings shape declares.
+ *
+ * Starting from the defaults guarantees every field is present, so the result
+ * really is a complete EventSettings rather than a partial one wearing a cast.
+ */
+function pruneSettings(merged: Record<string, unknown>, defaults: EventSettings): EventSettings {
+  const out = { ...defaults } as Record<string, unknown>;
+  for (const key of Object.keys(defaults)) {
+    if (key in merged) out[key] = merged[key];
+  }
+  return out as unknown as EventSettings;
+}
+
+function emptyDatabase(): Database {
+  return {
+    applications: [],
+    payments: [],
+    settings: { ...DEFAULT_SETTINGS },
+    programme: DEFAULT_PROGRAMME.map((item) => ({ ...item })),
+    welcomePack: DEFAULT_WELCOME_PACK.map((item) => ({ ...item })),
+    impactItems: DEFAULT_IMPACT_ITEMS.map((item) => ({ ...item })),
+  };
+}
 
 /**
  * True when the filesystem is writable but thrown away between invocations —
@@ -96,14 +119,7 @@ export function detectEphemeralFilesystem(env: NodeJS.ProcessEnv = process.env):
 }
 
 export class Store {
-  private db: Database = {
-    applications: [],
-    payments: [],
-    settings: { ...DEFAULT_SETTINGS },
-    programme: [...DEFAULT_PROGRAMME],
-    welcomePack: [...DEFAULT_WELCOME_PACK],
-    impactItems: [...DEFAULT_IMPACT_ITEMS],
-  };
+  private db: Database = emptyDatabase();
   private file: string;
   private persistent = true;
   private writeChain: Promise<void> = Promise.resolve();
@@ -126,13 +142,17 @@ export class Store {
       await fs.mkdir(path.dirname(this.file), { recursive: true });
       const raw = await fs.readFile(this.file, 'utf8');
       const parsed = JSON.parse(raw) as Partial<Database>;
+      const base = emptyDatabase();
       this.db = {
-        applications: parsed.applications ?? [],
-        payments: parsed.payments ?? [],
-        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
-        programme: parsed.programme ?? [...DEFAULT_PROGRAMME],
-        welcomePack: parsed.welcomePack ?? [...DEFAULT_WELCOME_PACK],
-        impactItems: parsed.impactItems ?? [...DEFAULT_IMPACT_ITEMS],
+        applications: parsed.applications ?? base.applications,
+        payments: parsed.payments ?? base.payments,
+        // Merged, not replaced: a stored file written before a new setting
+        // existed must still pick up that setting's default. Unknown keys are
+        // dropped so junk written by an older build cannot accumulate.
+        settings: pruneSettings({ ...base.settings, ...(parsed.settings ?? {}) }, base.settings),
+        programme: parsed.programme ?? base.programme,
+        welcomePack: parsed.welcomePack ?? base.welcomePack,
+        impactItems: parsed.impactItems ?? base.impactItems,
       };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;

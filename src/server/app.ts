@@ -15,11 +15,10 @@ import type {
   Application,
   ApplicationStatus,
   DashboardStats,
+  ImpactItem,
   Payment,
-  EventSettings,
   ProgrammeItem,
   WelcomePackItem,
-  ImpactItem,
 } from '../types.js';
 import { Store, makeId, makeReference } from './store.js';
 import {
@@ -29,6 +28,7 @@ import {
   verifyItn,
   type PayFastConfig,
 } from './payfast.js';
+import { validateSettings, validateItems } from './settings-validate.js';
 import {
   FieldErrors,
   email as validEmail,
@@ -253,7 +253,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     // Capacity is enforced here as well as in the admin approval step, because
     // approvals and payments race: several approved SMEs could pay at once.
-    if (store.countPaidSeats() >= EVENT.capacity) {
+    if (store.countPaidSeats() >= store.getSettings().capacity) {
       return res.status(409).json({
         success: false,
         error: 'All seats for this event have been taken. Contact us to join the waiting list.',
@@ -265,7 +265,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       id: makeId('pay'),
       reference: makeReference('TKT'),
       kind: 'TICKET',
-      amountZAR: EVENT.ticketPriceZAR,
+      amountZAR: store.getSettings().ticketPriceZAR,
       status: 'PENDING',
       name: application.contactName,
       email: application.email,
@@ -438,7 +438,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     // Marking someone PAID by hand is for off-platform payments (EFT, cash at
     // the door). It still has to respect the room capacity.
-    if (status === 'PAID' && application.status !== 'PAID' && store.countPaidSeats() >= EVENT.capacity) {
+    if (status === 'PAID' && application.status !== 'PAID' && store.countPaidSeats() >= store.getSettings().capacity) {
       return res.status(409).json({ success: false, error: 'The event is at capacity.' });
     }
 
@@ -466,7 +466,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
           businessName: updated.businessName,
           reference: updated.reference,
           payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
-          seatsRemaining: Math.max(0, EVENT.capacity - store.countPaidSeats()),
+          seatsRemaining: Math.max(0, store.getSettings().capacity - store.countPaidSeats()),
         }),
         'application-approved',
       );
@@ -481,7 +481,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
           contactName: updated.contactName,
           businessName: updated.businessName,
           ticketCode: updated.ticketCode,
-          amountZAR: EVENT.ticketPriceZAR,
+          amountZAR: store.getSettings().ticketPriceZAR,
         }),
         'ticket-confirmed-manual',
       );
@@ -538,14 +538,40 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   app.put('/api/admin/settings', async (req: Request, res: Response) => {
-    const updated = await store.updateSettings(req.body ?? {});
-    res.json({ success: true, settings: updated });
+    // Validated rather than written through: a typo here would otherwise
+    // persist a broken price or capacity and take checkout down for everyone.
+    const { settings, errors } = validateSettings(req.body, store.getSettings());
+
+    if (Object.keys(settings).length === 0 && Object.keys(errors).length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'None of the supplied settings were valid.',
+        fieldErrors: errors,
+      });
+    }
+
+    const updated = await store.updateSettings(settings);
+    // Partial success is reported, not swallowed — the dashboard shows which
+    // fields did not take.
+    return res.json({
+      success: true,
+      settings: updated,
+      ...(Object.keys(errors).length > 0 ? { fieldErrors: errors } : {}),
+    });
   });
 
   app.put('/api/admin/programme', async (req: Request, res: Response) => {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const { items, error } = validateItems<ProgrammeItem>(req.body?.items, {
+      time: 40,
+      duration: 40,
+      title: 160,
+      detail: 500,
+      kind: 20,
+    });
+    if (error) return res.status(400).json({ success: false, error });
+
     const updated = await store.updateProgramme(items);
-    res.json({ success: true, programme: updated });
+    return res.json({ success: true, programme: updated });
   });
 
   /** Broadcast the latest programme schedule via email to all paid attendees. */
@@ -584,21 +610,32 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   app.put('/api/admin/welcome-pack', async (req: Request, res: Response) => {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const { items, error } = validateItems<WelcomePackItem>(req.body?.items, { title: 120, body: 500 });
+    if (error) return res.status(400).json({ success: false, error });
+
     const updated = await store.updateWelcomePack(items);
-    res.json({ success: true, welcomePack: updated });
+    return res.json({ success: true, welcomePack: updated });
   });
 
   app.put('/api/admin/impact-items', async (req: Request, res: Response) => {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const { items, error } = validateItems<ImpactItem>(req.body?.items, { title: 120, body: 500 });
+    if (error) return res.status(400).json({ success: false, error });
+
     const updated = await store.updateImpactItems(items);
-    res.json({ success: true, impactItems: updated });
+    return res.json({ success: true, impactItems: updated });
   });
 
   app.post('/api/admin/upload-logo', async (req: Request, res: Response) => {
-    const logoUrl = typeof req.body?.logoUrl === 'string' ? req.body.logoUrl : '';
-    await store.updateSettings({ customLogoUrl: logoUrl });
-    res.json({ success: true, customLogoUrl: logoUrl });
+    const { settings, errors } = validateSettings(
+      { customLogoUrl: req.body?.logoUrl },
+      store.getSettings(),
+    );
+    if (errors.customLogoUrl) {
+      return res.status(400).json({ success: false, error: errors.customLogoUrl });
+    }
+
+    const updated = await store.updateSettings(settings);
+    return res.json({ success: true, customLogoUrl: updated.customLogoUrl });
   });
 
   // Anything still unmatched under /api is a genuine 404 and must answer with

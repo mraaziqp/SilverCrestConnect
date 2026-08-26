@@ -19,7 +19,7 @@ export class ApiRequestError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Bearer token for the admin endpoints. */
   token?: string;
