@@ -29,7 +29,7 @@ export interface DataStore {
   /** Human-readable explanation of the storage situation, for /admin. */
   readonly storageNote: string;
   /** Which driver is in use, for the dashboard. */
-  readonly driver: 'json' | 'firestore';
+  readonly driver: 'json' | 'firestore' | 'rtdb';
 
   // applications
   listApplications(): Promise<Application[]>;

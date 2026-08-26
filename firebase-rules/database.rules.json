@@ -1,0 +1,13 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "applications": {
+      ".indexOn": ["reference", "email", "status"]
+    },
+    "payments": {
+      ".indexOn": ["reference", "status"]
+    }
+  }
+}
