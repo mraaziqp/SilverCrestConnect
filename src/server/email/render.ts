@@ -319,3 +319,57 @@ ${money(amountZAR)} received
 ${textFooter()}`,
   };
 }
+
+/** Sent manually from the admin dashboard to paid attendees with the latest programme agenda. */
+export function programmeBroadcastEmail(input: {
+  contactName: string;
+  businessName: string;
+  dateLabel: string;
+  venueCity: string;
+  customMessage?: string;
+  programme: Array<{ time: string; duration: string; title: string; detail: string }>;
+}): RenderedEmail {
+  const { contactName, businessName, dateLabel, venueCity, customMessage, programme } = input;
+
+  const agendaHtml = programme
+    .map(
+      (p) => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <td style="padding:10px 0;font-family:monospace;font-size:12px;color:${GOLD};width:130px;vertical-align:top;">${esc(p.time)}</td>
+      <td style="padding:10px 0;vertical-align:top;">
+        <div style="font-weight:bold;color:${BONE};font-size:13px;">${esc(p.title)}</div>
+        <div style="color:${MUTED};font-size:12px;margin-top:2px;">${esc(p.detail)}</div>
+      </td>
+    </tr>`,
+    )
+    .join('');
+
+  const agendaText = programme
+    .map((p) => `${p.time} (${p.duration}) - ${p.title}\n  ${p.detail}`)
+    .join('\n\n');
+
+  return {
+    subject: `Event Programme & Schedule Update — ${EVENT.fullName}`,
+    html: shell({
+      preheader: `The official event programme for ${EVENT.fullName} on ${dateLabel}.`,
+      heading: 'Event Programme',
+      body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
+<p style="margin:0 0 16px;">Here is the latest schedule for <strong>${esc(businessName)}</strong> for <strong>${esc(EVENT.fullName)}</strong> on <strong>${esc(dateLabel)}</strong> in ${esc(venueCity)}.</p>
+${customMessage ? `<p style="margin:0 0 16px;color:${GOLD};">${esc(customMessage)}</p>` : ''}
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  ${agendaHtml}
+</table>
+<p style="margin:16px 0 0;font-size:12px;color:${MUTED};">We look forward to hosting you!</p>`,
+    }),
+    text: `Hi ${contactName},
+
+Here is the latest schedule for ${businessName} for ${EVENT.fullName} on ${dateLabel} in ${venueCity}.
+
+${customMessage ? `${customMessage}\n\n` : ''}PROGRAMME:
+${agendaText}
+
+We look forward to hosting you!
+${textFooter()}`,
+  };
+}
+

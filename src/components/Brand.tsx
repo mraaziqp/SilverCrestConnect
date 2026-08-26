@@ -6,46 +6,161 @@
 
 import React from 'react';
 
-/** The geometric crest monogram from the top of the poster. */
-export const Monogram: React.FC<{ size?: number; className?: string }> = ({
+/** The geometric crest monogram matching Image 3 with sharp angular interlocking contours. */
+export const Monogram: React.FC<{ size?: number; className?: string; customLogoUrl?: string }> = ({
   size = 40,
   className = '',
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 48 48"
-    fill="none"
-    className={className}
-    aria-hidden="true"
-    focusable="false"
-  >
-    <defs>
-      <linearGradient id="scc-gold" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#E3C67F" />
-        <stop offset="45%" stopColor="#C5A059" />
-        <stop offset="100%" stopColor="#8A6E32" />
-      </linearGradient>
-    </defs>
-    {/* Outer crest diamond */}
-    <path
-      d="M24 2 46 24 24 46 2 24Z"
-      stroke="url(#scc-gold)"
-      strokeWidth="1.75"
+  customLogoUrl,
+}) => {
+  if (customLogoUrl) {
+    return (
+      <img
+        src={customLogoUrl}
+        alt="Logo"
+        style={{ width: size, height: size, objectFit: 'contain' }}
+        className={`inline-block ${className}`}
+      />
+    );
+  }
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
       fill="none"
-    />
-    {/* Inner peak — the "crest" */}
-    <path
-      d="M12 28 24 14 36 28"
-      stroke="url(#scc-gold)"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
-    <path d="M17 33 24 24 31 33" stroke="url(#scc-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.65" />
-  </svg>
-);
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="brand-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F5D78A" />
+          <stop offset="50%" stopColor="#C5A059" />
+          <stop offset="100%" stopColor="#967732" />
+        </linearGradient>
+      </defs>
+      {/* Upper geometric chevron polygon */}
+      <path
+        d="M60 12 L104 56 L88 72 L60 44 L32 72 L16 56 Z"
+        stroke="#FFFFFF"
+        strokeWidth="6"
+        strokeLinejoin="miter"
+        strokeMiterlimit="4"
+        fill="none"
+      />
+      {/* Lower interlocking geometric polygon */}
+      <path
+        d="M60 108 L16 64 L32 48 L60 76 L88 48 L104 64 Z"
+        stroke="#FFFFFF"
+        strokeWidth="6"
+        strokeLinejoin="miter"
+        strokeMiterlimit="4"
+        fill="none"
+      />
+      {/* Center sharp bridge */}
+      <path
+        d="M44 60 L76 60"
+        stroke="url(#brand-gold)"
+        strokeWidth="4"
+        strokeLinecap="square"
+      />
+    </svg>
+  );
+};
+
+/** Full brand lockup matching Image 3 precisely */
+export const BrandLogo: React.FC<{
+  className?: string;
+  customLogoUrl?: string;
+  tagline?: string;
+  showTagline?: boolean;
+}> = ({
+  className = '',
+  customLogoUrl,
+  tagline = 'BUILDING BUSINESS. STRENGTHENING COMMUNITY.',
+  showTagline = true,
+}) => {
+  if (customLogoUrl) {
+    return (
+      <div className={`flex flex-col items-center justify-center text-center ${className}`}>
+        <img
+          src={customLogoUrl}
+          alt="Silver Crest Connect"
+          className="max-h-24 sm:max-h-28 object-contain mb-4"
+        />
+        {showTagline && (
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-gold font-medium mt-3">
+            {tagline}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col items-center justify-center text-center select-none ${className}`}>
+      {/* Image 3 Geometric Monogram */}
+      <Monogram size={76} className="mb-6" />
+
+      {/* SILVER CREST */}
+      <div className="font-serif tracking-[0.38em] sm:tracking-[0.45em] text-sm sm:text-base lg:text-lg text-white font-medium uppercase pl-[0.45em] mb-2">
+        SILVER CREST
+      </div>
+
+      {/* CONNECT with Golden Segmented Ring O and Golden 3-Bar E */}
+      <div className="flex items-center justify-center font-sans font-extrabold text-4xl sm:text-6xl lg:text-7xl text-white tracking-[0.14em] sm:tracking-[0.18em] pl-[0.18em] my-1">
+        <span>C</span>
+        {/* Stylized Golden Ring O with crosshair cuts */}
+        <span className="relative inline-flex items-center justify-center w-[0.85em] h-[0.85em] mx-[0.04em] text-gold shrink-0">
+          <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+            <defs>
+              <linearGradient id="gold-ring" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F5D78A" />
+                <stop offset="45%" stopColor="#C5A059" />
+                <stop offset="100%" stopColor="#8A6E32" />
+              </linearGradient>
+            </defs>
+            {/* 4 segmented arcs forming the O */}
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              stroke="url(#gold-ring)"
+              strokeWidth="14"
+              strokeDasharray="54 10 54 10"
+              strokeDashoffset="12"
+            />
+            {/* Center crosshair notches */}
+            <line x1="50" y1="2" x2="50" y2="24" stroke="url(#gold-ring)" strokeWidth="3.5" />
+            <line x1="50" y1="76" x2="50" y2="98" stroke="url(#gold-ring)" strokeWidth="3.5" />
+            <line x1="2" y1="50" x2="24" y2="50" stroke="url(#gold-ring)" strokeWidth="3.5" />
+            <line x1="76" y1="50" x2="98" y2="50" stroke="url(#gold-ring)" strokeWidth="3.5" />
+          </svg>
+        </span>
+        <span>N</span>
+        <span>N</span>
+        {/* Stylized 3-Bar Gold E */}
+        <span className="inline-flex flex-col justify-between h-[0.62em] w-[0.62em] mx-[0.06em] self-center">
+          <span className="h-[22%] w-full bg-gradient-to-r from-[#F5D78A] to-[#C5A059] rounded-[1px]" />
+          <span className="h-[22%] w-[88%] bg-gradient-to-r from-[#F5D78A] to-[#C5A059] rounded-[1px]" />
+          <span className="h-[22%] w-full bg-gradient-to-r from-[#F5D78A] to-[#C5A059] rounded-[1px]" />
+        </span>
+        <span>C</span>
+        <span>T</span>
+      </div>
+
+      {/* Sub-banner: BUILDING BUSINESS. STRENGTHENING COMMUNITY. */}
+      {showTagline && (
+        <div className="mt-5 pt-3 border-t border-gold/30 max-w-lg w-full flex items-center justify-center">
+          <p className="text-[10px] sm:text-[11.5px] uppercase tracking-[0.22em] text-gold font-semibold">
+            {tagline}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const SectionHeading: React.FC<{
   eyebrow?: string;

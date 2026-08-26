@@ -11,26 +11,35 @@ export const EVENT = {
   edition: "'26",
   fullName: "Silver Crest Connect '26",
   tagline: 'Building Business. Strengthening Community.',
-  presentedBy: 'Silver Crest Consulting',
+  presentedBy: '',
+  companyName: 'Silver Crest Consulting',
   hosts: ['Wesley Bosman', 'Saadiqah'],
   /** This event's own site. */
   website: 'https://scconnect.co.za',
-  /** The parent consulting business (from the proposal). */
-  companyWebsite: 'https://www.silvercrestconsulting.co.za',
+  /** The parent consulting business. */
+  companyWebsite: 'https://scconsults.co.za',
 
-  /** 24 October 2026, 09:00 - 13:00 (SAST) */
-  date: '2026-10-24',
-  dateLabel: '24 October 2026',
+  /** 23 October 2026, 09:00 - 13:00 (SAST) */
+  date: '2026-10-23',
+  dateLabel: '23 October 2026',
   startTime: '09:00',
   endTime: '13:00',
   timeLabel: '09:00 – 13:00',
   timezone: 'Africa/Johannesburg',
   /** ISO instant of the event start, used for the countdown. SAST = UTC+2. */
-  startsAtISO: '2026-10-24T09:00:00+02:00',
+  startsAtISO: '2026-10-23T09:00:00+02:00',
 
   city: 'Cape Town',
   venue: 'Venue to be confirmed',
   venueCity: 'Cape Town, South Africa',
+
+  heroParagraph:
+    'An exclusive half-day B2B networking showcase for 15–20 vetted SME founders — where local business growth funds real community impact.',
+  aboutTitle: 'A room built for real business, funding real community work.',
+  aboutLead:
+    'Silver Crest Connect is an exclusive half-day showcase bringing together vetted SME founders for high-intent B2B networking. Every seat sold funds the Year-End Community Outreach Drive — 100% of attendance proceeds go straight to the cause.',
+  aboutBody:
+    'Curated introductions between local founders, four expert keynotes, and a dedicated SME Spotlight where every business gets the floor for an elevator pitch.',
 
   /** Attendance fee per SME, in ZAR. 100% funds the outreach drive. */
   ticketPriceZAR: 350,
@@ -43,8 +52,12 @@ export const EVENT = {
   cause: "Silver Crest's Year-End Community Outreach Drive",
   causeShort: 'Year-End Community Outreach Drive',
 
-  contactEmail: 'connect@scconnect.co.za',
+  contactEmail: 'connect@scconsults.co.za',
   contactPhone: '',
+
+  footerNote:
+    '100% of ticket proceeds and every donation fund supplies for the Year-End Community Outreach Drive. Nothing is retained for event overheads.',
+  copyrightText: 'Silver Crest Connect. All rights reserved.',
 
   social: {
     linkedin: '',
@@ -79,39 +92,39 @@ export const PILLARS = [
 
 /** Structured 4-hour agenda (proposal, section 03). */
 export const PROGRAMME = [
-  { time: '09:00 – 09:30', duration: '30 mins', title: 'Arrival & Morning Connect', detail: 'Registration, tea/coffee & food stall networking.', kind: 'session' },
-  { time: '09:30 – 09:45', duration: '15 mins', title: 'Keynote Speaker #1', detail: 'Topic to be confirmed.', kind: 'keynote' },
-  { time: '09:45 – 10:30', duration: '45 mins', title: 'SME Spotlight — Round 1', detail: 'Elevator speeches, max 2 minutes per SME.', kind: 'spotlight' },
-  { time: '10:30 – 10:45', duration: '15 mins', title: 'Keynote Speaker #2', detail: 'Topic to be confirmed.', kind: 'keynote' },
-  { time: '10:45 – 11:30', duration: '45 mins', title: 'SME Spotlight — Round 2', detail: 'Floor browsing & vendor stall visits.', kind: 'spotlight' },
-  { time: '11:30 – 11:45', duration: '15 mins', title: 'Keynote Speaker #3', detail: 'Topic to be confirmed.', kind: 'keynote' },
-  { time: '11:45 – 12:30', duration: '45 mins', title: 'Open Floor Networking', detail: 'Open networking & food stall experience.', kind: 'session' },
-  { time: '12:30 – 12:45', duration: '15 mins', title: 'Keynote Speaker #4', detail: 'Topic to be confirmed.', kind: 'keynote' },
-  { time: '12:45 – 13:00', duration: '15 mins', title: 'Closing Remarks', detail: `${EVENT.causeShort} official announcement.`, kind: 'session' },
-] as const;
+  { id: 'prog-1', time: '09:00 – 09:30', duration: '30 mins', title: 'Arrival & Morning Connect', detail: 'Registration, tea/coffee & food stall networking.', kind: 'session' as const },
+  { id: 'prog-2', time: '09:30 – 09:45', duration: '15 mins', title: 'Keynote Speaker #1', detail: 'Topic to be confirmed.', kind: 'keynote' as const },
+  { id: 'prog-3', time: '09:45 – 10:30', duration: '45 mins', title: 'SME Spotlight — Round 1', detail: 'Elevator speeches, max 2 minutes per SME.', kind: 'spotlight' as const },
+  { id: 'prog-4', time: '10:30 – 10:45', duration: '15 mins', title: 'Keynote Speaker #2', detail: 'Topic to be confirmed.', kind: 'keynote' as const },
+  { id: 'prog-5', time: '10:45 – 11:30', duration: '45 mins', title: 'SME Spotlight — Round 2', detail: 'Floor browsing & vendor stall visits.', kind: 'spotlight' as const },
+  { id: 'prog-6', time: '11:30 – 11:45', duration: '15 mins', title: 'Keynote Speaker #3', detail: 'Topic to be confirmed.', kind: 'keynote' as const },
+  { id: 'prog-7', time: '11:45 – 12:30', duration: '45 mins', title: 'Open Floor Networking', detail: 'Open networking & food stall experience.', kind: 'session' as const },
+  { id: 'prog-8', time: '12:30 – 12:45', duration: '15 mins', title: 'Keynote Speaker #4', detail: 'Topic to be confirmed.', kind: 'keynote' as const },
+  { id: 'prog-9', time: '12:45 – 13:00', duration: '15 mins', title: 'Closing Remarks', detail: `${EVENT.causeShort} official announcement.`, kind: 'session' as const },
+];
 
 /** The three-step vetting funnel (proposal, section 04). */
 export const FUNNEL_STEPS = [
   { step: '01', title: 'Application Form', body: 'Business owners submit a concise online application with company details and industry sector.' },
-  { step: '02', title: 'Verification Check', body: 'The Silver Crest team runs a quick CIPC / digital footprint review to confirm active SME status and maintain exclusivity.' },
+  { step: '02', title: 'Verification Check', body: 'The Silver Crest team runs a quick review to confirm active SME status and maintain exclusivity.' },
   { step: '03', title: 'Approval & Ticket', body: `Approved SMEs receive a secure payment link to finalise the R${EVENT.ticketPriceZAR} fee, followed by their official digital event ticket.` },
 ] as const;
 
-/** On-site activation (proposal, section 05) — shown on the landing page as proof of impact. */
+/** On-site activation (proposal, section 05) — coffee cup removed. */
 export const IMPACT_ITEMS = [
-  { title: 'Past Outreach Exhibition', body: "A poster board showcase displaying photos and impact metrics from Silver Crest's last community drive." },
-  { title: 'On-The-Day Contribution Jar', body: 'A branded, secure collection container at the Silver Crest stand for cash contributions throughout the morning.' },
-  { title: 'Instant QR Contributions', body: 'Scan-to-give displayed on the stand poster for seamless digital card contributions.' },
-  { title: 'Food & Drink Vendors', body: 'Local food stalls and a dedicated coffee/tea vendor keeping energy high across the 4-hour schedule.' },
-] as const;
+  { id: 'imp-1', title: 'Past Outreach Exhibition', body: "A poster board showcase displaying photos and impact metrics from Silver Crest's last community drive." },
+  { id: 'imp-2', title: 'On-The-Day Contribution Jar', body: 'A branded, secure collection container at the Silver Crest stand for cash contributions throughout the morning.' },
+  { id: 'imp-3', title: 'Instant QR Contributions', body: 'Scan-to-give displayed on the stand poster for seamless digital card contributions.' },
+];
 
 /** What every registered SME receives (proposal, section 06). */
 export const WELCOME_PACK = [
-  { title: 'Custom Lanyard & Business Tag', body: 'Branded Silver Crest Connect lanyard with a custom badge showing business name and founder details.' },
-  { title: 'Executive Branded Pen', body: 'Sleek metallic executive pen custom-engraved with the Silver Crest Connect branding.' },
-] as const;
+  { id: 'wp-1', title: 'Custom Lanyard & Business Tag', body: 'Branded Silver Crest Connect lanyard with a custom badge showing business name and founder details.' },
+  { id: 'wp-2', title: 'Executive Branded Pen', body: 'Sleek metallic executive pen custom-engraved with the Silver Crest Connect branding.' },
+];
 
 /** Preset donation amounts in ZAR offered on the Donate card. */
 export const DONATION_PRESETS = [100, 250, 500, 1000] as const;
 export const DONATION_MIN_ZAR = 10;
 export const DONATION_MAX_ZAR = 100000;
+

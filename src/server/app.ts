@@ -16,6 +16,10 @@ import type {
   ApplicationStatus,
   DashboardStats,
   Payment,
+  EventSettings,
+  ProgrammeItem,
+  WelcomePackItem,
+  ImpactItem,
 } from '../types.js';
 import { Store, makeId, makeReference } from './store.js';
 import {
@@ -47,6 +51,7 @@ import {
   applicationReceived,
   donationReceipt,
   ticketConfirmed,
+  programmeBroadcastEmail,
 } from './email/render.js';
 
 export interface AppOptions {
@@ -113,19 +118,12 @@ export async function createApp(options: AppOptions): Promise<Express> {
   /** Public event facts, so the client never hardcodes a second copy. */
   app.get('/api/event', (_req: Request, res: Response) => {
     const stats = buildStats(store);
+    const settings = store.getSettings();
     res.json({
       success: true,
-      event: {
-        name: EVENT.fullName,
-        tagline: EVENT.tagline,
-        dateLabel: EVENT.dateLabel,
-        timeLabel: EVENT.timeLabel,
-        startsAtISO: EVENT.startsAtISO,
-        venue: EVENT.venue,
-        venueCity: EVENT.venueCity,
-        ticketPriceZAR: EVENT.ticketPriceZAR,
-        capacity: EVENT.capacity,
-      },
+      event: settings,
+      welcomePack: store.getWelcomePack(),
+      impactItems: store.getImpactItems(),
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
@@ -209,7 +207,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
       return res.status(404).json({ success: false, error: 'No application found for that reference.' });
     }
 
+    const isPaid = application.status === 'PAID';
     // Deliberately narrow: internal review notes stay internal.
+    // Programme is only visible after acceptance and payment.
     return res.json({
       success: true,
       application: {
@@ -219,6 +219,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
         ticketCode: application.ticketCode,
         createdAt: application.createdAt,
       },
+      event: store.getSettings(),
+      programme: isPaid ? store.getProgramme() : undefined,
     });
   });
 
@@ -523,6 +525,82 @@ export async function createApp(options: AppOptions): Promise<Express> {
     res.send(csv);
   });
 
+  // --- Dynamic Content & Settings Management ---
+
+  app.get('/api/admin/settings', (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      settings: store.getSettings(),
+      programme: store.getProgramme(),
+      welcomePack: store.getWelcomePack(),
+      impactItems: store.getImpactItems(),
+    });
+  });
+
+  app.put('/api/admin/settings', async (req: Request, res: Response) => {
+    const updated = await store.updateSettings(req.body ?? {});
+    res.json({ success: true, settings: updated });
+  });
+
+  app.put('/api/admin/programme', async (req: Request, res: Response) => {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const updated = await store.updateProgramme(items);
+    res.json({ success: true, programme: updated });
+  });
+
+  /** Broadcast the latest programme schedule via email to all paid attendees. */
+  app.post('/api/admin/programme/broadcast', async (req: Request, res: Response) => {
+    const paidAttendees = store.listApplications().filter((a) => a.status === 'PAID');
+    const programme = store.getProgramme();
+    const settings = store.getSettings();
+    const customMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : undefined;
+
+    let sentCount = 0;
+    for (const attendee of paidAttendees) {
+      if (attendee.email) {
+        sendInBackground(
+          mailer,
+          attendee.email,
+          programmeBroadcastEmail({
+            contactName: attendee.contactName,
+            businessName: attendee.businessName,
+            dateLabel: settings.dateLabel,
+            venueCity: settings.venueCity,
+            customMessage,
+            programme,
+          }),
+          'programme-broadcast',
+        );
+        sentCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      sentCount,
+      totalPaid: paidAttendees.length,
+      message: `Programme broadcast dispatched to ${sentCount} paid attendee(s).`,
+    });
+  });
+
+  app.put('/api/admin/welcome-pack', async (req: Request, res: Response) => {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const updated = await store.updateWelcomePack(items);
+    res.json({ success: true, welcomePack: updated });
+  });
+
+  app.put('/api/admin/impact-items', async (req: Request, res: Response) => {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const updated = await store.updateImpactItems(items);
+    res.json({ success: true, impactItems: updated });
+  });
+
+  app.post('/api/admin/upload-logo', async (req: Request, res: Response) => {
+    const logoUrl = typeof req.body?.logoUrl === 'string' ? req.body.logoUrl : '';
+    await store.updateSettings({ customLogoUrl: logoUrl });
+    res.json({ success: true, customLogoUrl: logoUrl });
+  });
+
   // Anything still unmatched under /api is a genuine 404 and must answer with
   // JSON. This has to come BEFORE the client middleware: otherwise Vite (dev)
   // or the SPA fallback (prod) serves index.html for a mistyped API path, and
@@ -691,6 +769,7 @@ function parseMoney(value: string | undefined): number | undefined {
 }
 
 function buildStats(store: Store): DashboardStats {
+  const settings = store.getSettings();
   const completed = store.completedPayments();
   const tickets = completed.filter((p) => p.kind === 'TICKET');
   const donations = completed.filter((p) => p.kind === 'DONATION');
@@ -712,8 +791,8 @@ function buildStats(store: Store): DashboardStats {
     netRaisedZAR: Math.round((totalRaisedZAR - feesZAR) * 100) / 100,
     feesZAR,
     applications: store.countApplicationsByStatus(),
-    seatsRemaining: Math.max(0, EVENT.capacity - store.countPaidSeats()),
-    capacity: EVENT.capacity,
+    seatsRemaining: Math.max(0, settings.capacity - store.countPaidSeats()),
+    capacity: settings.capacity,
   };
 }
 

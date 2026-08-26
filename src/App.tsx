@@ -27,11 +27,15 @@ import { ApplicationStatusPage } from './components/ApplicationStatusPage';
 import { NotFound } from './components/NotFound';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { api } from './lib/api';
+import type { EventSettings, WelcomePackItem, ImpactItem } from './types';
 
 interface EventSummary {
   seatsRemaining: number;
   totalRaisedZAR: number;
   supporters: number;
+  event?: EventSettings;
+  welcomePack?: WelcomePackItem[];
+  impactItems?: ImpactItem[];
 }
 
 export default function App() {
@@ -57,14 +61,10 @@ function LandingPage() {
   const loadSummary = useCallback(async () => {
     try {
       const result = await api<EventSummary>('/api/event');
-      setSummary({
-        seatsRemaining: result.seatsRemaining,
-        totalRaisedZAR: result.totalRaisedZAR,
-        supporters: result.supporters,
-      });
+      setSummary(result);
     } catch {
       // Live figures are a nice-to-have. If the API is unreachable the page
-      // still renders and sells tickets — the counters just stay hidden.
+      // still renders — default config takes over.
       setSummary(null);
     }
   }, []);
@@ -75,20 +75,29 @@ function LandingPage() {
 
   return (
     <>
-      <Nav />
+      <Nav event={summary?.event} />
       <main>
-        <Hero seatsRemaining={summary?.seatsRemaining ?? null} />
-        <About />
-        <Programme />
-        <Tickets seatsRemaining={summary?.seatsRemaining ?? null} />
+        <Hero
+          seatsRemaining={summary?.seatsRemaining ?? null}
+          event={summary?.event}
+        />
+        <About event={summary?.event} />
+        <Programme welcomePack={summary?.welcomePack} />
+        <Tickets
+          seatsRemaining={summary?.seatsRemaining ?? null}
+          event={summary?.event}
+        />
         <Donate
           totalRaisedZAR={summary?.totalRaisedZAR ?? null}
           supporters={summary?.supporters ?? null}
         />
         <Supporters />
-        <ImpactStand />
+        <ImpactStand
+          impactItems={summary?.impactItems}
+          event={summary?.event}
+        />
       </main>
-      <Footer />
+      <Footer event={summary?.event} />
     </>
   );
 }

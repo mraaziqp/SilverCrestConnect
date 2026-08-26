@@ -10,23 +10,39 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Banknote,
+  Calendar,
+  Check,
   CheckCircle2,
   Download,
   HandCoins,
+  Image,
+  ListChecks,
   Loader2,
   LogOut,
+  MapPin,
+  Package,
+  Plus,
   RefreshCw,
+  Save,
+  Send,
+  Settings,
+  Sliders,
   Ticket,
+  Trash2,
   Users,
 } from 'lucide-react';
-import { Monogram, Button, Card } from '../components/Brand';
+import { Monogram, Button, Card, FieldError } from '../components/Brand';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import type {
   Application,
   ApplicationStatus,
   DashboardStats,
+  EventSettings,
+  ImpactItem,
   Payment,
   PayFastConfigStatus,
+  ProgrammeItem,
+  WelcomePackItem,
 } from '../types';
 
 const TOKEN_KEY = 'scc_admin_token';
@@ -121,7 +137,7 @@ const SignIn: React.FC<{ onSignedIn: (token: string) => void }> = ({ onSignedIn 
 
 // ------------------------------------------------------------------- dashboard
 
-type Tab = 'overview' | 'applications' | 'payments';
+type Tab = 'overview' | 'applications' | 'payments' | 'settings' | 'programme';
 
 const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, onSignOut }) => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -229,12 +245,14 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
           </div>
         </div>
 
-        <nav className="max-w-7xl mx-auto px-5 sm:px-8 flex gap-1 -mb-px" aria-label="Dashboard sections">
+        <nav className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-wrap gap-1 -mb-px" aria-label="Dashboard sections">
           {(
             [
               ['overview', 'Overview'],
               ['applications', `Applications (${applications.length})`],
               ['payments', `Payments (${payments.length})`],
+              ['settings', 'Settings & Branding'],
+              ['programme', 'Programme & Broadcast'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -271,6 +289,13 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
               <ApplicationsTab applications={applications} onUpdate={updateStatus} />
             )}
             {tab === 'payments' && <PaymentsTab payments={payments} onExport={downloadCsv} />}
+            {tab === 'settings' && <SettingsTab token={token} onSaved={load} />}
+            {tab === 'programme' && (
+              <ProgrammeTab
+                token={token}
+                paidAttendeesCount={applications.filter((a) => a.status === 'PAID').length}
+              />
+            )}
           </>
         )}
       </main>
@@ -672,3 +697,815 @@ const Empty: React.FC<{ message: string }> = ({ message }) => (
     <p className="text-[14px] text-muted">{message}</p>
   </div>
 );
+
+// -------------------------------------------------------- settings & branding tab
+
+const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, onSaved }) => {
+  const [settings, setSettings] = useState<EventSettings | null>(null);
+  const [welcomePack, setWelcomePack] = useState<WelcomePackItem[]>([]);
+  const [impactItems, setImpactItems] = useState<ImpactItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    api<{
+      settings: EventSettings;
+      welcomePack: WelcomePackItem[];
+      impactItems: ImpactItem[];
+    }>('/api/admin/settings', { token })
+      .then((res) => {
+        setSettings(res.settings);
+        setWelcomePack(res.welcomePack ?? []);
+        setImpactItems(res.impactItems ?? []);
+      })
+      .catch((err) => {
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load event settings.');
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo image must be smaller than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setSettings((prev) => (prev ? { ...prev, customLogoUrl: result } : null));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settings) return;
+    setSaving(true);
+    setSuccess(null);
+    setError(null);
+
+    try {
+      await Promise.all([
+        api('/api/admin/settings', { method: 'PUT', body: settings, token }),
+        api('/api/admin/welcome-pack', { method: 'PUT', body: { items: welcomePack }, token }),
+        api('/api/admin/impact-items', { method: 'PUT', body: { items: impactItems }, token }),
+      ]);
+      setSuccess('Event settings, welcome pack, and branding updated successfully!');
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || !settings) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-6 h-6 text-gold animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-8 max-w-5xl">
+      {success && (
+        <div className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-emerald-300 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
+      {error && (
+        <div className="rounded-sm border border-red-500/40 bg-red-500/10 px-5 py-4 text-red-300 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* 1. Capacity & Tickets */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center gap-3 mb-6">
+          <Sliders className="w-5 h-5 text-gold" />
+          <h3 className="font-display text-lg font-bold text-bone">Capacity &amp; Ticket Pricing</h3>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Total Seats (Capacity)
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={settings.capacity}
+              onChange={(e) => setSettings({ ...settings, capacity: parseInt(e.target.value) || 0 })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted/60">Hard capacity ceiling</p>
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Min Seats Target
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={settings.capacityMin}
+              onChange={(e) => setSettings({ ...settings, capacityMin: parseInt(e.target.value) || 0 })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted/60">e.g. 15</p>
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Max Seats Target
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={settings.capacityMax}
+              onChange={(e) => setSettings({ ...settings, capacityMax: parseInt(e.target.value) || 0 })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted/60">e.g. 20</p>
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Ticket Price (ZAR)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={settings.ticketPriceZAR}
+              onChange={(e) => setSettings({ ...settings, ticketPriceZAR: parseFloat(e.target.value) || 0 })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted/60">R350</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* 2. Date, Time & Venue */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center gap-3 mb-6">
+          <Calendar className="w-5 h-5 text-gold" />
+          <h3 className="font-display text-lg font-bold text-bone">Date, Time &amp; Venue</h3>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Event Date (YYYY-MM-DD)
+            </label>
+            <input
+              type="date"
+              value={settings.date}
+              onChange={(e) => {
+                const d = e.target.value;
+                setSettings({
+                  ...settings,
+                  date: d,
+                  startsAtISO: `${d}T${settings.startTime || '09:00'}:00+02:00`,
+                });
+              }}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Date Label (Display)
+            </label>
+            <input
+              type="text"
+              value={settings.dateLabel}
+              onChange={(e) => setSettings({ ...settings, dateLabel: e.target.value })}
+              placeholder="23 October 2026"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Time Label (Display)
+            </label>
+            <input
+              type="text"
+              value={settings.timeLabel}
+              onChange={(e) => setSettings({ ...settings, timeLabel: e.target.value })}
+              placeholder="09:00 – 13:00"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Countdown Target ISO
+            </label>
+            <input
+              type="text"
+              value={settings.startsAtISO}
+              onChange={(e) => setSettings({ ...settings, startsAtISO: e.target.value })}
+              placeholder="2026-10-23T09:00:00+02:00"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Venue Name
+            </label>
+            <input
+              type="text"
+              value={settings.venue}
+              onChange={(e) => setSettings({ ...settings, venue: e.target.value })}
+              placeholder="Venue to be confirmed"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Venue Location / City
+            </label>
+            <input
+              type="text"
+              value={settings.venueCity}
+              onChange={(e) => setSettings({ ...settings, venueCity: e.target.value })}
+              placeholder="Cape Town, South Africa"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* 3. Branding, Logo & Company Details */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center gap-3 mb-6">
+          <Image className="w-5 h-5 text-gold" />
+          <h3 className="font-display text-lg font-bold text-bone">Brand, Logo &amp; Company Info</h3>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Event Full Name
+            </label>
+            <input
+              type="text"
+              value={settings.fullName}
+              onChange={(e) => setSettings({ ...settings, fullName: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Company Name
+            </label>
+            <input
+              type="text"
+              value={settings.companyName}
+              onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Company Website Link
+            </label>
+            <input
+              type="url"
+              value={settings.companyWebsite}
+              onChange={(e) => setSettings({ ...settings, companyWebsite: e.target.value })}
+              placeholder="https://scconsults.co.za"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Contact Email
+            </label>
+            <input
+              type="email"
+              value={settings.contactEmail}
+              onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+              placeholder="connect@scconsults.co.za"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Custom Logo (Upload image or leave blank for official Vector Emblem)
+            </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="text-xs text-muted file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-xs file:font-semibold file:bg-gold file:text-black hover:file:bg-gold/90 cursor-pointer"
+              />
+              {settings.customLogoUrl && (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={settings.customLogoUrl}
+                    alt="Custom Logo"
+                    className="h-10 max-w-[120px] object-contain bg-black/80 p-1 rounded border border-gold/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSettings({ ...settings, customLogoUrl: '' })}
+                    className="text-xs text-red-400 hover:text-red-300 underline"
+                  >
+                    Reset to Default Logo
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* 4. Paragraphs & Content Copy */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center gap-3 mb-6">
+          <FileText className="w-5 h-5 text-gold" />
+          <h3 className="font-display text-lg font-bold text-bone">Paragraphs &amp; Copy</h3>
+        </div>
+        <div className="space-y-6">
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Tagline Banner
+            </label>
+            <input
+              type="text"
+              value={settings.tagline}
+              onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Hero Lead Paragraph
+            </label>
+            <textarea
+              rows={3}
+              value={settings.heroParagraph}
+              onChange={(e) => setSettings({ ...settings, heroParagraph: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              About Section Heading
+            </label>
+            <input
+              type="text"
+              value={settings.aboutTitle}
+              onChange={(e) => setSettings({ ...settings, aboutTitle: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              About Section Lead Story
+            </label>
+            <textarea
+              rows={3}
+              value={settings.aboutLead}
+              onChange={(e) => setSettings({ ...settings, aboutLead: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              About Section Body Details
+            </label>
+            <textarea
+              rows={2}
+              value={settings.aboutBody}
+              onChange={(e) => setSettings({ ...settings, aboutBody: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Footer Note ("Where your money goes")
+            </label>
+            <textarea
+              rows={2}
+              value={settings.footerNote}
+              onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* 5. What's Included (Welcome Pack) */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Package className="w-5 h-5 text-gold" />
+            <h3 className="font-display text-lg font-bold text-bone">What Every Registered SME Receives</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWelcomePack([...welcomePack, { title: 'New Item', body: 'Item description' }])}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-gold/40 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Item
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {welcomePack.map((item, idx) => (
+            <div key={idx} className="p-4 rounded border border-white/10 bg-black/30 flex items-start gap-4">
+              <div className="flex-1 grid gap-3 sm:grid-cols-3">
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const copy = [...welcomePack];
+                    copy[idx].title = e.target.value;
+                    setWelcomePack(copy);
+                  }}
+                  placeholder="Item Title"
+                  className="rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={item.body}
+                  onChange={(e) => {
+                    const copy = [...welcomePack];
+                    copy[idx].body = e.target.value;
+                    setWelcomePack(copy);
+                  }}
+                  placeholder="Item Description"
+                  className="sm:col-span-2 rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setWelcomePack(welcomePack.filter((_, i) => i !== idx))}
+                className="p-2 text-red-400 hover:text-red-300"
+                title="Delete Item"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* 6. On-Site Impact Stand Items */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <HandCoins className="w-5 h-5 text-gold" />
+            <h3 className="font-display text-lg font-bold text-bone">On-The-Day Impact Stand Items</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setImpactItems([...impactItems, { title: 'New Impact Feature', body: 'Description' }])}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-gold/40 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Impact Item
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {impactItems.map((item, idx) => (
+            <div key={idx} className="p-4 rounded border border-white/10 bg-black/30 flex items-start gap-4">
+              <div className="flex-1 grid gap-3 sm:grid-cols-3">
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const copy = [...impactItems];
+                    copy[idx].title = e.target.value;
+                    setImpactItems(copy);
+                  }}
+                  placeholder="Title"
+                  className="rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={item.body}
+                  onChange={(e) => {
+                    const copy = [...impactItems];
+                    copy[idx].body = e.target.value;
+                    setImpactItems(copy);
+                  }}
+                  placeholder="Description"
+                  className="sm:col-span-2 rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setImpactItems(impactItems.filter((_, i) => i !== idx))}
+                className="p-2 text-red-400 hover:text-red-300"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="sticky bottom-6 z-30 pt-4 flex justify-end">
+        <Button type="submit" size="lg" disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Saving Changes…
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" /> Save All Settings
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// -------------------------------------------------------- programme & broadcast tab
+
+const ProgrammeTab: React.FC<{ token: string; paidAttendeesCount: number }> = ({
+  token,
+  paidAttendeesCount,
+}) => {
+  const [programme, setProgramme] = useState<ProgrammeItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [customMsg, setCustomMsg] = useState('');
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loadProgramme = useCallback(() => {
+    setLoading(true);
+    api<{ programme: ProgrammeItem[] }>('/api/admin/settings', { token })
+      .then((res) => {
+        setProgramme(res.programme ?? []);
+      })
+      .catch((err) => {
+        setErrorMsg(err instanceof ApiRequestError ? err.message : 'Could not load programme.');
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  useEffect(() => {
+    loadProgramme();
+  }, [loadProgramme]);
+
+  const saveProgramme = async () => {
+    setSaving(true);
+    setStatusMsg(null);
+    setErrorMsg(null);
+    try {
+      await api('/api/admin/programme', {
+        method: 'PUT',
+        body: { items: programme },
+        token,
+      });
+      setStatusMsg('Programme schedule updated successfully!');
+    } catch (err) {
+      setErrorMsg(err instanceof ApiRequestError ? err.message : 'Failed to save programme.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const broadcastEmail = async () => {
+    if (paidAttendeesCount === 0) {
+      setErrorMsg('No paid attendees found to email yet.');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to email the latest programme to all ${paidAttendeesCount} paid attendees?`)) {
+      return;
+    }
+
+    setBroadcasting(true);
+    setStatusMsg(null);
+    setErrorMsg(null);
+    try {
+      const res = await api<{ sentCount: number; message: string }>('/api/admin/programme/broadcast', {
+        method: 'POST',
+        body: { message: customMsg },
+        token,
+      });
+      setStatusMsg(res.message);
+      setCustomMsg('');
+    } catch (err) {
+      setErrorMsg(err instanceof ApiRequestError ? err.message : 'Failed to dispatch broadcast.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-6 h-6 text-gold animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 max-w-5xl">
+      {statusMsg && (
+        <div className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-emerald-300 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <span>{statusMsg}</span>
+        </div>
+      )}
+      {errorMsg && (
+        <div className="rounded-sm border border-red-500/40 bg-red-500/10 px-5 py-4 text-red-300 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Manual Broadcast Card */}
+      <Card featured className="p-7 sm:p-9 bg-ink-raised border-gold/40">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2.5 text-gold mb-2">
+              <Send className="w-5 h-5" />
+              <span className="text-[11px] uppercase tracking-brand font-semibold">Manual Email Dispatch</span>
+            </div>
+            <h3 className="font-display text-xl font-bold text-bone">
+              Broadcast Programme to Paid Attendees
+            </h3>
+            <p className="mt-2 text-[13.5px] text-muted max-w-2xl leading-relaxed">
+              Send the latest up-to-date agenda directly to confirmed &amp; paid attendees’ inboxes whenever the schedule changes.
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-gold font-mono">{paidAttendeesCount}</span>
+            <p className="text-[11px] text-muted/70 uppercase tracking-wider">Paid Attendees</p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Optional Announcement Note / Message from Wesley
+            </label>
+            <textarea
+              rows={2}
+              value={customMsg}
+              onChange={(e) => setCustomMsg(e.target.value)}
+              placeholder="e.g. Here is our finalized keynote list for the event. See you on the 23rd of October!"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={broadcastEmail}
+            disabled={broadcasting || paidAttendeesCount === 0}
+            className="w-full sm:w-auto"
+          >
+            {broadcasting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching Emails…
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" /> Send Programme Update to {paidAttendeesCount} Paid Attendees
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Programme Schedule Editor */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <ListChecks className="w-5 h-5 text-gold" />
+            <h3 className="font-display text-lg font-bold text-bone">Event Schedule &amp; Agenda Editor</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setProgramme([
+                ...programme,
+                {
+                  id: `prog-${Date.now()}`,
+                  time: '10:00 – 10:30',
+                  duration: '30 mins',
+                  title: 'New Session',
+                  detail: 'Session details',
+                  kind: 'session',
+                },
+              ])
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-gold/40 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Agenda Row
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {programme.map((item, idx) => (
+            <div key={item.id || idx} className="p-4 rounded border border-white/10 bg-black/30 flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 flex-1 w-full">
+                <input
+                  type="text"
+                  value={item.time}
+                  onChange={(e) => {
+                    const copy = [...programme];
+                    copy[idx].time = e.target.value;
+                    setProgramme(copy);
+                  }}
+                  placeholder="09:00 – 09:30"
+                  className="rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-xs text-gold font-mono focus:border-gold focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={item.duration}
+                  onChange={(e) => {
+                    const copy = [...programme];
+                    copy[idx].duration = e.target.value;
+                    setProgramme(copy);
+                  }}
+                  placeholder="30 mins"
+                  className="rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-xs text-bone focus:border-gold focus:outline-none"
+                />
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const copy = [...programme];
+                    copy[idx].title = e.target.value;
+                    setProgramme(copy);
+                  }}
+                  placeholder="Session Title"
+                  className="md:col-span-2 rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-xs text-bone font-semibold focus:border-gold focus:outline-none"
+                />
+                <select
+                  value={item.kind}
+                  onChange={(e) => {
+                    const copy = [...programme];
+                    copy[idx].kind = e.target.value as 'session' | 'keynote' | 'spotlight';
+                    setProgramme(copy);
+                  }}
+                  className="rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-xs text-gold uppercase tracking-wider focus:border-gold focus:outline-none"
+                >
+                  <option value="session">Session</option>
+                  <option value="keynote">Keynote</option>
+                  <option value="spotlight">SME Spotlight</option>
+                </select>
+                <div className="sm:col-span-2 md:col-span-5">
+                  <input
+                    type="text"
+                    value={item.detail}
+                    onChange={(e) => {
+                      const copy = [...programme];
+                      copy[idx].detail = e.target.value;
+                      setProgramme(copy);
+                    }}
+                    placeholder="Details or speaker topic…"
+                    className="w-full rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-xs text-muted focus:border-gold focus:outline-none"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProgramme(programme.filter((_, i) => i !== idx))}
+                className="p-2 text-red-400 hover:text-red-300 self-end md:self-center"
+                title="Delete Row"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <Button type="button" onClick={saveProgramme} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" /> Save Programme Schedule
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+

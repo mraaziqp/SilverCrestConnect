@@ -11,12 +11,12 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock, Loader2, Search, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, Loader2, Search, XCircle, Calendar, MapPin } from 'lucide-react';
 import { Monogram, Button, ButtonLink, Card, FieldError } from './Brand';
 import { EVENT } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
-import type { ApplicationStatus, CheckoutResponse } from '../types';
+import type { ApplicationStatus, CheckoutResponse, EventSettings, ProgrammeItem } from '../types';
 
 interface StatusResponse {
   success: true;
@@ -27,12 +27,14 @@ interface StatusResponse {
     ticketCode?: string;
     createdAt: string;
   };
+  event?: EventSettings;
+  programme?: ProgrammeItem[];
 }
 
 /** Copy for each funnel state, keyed so the page never shows a raw enum. */
 const STATE: Record<
   ApplicationStatus,
-  { title: string; body: (business: string) => string; tone: 'wait' | 'go' | 'done' | 'stop' }
+  { title: string; body: (business: string, eventName: string) => string; tone: 'wait' | 'go' | 'done' | 'stop' }
 > = {
   PENDING_REVIEW: {
     title: 'Under review',
@@ -49,13 +51,13 @@ const STATE: Record<
   PAID: {
     title: 'Your seat is confirmed',
     tone: 'done',
-    body: (b) => `${b} is confirmed for ${EVENT.fullName}. Bring your ticket code to registration.`,
+    body: (b, ev) => `${b} is confirmed for ${ev}. Bring your ticket code to registration.`,
   },
   WAITLISTED: {
     title: "You're on the waiting list",
     tone: 'wait',
     body: (b) =>
-      `${b} has been added to the waiting list. The room holds ${EVENT.capacity}; if a seat opens we will email you a payment link straight away.`,
+      `${b} has been added to the waiting list. If a seat opens we will email you a payment link straight away.`,
   },
   REJECTED: {
     title: 'Application not successful',
@@ -67,6 +69,8 @@ const STATE: Record<
 
 export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ reference }) => {
   const [data, setData] = useState<StatusResponse['application'] | null>(null);
+  const [eventData, setEventData] = useState<EventSettings | null>(null);
+  const [programme, setProgramme] = useState<ProgrammeItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -78,6 +82,8 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
         `/api/applications/${encodeURIComponent(reference)}`,
       );
       setData(result.application);
+      if (result.event) setEventData(result.event);
+      if (result.programme) setProgramme(result.programme);
     } catch (err) {
       setLoadError(
         err instanceof ApiRequestError && err.status === 404
@@ -100,7 +106,6 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
         body: { reference },
       });
       redirectToPayFast(result);
-      // The browser navigates away, so `paying` intentionally stays true.
     } catch (err) {
       setPayError(
         err instanceof ApiRequestError ? err.message : 'Could not start the payment. Please try again.',
@@ -109,9 +114,15 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
     }
   };
 
+  const eventName = eventData?.fullName || EVENT.fullName;
+  const dateLabel = eventData?.dateLabel || EVENT.dateLabel;
+  const timeLabel = eventData?.timeLabel || EVENT.timeLabel;
+  const venueLocation = eventData?.venueCity || eventData?.venue || EVENT.venueCity;
+  const ticketPrice = eventData?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+
   if (loadError) {
     return (
-      <Shell>
+      <Shell customLogoUrl={eventData?.customLogoUrl}>
         <XCircle className="w-11 h-11 text-red-400 mx-auto" aria-hidden="true" />
         <h1 className="mt-6 font-display text-2xl font-bold text-bone">Reference not found</h1>
         <p className="mt-4 text-[15px] text-muted leading-relaxed">{loadError}</p>
@@ -122,7 +133,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
 
   if (!data) {
     return (
-      <Shell>
+      <Shell customLogoUrl={eventData?.customLogoUrl}>
         <Loader2 className="w-11 h-11 text-gold animate-spin mx-auto" aria-hidden="true" />
         <p className="mt-6 text-[15px] text-muted">Looking up your application…</p>
       </Shell>
@@ -134,24 +145,24 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
     state.tone === 'done' ? CheckCircle2 : state.tone === 'stop' ? XCircle : state.tone === 'go' ? CheckCircle2 : Clock;
 
   return (
-    <Shell>
+    <Shell customLogoUrl={eventData?.customLogoUrl}>
       <Icon
         className={`w-11 h-11 mx-auto ${state.tone === 'stop' ? 'text-red-400' : 'text-gold'}`}
         aria-hidden="true"
       />
       <h1 className="mt-6 font-display text-2xl sm:text-3xl font-bold text-bone">{state.title}</h1>
-      <p className="mt-4 text-[15px] text-muted leading-relaxed">{state.body(data.businessName)}</p>
+      <p className="mt-4 text-[15px] text-muted leading-relaxed">{state.body(data.businessName, eventName)}</p>
 
       {/* Reference / ticket panel */}
       <div className="mt-8 rounded-sm border border-gold/30 bg-gold/[0.06] px-6 py-5">
         <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-          {data.ticketCode ? 'Your ticket' : 'Your reference'}
+          {data.ticketCode ? 'Your digital ticket' : 'Your reference'}
         </p>
         <p className="mt-2 font-mono text-lg text-bone tracking-[0.15em]">
           {data.ticketCode ?? data.reference}
         </p>
         {data.ticketCode && (
-          <p className="mt-3 text-[12px] text-muted">Show this at registration.</p>
+          <p className="mt-3 text-[12px] text-muted">Show this code at event registration.</p>
         )}
       </div>
 
@@ -165,7 +176,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
               </>
             ) : (
               <>
-                Pay {formatZAR(EVENT.ticketPriceZAR)} &amp; confirm
+                Pay {formatZAR(ticketPrice)} &amp; confirm
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -178,14 +189,46 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
       )}
 
       {data.status === 'PAID' && (
-        <p className="mt-8 text-[13px] text-muted/80">
-          {EVENT.dateLabel} · {EVENT.timeLabel} · {EVENT.venueCity}
-        </p>
+        <>
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-[13px] text-muted/80">
+            <span className="inline-flex items-center gap-1.5 text-bone">
+              <Calendar className="w-4 h-4 text-gold" /> {dateLabel} · {timeLabel}
+            </span>
+            <span className="hidden sm:inline text-white/20">|</span>
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-gold" /> {venueLocation}
+            </span>
+          </div>
+
+          {/* Exclusive Programme Schedule for Paid Attendees */}
+          {programme && programme.length > 0 && (
+            <div className="mt-10 text-left border-t border-white/10 pt-8">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-display text-lg font-bold text-bone">Event Programme</h3>
+                <span className="text-[10px] uppercase tracking-brand text-gold font-semibold bg-gold/10 px-2 py-0.5 rounded-sm border border-gold/30">
+                  Confirmed Attendee
+                </span>
+              </div>
+              <ul className="divide-y divide-white/5 border border-white/8 rounded-lg overflow-hidden">
+                {programme.map((item, idx) => (
+                  <li key={item.id || idx} className="p-4 bg-ink/60 hover:bg-white/[0.02]">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-mono text-xs text-gold font-medium">{item.time}</span>
+                      <span className="text-[10px] text-muted/60 uppercase tracking-wider">{item.duration}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-bone">{item.title}</p>
+                    {item.detail && <p className="mt-0.5 text-xs text-muted leading-relaxed">{item.detail}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-10">
         <ButtonLink href="/" variant="outline">
-          Back to the event
+          Back to home
         </ButtonLink>
       </div>
     </Shell>
@@ -226,11 +269,14 @@ const ReferenceLookup: React.FC = () => {
   );
 };
 
-const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const Shell: React.FC<{ children: React.ReactNode; customLogoUrl?: string }> = ({
+  children,
+  customLogoUrl,
+}) => (
   <main className="min-h-[100svh] flex items-center justify-center px-5 py-20">
-    <div className="w-full max-w-lg text-center">
+    <div className="w-full max-w-xl text-center">
       <a href="/" aria-label={`${EVENT.fullName} home`} className="inline-block mb-10">
-        <Monogram size={48} />
+        <Monogram size={48} customLogoUrl={customLogoUrl} />
       </a>
       <Card className="p-8 sm:p-10">{children}</Card>
     </div>

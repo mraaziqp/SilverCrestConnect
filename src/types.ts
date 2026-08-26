@@ -106,6 +106,63 @@ export interface DashboardStats {
   capacity: number;
 }
 
+export interface ProgrammeItem {
+  id?: string;
+  time: string;
+  duration: string;
+  title: string;
+  detail: string;
+  kind: 'session' | 'keynote' | 'spotlight';
+}
+
+export interface WelcomePackItem {
+  id?: string;
+  title: string;
+  body: string;
+}
+
+export interface ImpactItem {
+  id?: string;
+  title: string;
+  body: string;
+}
+
+export interface EventSettings {
+  name: string;
+  edition: string;
+  fullName: string;
+  tagline: string;
+  presentedBy?: string;
+  companyName: string;
+  companyWebsite: string;
+  website: string;
+  contactEmail: string;
+  contactPhone: string;
+  date: string;
+  dateLabel: string;
+  startTime: string;
+  endTime: string;
+  timeLabel: string;
+  timezone: string;
+  startsAtISO: string;
+  city: string;
+  venue: string;
+  venueCity: string;
+  heroParagraph: string;
+  aboutTitle: string;
+  aboutLead: string;
+  aboutBody: string;
+  ticketPriceZAR: number;
+  capacityMin: number;
+  capacityMax: number;
+  capacity: number;
+  cause: string;
+  causeShort: string;
+  customLogoUrl?: string;
+  footerNote: string;
+  copyrightText: string;
+}
+
 /** Non-secret PayFast configuration echoed to the admin dashboard. */
 export interface PayFastConfigStatus {
   configured: boolean;
@@ -121,3 +178,4 @@ export interface PayFastConfigStatus {
   /** Problems that would break a live payment, e.g. missing passphrase. */
   warnings: string[];
 }
+

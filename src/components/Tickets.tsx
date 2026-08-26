@@ -13,6 +13,7 @@ import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { ApplicationForm } from './ApplicationForm';
 import { EVENT } from '../config/event';
 import { formatZAR } from '../lib/api';
+import type { EventSettings } from '../types';
 
 const INCLUDES = [
   'Full four-hour programme access',
@@ -20,16 +21,22 @@ const INCLUDES = [
   'Two-minute SME Spotlight elevator pitch',
   'Vendor stall & floor browsing access',
   'Branded lanyard, badge & executive pen',
-  'Morning refreshments and food stall access',
+  'Morning refreshments and networking access',
 ];
 
 interface TicketsProps {
   seatsRemaining: number | null;
+  event?: Partial<EventSettings>;
 }
 
-export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining }) => {
+export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const [formOpen, setFormOpen] = useState(false);
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
+
+  const capacityMin = event?.capacityMin ?? EVENT.capacityMin;
+  const capacityMax = event?.capacityMax ?? EVENT.capacityMax;
+  const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+  const causeShort = event?.causeShort || EVENT.causeShort;
 
   return (
     <Section id="tickets" className="border-t border-white/5">
@@ -40,7 +47,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining }) => {
             Claim your <span className="text-gold">seat</span>
           </>
         }
-        lead={`${EVENT.capacityMin}–${EVENT.capacityMax} seats only. 100% of the ${formatZAR(EVENT.ticketPriceZAR)} attendance fee funds the ${EVENT.causeShort}.`}
+        lead={`${capacityMin}–${capacityMax} seats only. 100% of the ${formatZAR(ticketPrice)} attendance fee funds the ${causeShort}.`}
       />
 
       <div className="mt-14 grid gap-6 lg:grid-cols-[1.15fr_1fr] items-start">
@@ -57,7 +64,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining }) => {
             </div>
             <div className="text-right">
               <p className="font-display text-4xl sm:text-5xl font-bold text-gold leading-none">
-                {formatZAR(EVENT.ticketPriceZAR)}
+                {formatZAR(ticketPrice)}
               </p>
               <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-muted/70">
                 per business

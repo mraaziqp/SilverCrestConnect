@@ -16,14 +16,74 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import type { Application, ApplicationStatus, Payment } from '../types.js';
+import type {
+  Application,
+  ApplicationStatus,
+  Payment,
+  EventSettings,
+  ProgrammeItem,
+  WelcomePackItem,
+  ImpactItem,
+} from '../types.js';
+import {
+  EVENT,
+  PROGRAMME as DEFAULT_PROGRAMME,
+  WELCOME_PACK as DEFAULT_WELCOME_PACK,
+  IMPACT_ITEMS as DEFAULT_IMPACT_ITEMS,
+} from '../config/event.js';
+
+export const DEFAULT_SETTINGS: EventSettings = {
+  name: EVENT.name,
+  edition: EVENT.edition,
+  fullName: EVENT.fullName,
+  tagline: EVENT.tagline,
+  presentedBy: EVENT.presentedBy,
+  companyName: EVENT.companyName,
+  companyWebsite: EVENT.companyWebsite,
+  website: EVENT.website,
+  contactEmail: EVENT.contactEmail,
+  contactPhone: EVENT.contactPhone,
+  date: EVENT.date,
+  dateLabel: EVENT.dateLabel,
+  startTime: EVENT.startTime,
+  endTime: EVENT.endTime,
+  timeLabel: EVENT.timeLabel,
+  timezone: EVENT.timezone,
+  startsAtISO: EVENT.startsAtISO,
+  city: EVENT.city,
+  venue: EVENT.venue,
+  venueCity: EVENT.venueCity,
+  heroParagraph: EVENT.heroParagraph,
+  aboutTitle: EVENT.aboutTitle,
+  aboutLead: EVENT.aboutLead,
+  aboutBody: EVENT.aboutBody,
+  ticketPriceZAR: EVENT.ticketPriceZAR,
+  capacityMin: EVENT.capacityMin,
+  capacityMax: EVENT.capacityMax,
+  capacity: EVENT.capacity,
+  cause: EVENT.cause,
+  causeShort: EVENT.causeShort,
+  footerNote: EVENT.footerNote,
+  copyrightText: EVENT.copyrightText,
+};
 
 interface Database {
   applications: Application[];
   payments: Payment[];
+  settings: EventSettings;
+  programme: ProgrammeItem[];
+  welcomePack: WelcomePackItem[];
+  impactItems: ImpactItem[];
 }
 
-const EMPTY: Database = { applications: [], payments: [] };
+const EMPTY: Database = {
+  applications: [],
+  payments: [],
+  settings: { ...DEFAULT_SETTINGS },
+  programme: [...DEFAULT_PROGRAMME],
+  welcomePack: [...DEFAULT_WELCOME_PACK],
+  impactItems: [...DEFAULT_IMPACT_ITEMS],
+};
 
 /**
  * True when the filesystem is writable but thrown away between invocations —
@@ -36,7 +96,14 @@ export function detectEphemeralFilesystem(env: NodeJS.ProcessEnv = process.env):
 }
 
 export class Store {
-  private db: Database = { ...EMPTY, applications: [], payments: [] };
+  private db: Database = {
+    applications: [],
+    payments: [],
+    settings: { ...DEFAULT_SETTINGS },
+    programme: [...DEFAULT_PROGRAMME],
+    welcomePack: [...DEFAULT_WELCOME_PACK],
+    impactItems: [...DEFAULT_IMPACT_ITEMS],
+  };
   private file: string;
   private persistent = true;
   private writeChain: Promise<void> = Promise.resolve();
@@ -62,6 +129,10 @@ export class Store {
       this.db = {
         applications: parsed.applications ?? [],
         payments: parsed.payments ?? [],
+        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
+        programme: parsed.programme ?? [...DEFAULT_PROGRAMME],
+        welcomePack: parsed.welcomePack ?? [...DEFAULT_WELCOME_PACK],
+        impactItems: parsed.impactItems ?? [...DEFAULT_IMPACT_ITEMS],
       };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -79,6 +150,7 @@ export class Store {
       }
     }
   }
+
 
   /**
    * Records will still be here after a restart. False on a read-only disk and
@@ -206,6 +278,60 @@ export class Store {
 
   completedPayments(): Payment[] {
     return this.db.payments.filter((p) => p.status === 'COMPLETE');
+  }
+
+  // ----------------------------------------------------------- event settings & content
+
+  getSettings(): EventSettings {
+    return { ...this.db.settings };
+  }
+
+  async updateSettings(patch: Partial<EventSettings>): Promise<EventSettings> {
+    this.db.settings = {
+      ...this.db.settings,
+      ...patch,
+    };
+    await this.save();
+    return { ...this.db.settings };
+  }
+
+  getProgramme(): ProgrammeItem[] {
+    return [...this.db.programme];
+  }
+
+  async updateProgramme(items: ProgrammeItem[]): Promise<ProgrammeItem[]> {
+    this.db.programme = items.map((item, i) => ({
+      ...item,
+      id: item.id || `prog-${i + 1}`,
+    }));
+    await this.save();
+    return [...this.db.programme];
+  }
+
+  getWelcomePack(): WelcomePackItem[] {
+    return [...this.db.welcomePack];
+  }
+
+  async updateWelcomePack(items: WelcomePackItem[]): Promise<WelcomePackItem[]> {
+    this.db.welcomePack = items.map((item, i) => ({
+      ...item,
+      id: item.id || `wp-${i + 1}`,
+    }));
+    await this.save();
+    return [...this.db.welcomePack];
+  }
+
+  getImpactItems(): ImpactItem[] {
+    return [...this.db.impactItems];
+  }
+
+  async updateImpactItems(items: ImpactItem[]): Promise<ImpactItem[]> {
+    this.db.impactItems = items.map((item, i) => ({
+      ...item,
+      id: item.id || `imp-${i + 1}`,
+    }));
+    await this.save();
+    return [...this.db.impactItems];
   }
 }
 
