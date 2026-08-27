@@ -37,7 +37,7 @@ npm run dev             # http://localhost:3000
 | `npm run dev` | Express + Vite middleware, client hot-reloads |
 | `npm run build` | Builds the client (`dist/`) and the server bundle (`dist/server.mjs`) |
 | `npm start` | Runs the production server from `dist/` |
-| `npm test` | 40 unit tests — PayFast signing, validation, email rendering, currency |
+| `npm test` | 95 unit tests — PayFast signing, validation, email rendering, currency, seating, admin auth |
 | `npm run lint` | `tsc --noEmit` |
 
 ---
@@ -219,7 +219,18 @@ payment `PENDING`. To test against real PayFast callbacks, expose the server wit
 
 ## Deploying
 
-### Any Node host (Render, Railway, Fly, a VPS) — recommended
+### AWS — Amplify Hosting + App Runner (current target)
+
+Amplify Hosting serves the built client, App Runner runs the Express API, and Amplify rewrites
+`/api/*` across to it. Full walkthrough in [DEPLOY_AWS.md](DEPLOY_AWS.md), including the two
+traps that break this split silently:
+
+- The `/api/*` rewrite rule must sit **above** the SPA catch-all, or the catch-all swallows it and
+  every form receives HTML where it expects JSON.
+- `API_URL` must point PayFast straight at App Runner. The ITN signature is verified over the raw
+  request body, so a proxy hop that re-encodes it fails verification *after* the customer has paid.
+
+### Any Node host (Render, Railway, Fly, a VPS)
 
 ```bash
 npm run build
@@ -240,9 +251,9 @@ committing them.
 `api/index.ts`.
 
 > **Before taking live payments on Vercel:** serverless filesystems are ephemeral, so the JSON store
-> degrades to memory and payment records will not survive between invocations. Replace `Store` in
-> `src/server/store.ts` with a database-backed implementation (it is a single class behind a narrow
-> interface), or deploy to a Node host instead. `/admin` warns when storage is not persistent.
+> degrades to memory and payment records will not survive between invocations. Set `STORE_DRIVER`
+> to `rtdb` or `firestore` with Firebase credentials, or deploy to a Node host instead. `/admin`
+> warns when storage is not persistent, and `/api/health` reports `"persistent": false`.
 
 ---
 

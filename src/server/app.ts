@@ -1060,11 +1060,24 @@ export function timingSafeCompare(a: string, b: string): boolean {
   return crypto.timingSafeEqual(digest(a), digest(b));
 }
 
-function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
+function securityHeaders(req: Request, res: Response, next: NextFunction): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+  // HSTS, but only once the connection actually is HTTPS. Sending it over
+  // plain HTTP is meaningless, and sending it in local development would pin
+  // localhost to HTTPS in the developer's browser for a year — a confusing
+  // failure to diagnose and awkward to undo.
+  //
+  // Two years with preload omitted deliberately: preload is a one-way door
+  // that is slow and painful to reverse, and it should be a decision taken
+  // for the domain rather than a side effect of a header default.
+  if (req.secure || req.get('x-forwarded-proto') === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  }
+
   next();
 }
 
