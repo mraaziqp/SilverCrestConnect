@@ -36,7 +36,7 @@ export const Programme: React.FC<ProgrammeProps> = ({
               {stepWord} steps to your <span className="text-gold">seat</span>
             </>
           }
-          lead="Seats are limited to keep the room worth being in. Applying is free — you only pay once you are approved."
+          lead="Seats are limited to ensure high-value connections. Applying is free, and payment is only requested once your business is approved."
         />
 
         {/* Two cards would stretch oddly across the full width, so the list is

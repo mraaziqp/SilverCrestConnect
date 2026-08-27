@@ -43,7 +43,7 @@ const STATE: Record<
       `We have ${b}'s application and are running the verification check. You will get an email with a payment link as soon as it is approved.`,
   },
   APPROVED: {
-    title: 'Approved — secure your seat',
+    title: 'Approved: Secure Your Seat',
     tone: 'go',
     body: (b) =>
       `${b} has been approved. Complete the attendance fee below to confirm your seat. Your seat is not held until payment clears.`,

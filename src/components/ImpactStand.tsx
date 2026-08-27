@@ -23,9 +23,6 @@ export const ImpactStand: React.FC<ImpactStandProps> = ({
   event,
 }) => {
   const items = impactItems && impactItems.length > 0 ? impactItems : DEFAULT_IMPACT_ITEMS;
-  const capacityMin = event?.capacityMin ?? EVENT.capacityMin;
-  const capacityMax = event?.capacityMax ?? EVENT.capacityMax;
-  const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const causeShort = event?.causeShort || EVENT.causeShort;
 
   return (
@@ -44,18 +41,17 @@ export const ImpactStand: React.FC<ImpactStandProps> = ({
         {items.map((item, index) => {
           const Icon = ICONS[index % ICONS.length] ?? Images;
           return (
-            <div key={item.title} className="relative pl-6 border-l border-gold/25">
+            <div key={item.title || index} className="p-6 rounded-lg bg-ink-raised/60 border border-white/8 hover:border-gold/30 transition-colors">
               <Icon className="w-5 h-5 text-gold" aria-hidden="true" />
               <h3 className="mt-4 text-sm font-semibold text-bone">{item.title}</h3>
-              <p className="mt-2.5 text-[13px] text-muted leading-relaxed">{item.body}</p>
+              <p className="mt-2 text-[13px] text-muted leading-relaxed">{item.body}</p>
             </div>
           );
         })}
       </div>
 
-      <p className="mt-14 text-center text-[13px] text-muted/70 max-w-2xl mx-auto leading-relaxed">
-        Target: {capacityMin}–{capacityMax} SMEs at R{ticketPrice} each, plus stand and online
-        contributions — all funnelled directly into supplies for the {causeShort}.
+      <p className="mt-12 text-center text-[13px] text-muted/70 max-w-2xl mx-auto leading-relaxed">
+        All ticket proceeds, on-site contributions, and donations fund supplies directly for the {causeShort}.
       </p>
     </Section>
   );

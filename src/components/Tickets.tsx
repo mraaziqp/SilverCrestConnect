@@ -33,8 +33,6 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const [formOpen, setFormOpen] = useState(false);
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
-  const capacityMin = event?.capacityMin ?? EVENT.capacityMin;
-  const capacityMax = event?.capacityMax ?? EVENT.capacityMax;
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const causeShort = event?.causeShort || EVENT.causeShort;
 
@@ -47,7 +45,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
             Claim your <span className="text-gold">seat</span>
           </>
         }
-        lead={`${capacityMin}–${capacityMax} seats only. 100% of the ${formatZAR(ticketPrice)} attendance fee funds the ${causeShort}.`}
+        lead={`Limited seating available. All ticket sales directly support the ${causeShort}.`}
       />
 
       <div className="mt-14 grid gap-6 lg:grid-cols-[1.15fr_1fr] items-start">

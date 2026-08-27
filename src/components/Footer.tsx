@@ -45,7 +45,7 @@ export const Footer: React.FC<FooterProps> = ({ event }) => {
               </span>
             </div>
             <p className="mt-5 text-[13px] text-muted leading-relaxed">
-              {tagline} — {dateLabel}, {venueLocation}.
+              {tagline}. {dateLabel}, {venueLocation}.
             </p>
           </div>
 
