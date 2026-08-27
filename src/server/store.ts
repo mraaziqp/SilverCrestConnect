@@ -17,6 +17,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import type { DataStore } from './store-types.js';
+import { seatsFor } from './store-types.js';
 import type {
   Application,
   ApplicationStatus,
@@ -280,7 +281,9 @@ export class JsonStore implements DataStore {
 
   /** Seats are consumed only once a ticket is actually paid for. */
   async countPaidSeats(): Promise<number> {
-    return this.db.applications.filter((a) => a.status === 'PAID').length;
+    return this.db.applications
+      .filter((a) => a.status === 'PAID')
+      .reduce((seats, a) => seats + seatsFor(a), 0);
   }
 
   // -------------------------------------------------------------------- payments

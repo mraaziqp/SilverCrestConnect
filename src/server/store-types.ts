@@ -60,3 +60,15 @@ export interface DataStore {
   getGallery(): Promise<GalleryItem[]>;
   updateGallery(items: GalleryItem[]): Promise<GalleryItem[]>;
 }
+
+/**
+ * How many seats one application occupies.
+ *
+ * A seat is a person, not a business: an application may bring a second
+ * representative. Applications written before that option existed have no
+ * `attendeeCount`, so they count as one rather than as zero — treating a
+ * missing field as no seats would quietly under-count the room and oversell it.
+ */
+export function seatsFor(application: Pick<Application, 'attendeeCount'>): number {
+  return application.attendeeCount === 2 ? 2 : 1;
+}

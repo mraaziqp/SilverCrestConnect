@@ -183,3 +183,33 @@ test('item_name is truncated to PayFast\'s 100 character limit', () => {
 
   assert.equal(fields.item_name.length, 100);
 });
+
+/**
+ * The two PAYFAST_SKIP_* flags each remove one of the four ITN checks. They
+ * exist so a developer can test without a public tunnel, and the usual way
+ * they reach production is a .env copied off a laptop — so live mode refuses
+ * them rather than trusting the environment to be clean.
+ */
+test('live mode ignores the ITN test-skip flags', () => {
+  const live = loadPayFastConfig({
+    PAYFAST_MODE: 'live',
+    PAYFAST_MERCHANT_ID: '10000100',
+    PAYFAST_MERCHANT_KEY: '46f0cd694581a',
+    PAYFAST_SKIP_IP_CHECK: 'true',
+    PAYFAST_SKIP_SERVER_CONFIRM: 'true',
+  } as NodeJS.ProcessEnv);
+
+  assert.equal(live.skipIpCheck, false, 'live must verify the ITN source IP');
+  assert.equal(live.skipServerConfirm, false, 'live must confirm the ITN with PayFast');
+});
+
+test('sandbox still honours the skip flags, so local testing keeps working', () => {
+  const sandbox = loadPayFastConfig({
+    PAYFAST_MODE: 'sandbox',
+    PAYFAST_SKIP_IP_CHECK: 'true',
+    PAYFAST_SKIP_SERVER_CONFIRM: 'true',
+  } as NodeJS.ProcessEnv);
+
+  assert.equal(sandbox.skipIpCheck, true);
+  assert.equal(sandbox.skipServerConfirm, true);
+});

@@ -105,8 +105,13 @@ export function loadPayFastConfig(env: NodeJS.ProcessEnv = process.env): PayFast
     passphrase: (env.PAYFAST_PASSPHRASE || '').trim(),
     appUrl: (env.APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     isConfigured,
-    skipIpCheck: env.PAYFAST_SKIP_IP_CHECK === 'true',
-    skipServerConfirm: env.PAYFAST_SKIP_SERVER_CONFIRM === 'true',
+    // Both skips are local-testing affordances, so live mode ignores them
+    // outright rather than trusting whoever set the environment to unset them.
+    // A .env copied from a laptop to the host is the ordinary way these end up
+    // in production, and there they would strip two of the four ITN checks off
+    // real payments. Sandbox still honours them.
+    skipIpCheck: mode !== 'live' && env.PAYFAST_SKIP_IP_CHECK === 'true',
+    skipServerConfirm: mode !== 'live' && env.PAYFAST_SKIP_SERVER_CONFIRM === 'true',
   };
 }
 
@@ -355,7 +360,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /** Non-secret view of the config for the admin dashboard. */
-export function describeConfig(config: PayFastConfig) {
+export function describeConfig(config: PayFastConfig, env: NodeJS.ProcessEnv = process.env) {
   const warnings: string[] = [];
 
   if (!config.isConfigured) {
@@ -393,6 +398,14 @@ export function describeConfig(config: PayFastConfig) {
   if (config.skipServerConfirm) {
     warnings.push(
       'PAYFAST_SKIP_SERVER_CONFIRM is on — ITNs are not confirmed with PayFast. Turn this off in production.',
+    );
+  }
+  if (
+    config.mode === 'live' &&
+    (env.PAYFAST_SKIP_IP_CHECK === 'true' || env.PAYFAST_SKIP_SERVER_CONFIRM === 'true')
+  ) {
+    warnings.push(
+      'A PAYFAST_SKIP_* test flag is set but was ignored because this is live mode. Remove it from the environment.',
     );
   }
 

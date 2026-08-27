@@ -21,7 +21,7 @@ import type {
   WelcomePackItem,
 } from '../types.js';
 import { makeId, makeReference } from './store.js';
-import type { DataStore } from './store-types.js';
+import { seatsFor, type DataStore } from './store-types.js';
 import {
   buildPaymentFields,
   describeConfig,
@@ -293,11 +293,19 @@ export async function createApp(options: AppOptions): Promise<Express> {
     }
 
     const settings = await store.getSettings();
-    // Capacity is enforced here as well as in the admin approval step.
-    if (await store.countPaidSeats() >= settings.capacity) {
+    // Capacity is enforced here as well as in the admin approval step, because
+    // approvals and payments race: several approved SMEs could pay at once.
+    // The booking is weighed whole — letting a two-representative business
+    // through on a single remaining seat would seat 51 people in a room of 50.
+    const seatsTaken = await store.countPaidSeats();
+    const seatsWanted = seatsFor(application);
+    if (seatsTaken + seatsWanted > settings.capacity) {
       return res.status(409).json({
         success: false,
-        error: 'All seats for this event have been taken. Contact us to join the waiting list.',
+        error:
+          seatsTaken >= settings.capacity
+            ? 'All seats for this event have been taken. Contact us to join the waiting list.'
+            : 'Only one seat is left, and this application is for two representatives. Contact us to adjust the booking or join the waiting list.',
       });
     }
 
@@ -481,9 +489,21 @@ export async function createApp(options: AppOptions): Promise<Express> {
     }
 
     // Marking someone PAID by hand is for off-platform payments (EFT, cash at
-    // the door). It still has to respect the room capacity.
-    if (status === 'PAID' && application.status !== 'PAID' && await store.countPaidSeats() >= (await store.getSettings()).capacity) {
-      return res.status(409).json({ success: false, error: 'The event is at capacity.' });
+    // the door). It still has to respect the room capacity, counting the whole
+    // booking — a two-representative business needs two free seats, not one.
+    if (status === 'PAID' && application.status !== 'PAID') {
+      const { capacity } = await store.getSettings();
+      const seatsTaken = await store.countPaidSeats();
+      const seatsWanted = seatsFor(application);
+      if (seatsTaken + seatsWanted > capacity) {
+        return res.status(409).json({
+          success: false,
+          error:
+            seatsTaken >= capacity
+              ? 'The event is at capacity.'
+              : `Only ${capacity - seatsTaken} seat(s) remain and this application is for ${seatsWanted}.`,
+        });
+      }
     }
 
     const wasApproved = application.status === 'APPROVED';

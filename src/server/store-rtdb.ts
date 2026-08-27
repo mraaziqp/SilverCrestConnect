@@ -15,6 +15,8 @@ import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getDatabase, type Database as RtdbDatabase } from 'firebase-admin/database';
 import { readFileSync } from 'fs';
 
+import { seatsFor } from './store-types.js';
+
 import type {
   Application,
   ApplicationStatus,
@@ -239,7 +241,7 @@ export class RtdbStore implements DataStore {
 
   async countPaidSeats(): Promise<number> {
     const paid = await this.queryByChild<Application>(PATHS.applications, 'status', 'PAID');
-    return paid.length;
+    return paid.reduce((seats, a) => seats + seatsFor(a), 0);
   }
 
   // ------------------------------------------------------------------ payments

@@ -434,13 +434,17 @@ const ApplicationsTab: React.FC<{
 }> = ({ applications, onUpdate }) => {
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
 
+  // The curation rule is 1-2 *businesses* per category, so this counts
+  // businesses. Counting attendees instead made a single two-representative
+  // booking read as "2/2 booked" and flag the sector full, which would turn
+  // away the second, genuinely different business the rule exists to admit.
   const industryStats = useMemo(() => {
     const map: Record<string, { approvedOrPaid: number; pending: number }> = {};
     for (const app of applications) {
       const ind = (app.industry || 'General').trim();
       if (!map[ind]) map[ind] = { approvedOrPaid: 0, pending: 0 };
       if (app.status === 'APPROVED' || app.status === 'PAID') {
-        map[ind].approvedOrPaid += (app.attendeeCount || 1);
+        map[ind].approvedOrPaid += 1;
       } else if (app.status === 'PENDING_REVIEW') {
         map[ind].pending += 1;
       }
@@ -489,7 +493,7 @@ const ApplicationsTab: React.FC<{
                   }`}
                 >
                   <span className="font-medium">{industry}:</span>
-                  <span className="font-bold">{stats.approvedOrPaid}/2 booked</span>
+                  <span className="font-bold">{stats.approvedOrPaid}/2 businesses</span>
                   {stats.pending > 0 && (
                     <span className="text-[10px] text-muted">({stats.pending} pending)</span>
                   )}

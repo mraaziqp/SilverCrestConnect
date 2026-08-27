@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowRight, Check, ChevronDown, HelpCircle, ShieldCheck, Ticket, Users } from 'lucide-react';
+import { ArrowRight, Check, HelpCircle, ShieldCheck, Ticket, Users } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { ApplicationForm } from './ApplicationForm';
 import { EVENT, TICKET_INCLUDES, FAQS } from '../config/event';
@@ -25,7 +25,6 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
-  const causeShort = event?.causeShort || EVENT.causeShort;
 
   return (
     <Section id="tickets" className="border-t border-white/5">

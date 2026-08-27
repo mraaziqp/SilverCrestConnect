@@ -86,3 +86,52 @@ test('references are unique and use an unambiguous alphabet', () => {
   // No O/0/I/1 — these get misread when someone reads a code down the phone.
   for (const ref of seen) assert.doesNotMatch(ref, /[O01I]/);
 });
+
+/**
+ * Seats are people, not businesses.
+ *
+ * An application may bring a second representative, so counting PAID rows
+ * sizes the room in companies and lets a 50-seat venue admit up to 100 people.
+ * Rows written before the second-representative option carry no attendeeCount
+ * and must still count as one.
+ */
+test('paid seats count attendees, not applications', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'scc-seats-'));
+  const store = new JsonStore(dir, false);
+  await store.init();
+
+  const base = {
+    businessName: 'Seat Co',
+    contactName: 'Tester',
+    email: 'seats@example.co.za',
+    phone: '+27 21 555 0100',
+    industry: 'Testing',
+    about: 'An application used to size the room.',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Two representatives — two seats.
+  await store.addApplication({ ...base, id: 'app_two', reference: 'SCC26-TWO', status: 'PAID', attendeeCount: 2 });
+  assert.equal(await store.countPaidSeats(), 2, 'a two-representative booking takes two seats');
+
+  // One representative — one more seat.
+  await store.addApplication({ ...base, id: 'app_one', reference: 'SCC26-ONE', status: 'PAID', attendeeCount: 1 });
+  assert.equal(await store.countPaidSeats(), 3);
+
+  // A legacy row with no attendeeCount counts as one, never as zero.
+  await store.addApplication({ ...base, id: 'app_old', reference: 'SCC26-OLD', status: 'PAID' });
+  assert.equal(await store.countPaidSeats(), 4, 'a legacy row must count as one seat');
+
+  // Unpaid applications hold no seat at all.
+  await store.addApplication({
+    ...base,
+    id: 'app_pending',
+    reference: 'SCC26-PEND',
+    status: 'PENDING_REVIEW',
+    attendeeCount: 2,
+  });
+  assert.equal(await store.countPaidSeats(), 4, 'only PAID applications occupy seats');
+
+  await fs.rm(dir, { recursive: true, force: true });
+});

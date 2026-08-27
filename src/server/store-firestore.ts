@@ -17,6 +17,8 @@ import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 
+import { seatsFor } from './store-types.js';
+
 import type {
   Application,
   ApplicationStatus,
@@ -223,13 +225,15 @@ export class FirestoreStore implements DataStore {
   }
 
   async countPaidSeats(): Promise<number> {
-    // A count aggregation avoids reading every document just to size the room.
+    // Read the paid rows rather than aggregating. A count() sizes the room in
+    // businesses and oversells it two-to-one, and a sum('attendeeCount') reads
+    // rows written before the second-representative option as zero. Capacity is
+    // a room, so this is tens of documents, not thousands.
     const snap = await this.db
       .collection(COLLECTIONS.applications)
       .where('status', '==', 'PAID')
-      .count()
       .get();
-    return snap.data().count;
+    return snap.docs.reduce((seats, doc) => seats + seatsFor(doc.data() as Application), 0);
   }
 
   // ------------------------------------------------------------------ payments

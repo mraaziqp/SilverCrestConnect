@@ -44,7 +44,11 @@ const EMPTY: FormState = {
   applicantRole: '',
   email: '',
   phone: '',
-  industry: INDUSTRY_CATEGORIES[0],
+  // Deliberately blank. Defaulting to the first category silently files
+  // every applicant who skips the dropdown under Accounting & Financial
+  // Services, which is the one field the curated 1-2-per-category review
+  // depends on being true.
+  industry: '',
   customIndustry: '',
   website: '',
   registrationNumber: '',
@@ -326,16 +330,24 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                   <select
                     id="industry"
                     name="industry"
+                    required
                     value={values.industry}
                     onChange={set('industry')}
                     className="w-full rounded-sm bg-black/50 border border-white/12 px-4 py-2.5 text-sm text-bone focus:border-gold focus:outline-none transition-colors"
                   >
+                    <option value="" disabled className="bg-ink text-muted">
+                      Select your industry…
+                    </option>
                     {INDUSTRY_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat} className="bg-ink text-bone">
                         {cat}
                       </option>
                     ))}
                   </select>
+                  {/* The form submits with noValidate, so a missing industry
+                      comes back as a server field error. Without this the
+                      rejection had nowhere to show and the form just failed. */}
+                  <FieldError message={fieldErrors.industry} />
                 </div>
               </div>
 

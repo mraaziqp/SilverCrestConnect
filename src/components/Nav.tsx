@@ -2,7 +2,10 @@
  * Sticky navigation.
  *
  * Per the client brief the links are anchors only — About, Tickets, Donate —
- * with the Buy Tickets call to action held in the bar at all times.
+ * with the primary call to action held in the bar at all times. That CTA says
+ * "Apply to Attend", not "Buy": seats are curated, so payment only opens once
+ * an application has been approved, and offering a purchase up front would
+ * promise a checkout that does not exist.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -76,7 +79,7 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
 
           <div className="flex items-center gap-3">
             <ButtonLink href="#tickets" className="hidden sm:inline-flex">
-              Buy Tickets
+              Apply to Attend
             </ButtonLink>
 
             <button
@@ -109,7 +112,7 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
             ))}
           </ul>
           <ButtonLink href="#tickets" onClick={() => setMenuOpen(false)} className="w-full mt-5">
-            Buy Tickets
+            Apply to Attend
           </ButtonLink>
         </nav>
       )}
