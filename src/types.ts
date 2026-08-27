@@ -21,6 +21,7 @@ export interface Application {
   reference: string;
   businessName: string;
   contactName: string;
+  applicantRole?: string;
   email: string;
   phone: string;
   industry: string;
@@ -29,15 +30,29 @@ export interface Application {
   registrationNumber?: string;
   /** Free-text: what the business does and what it wants from the room. */
   about: string;
+  /** What products/services the business provides. */
+  productsServices?: string;
+  /** What the applicant can bring to the Connect community. */
+  communityContribution?: string;
   /** What the applicant hopes to get out of the event. */
   lookingFor?: string;
+  /** Number of representatives applying (1 or 2). */
+  attendeeCount: 1 | 2;
+  /** Calculated total price in ZAR (R450 for 1 rep, R900 for 2 reps). */
+  totalPriceZAR?: number;
+  /** Second representative details if attendeeCount === 2 */
+  rep2Name?: string;
+  rep2Role?: string;
+  rep2Email?: string;
+  rep2Phone?: string;
+
   status: ApplicationStatus;
   /** Internal note captured by the Silver Crest team during vetting. */
   reviewNote?: string;
   reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
-  /** Set once the R350 ticket payment completes. */
+  /** Set once the ticket payment completes. */
   paymentId?: string;
   ticketCode?: string;
 }

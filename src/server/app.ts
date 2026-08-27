@@ -146,10 +146,26 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     const businessName = requiredString(errors, 'businessName', body.businessName, { min: 2, max: 120, label: 'Business name' });
     const contactName = requiredString(errors, 'contactName', body.contactName, { min: 2, max: 100, label: 'Contact name' });
+    const applicantRole = requiredString(errors, 'applicantRole', body.applicantRole, { min: 2, max: 100, label: 'Role / position' });
     const email = validEmail(errors, 'email', body.email);
     const phone = validPhone(errors, 'phone', body.phone);
     const industry = requiredString(errors, 'industry', body.industry, { min: 2, max: 80, label: 'Industry' });
     const about = requiredString(errors, 'about', body.about, { min: 20, max: 1000, label: 'Business description' });
+    const productsServices = requiredString(errors, 'productsServices', body.productsServices, { min: 5, max: 1000, label: 'Products / services' });
+    const communityContribution = requiredString(errors, 'communityContribution', body.communityContribution, { min: 5, max: 1000, label: 'Community contribution' });
+
+    const attendeeCount = (Number(body.attendeeCount) === 2 ? 2 : 1) as 1 | 2;
+    let rep2Name: string | undefined;
+    let rep2Role: string | undefined;
+    let rep2Email: string | undefined;
+    let rep2Phone: string | undefined;
+
+    if (attendeeCount === 2) {
+      rep2Name = requiredString(errors, 'rep2Name', body.rep2Name, { min: 2, max: 100, label: 'Second attendee name' });
+      rep2Role = requiredString(errors, 'rep2Role', body.rep2Role, { min: 2, max: 100, label: 'Second attendee role' });
+      rep2Email = validEmail(errors, 'rep2Email', body.rep2Email);
+      rep2Phone = validPhone(errors, 'rep2Phone', body.rep2Phone);
+    }
 
     if (errors.any) {
       return res.status(400).json({ success: false, error: 'Please correct the highlighted fields.', fieldErrors: errors.all });
@@ -167,19 +183,31 @@ export async function createApp(options: AppOptions): Promise<Express> {
       });
     }
 
+    const settings = await store.getSettings();
+    const totalPriceZAR = attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR;
+
     const now = new Date().toISOString();
     const application: Application = {
       id: makeId('app'),
       reference: makeReference('SCC26'),
       businessName,
       contactName,
+      applicantRole,
       email,
       phone,
       industry,
       website: optionalString(body.website, 200),
       registrationNumber: optionalString(body.registrationNumber, 40),
       about,
+      productsServices,
+      communityContribution,
       lookingFor: optionalString(body.lookingFor, 300),
+      attendeeCount,
+      totalPriceZAR,
+      rep2Name,
+      rep2Role,
+      rep2Email,
+      rep2Phone,
       status: 'PENDING_REVIEW',
       createdAt: now,
       updatedAt: now,
@@ -194,6 +222,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
         contactName: application.contactName,
         businessName: application.businessName,
         reference: application.reference,
+        attendeeCount: application.attendeeCount,
       }),
       'application-received',
     );
@@ -202,7 +231,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       success: true,
       reference: application.reference,
       status: application.status,
-      message: 'Application received. The Silver Crest team will review it and email you a payment link once approved.',
+      message: 'Application received. The Silver Crest team will review it and email your payment link once approved.',
     });
   });
 
@@ -213,26 +242,32 @@ export async function createApp(options: AppOptions): Promise<Express> {
       return res.status(404).json({ success: false, error: 'No application found for that reference.' });
     }
 
+    const settings = await store.getSettings();
     const isPaid = application.status === 'PAID';
-    // Deliberately narrow: internal review notes stay internal.
-    // Programme is only visible after acceptance and payment.
+    const attendeeCount = application.attendeeCount || 1;
+    const totalPriceZAR =
+      application.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+
     return res.json({
       success: true,
       application: {
         reference: application.reference,
         businessName: application.businessName,
         status: application.status,
+        attendeeCount,
+        totalPriceZAR,
+        rep2Name: application.rep2Name,
         ticketCode: application.ticketCode,
         createdAt: application.createdAt,
       },
-      event: await store.getSettings(),
+      event: settings,
       programme: isPaid ? await store.getProgramme() : undefined,
     });
   });
 
   /**
-   * Starts a PayFast checkout for an approved SME's R350 ticket.
-   * The amount comes from the server config, never from the request body.
+   * Starts a PayFast checkout for an approved SME's ticket.
+   * The amount is calculated dynamically based on 1 vs 2 representatives.
    */
   app.post('/api/checkout/ticket', rateLimit(10, 60_000), async (req: Request, res: Response) => {
     const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
@@ -252,26 +287,30 @@ export async function createApp(options: AppOptions): Promise<Express> {
         success: false,
         error:
           application.status === 'PENDING_REVIEW'
-            ? 'This application is still being reviewed. You will be emailed a payment link once it is approved.'
+            ? 'This application is still being reviewed. You will be emailed your payment link once approved.'
             : 'This application is not currently eligible for payment.',
       });
     }
 
-    // Capacity is enforced here as well as in the admin approval step, because
-    // approvals and payments race: several approved SMEs could pay at once.
-    if (await store.countPaidSeats() >= (await store.getSettings()).capacity) {
+    const settings = await store.getSettings();
+    // Capacity is enforced here as well as in the admin approval step.
+    if (await store.countPaidSeats() >= settings.capacity) {
       return res.status(409).json({
         success: false,
         error: 'All seats for this event have been taken. Contact us to join the waiting list.',
       });
     }
 
+    const attendeeCount = application.attendeeCount || 1;
+    const amountZAR =
+      application.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+
     const { first, last } = splitName(application.contactName);
     const payment: Payment = {
       id: makeId('pay'),
       reference: makeReference('TKT'),
       kind: 'TICKET',
-      amountZAR: (await store.getSettings()).ticketPriceZAR,
+      amountZAR,
       status: 'PENDING',
       name: application.contactName,
       email: application.email,
@@ -284,8 +323,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
     const fields = buildPaymentFields(payfast, {
       reference: payment.reference,
       amountZAR: payment.amountZAR,
-      itemName: `${EVENT.fullName} - SME Ticket`,
-      itemDescription: `Attendance for ${application.businessName} on ${EVENT.dateLabel}. 100% funds the ${EVENT.causeShort}.`,
+      itemName: `${EVENT.fullName} - ${attendeeCount === 2 ? '2 Representatives' : 'SME Ticket'}`,
+      itemDescription: `Attendance for ${application.businessName} (${attendeeCount} attendee${attendeeCount === 2 ? 's' : ''}, incl. breakfast) on ${EVENT.dateLabel}. 100% funds ${EVENT.causeShort}.`,
       nameFirst: first,
       nameLast: last,
       email: application.email,
@@ -463,6 +502,11 @@ export async function createApp(options: AppOptions): Promise<Express> {
     // re-saving an already-approved application does not re-notify them.
     // `resend: true` in the body forces it, for when the first mail bounced.
     if (updated && status === 'APPROVED' && (!wasApproved || req.body?.resend === true)) {
+      const settings = await store.getSettings();
+      const attendeeCount = updated.attendeeCount || 1;
+      const totalAmountZAR =
+        updated.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+
       sendInBackground(
         mailer,
         updated.email,
@@ -471,7 +515,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
           businessName: updated.businessName,
           reference: updated.reference,
           payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
-          seatsRemaining: Math.max(0, (await store.getSettings()).capacity - await store.countPaidSeats()),
+          seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
+          attendeeCount,
+          totalAmountZAR,
         }),
         'application-approved',
       );
@@ -479,6 +525,11 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     // A manual PAID (EFT or cash at the door) still deserves a ticket email.
     if (updated && status === 'PAID' && application.status !== 'PAID' && updated.ticketCode) {
+      const settings = await store.getSettings();
+      const attendeeCount = updated.attendeeCount || 1;
+      const totalAmountZAR =
+        updated.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+
       sendInBackground(
         mailer,
         updated.email,
@@ -486,7 +537,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
           contactName: updated.contactName,
           businessName: updated.businessName,
           ticketCode: updated.ticketCode,
-          amountZAR: (await store.getSettings()).ticketPriceZAR,
+          amountZAR: totalAmountZAR,
+          attendeeCount,
         }),
         'ticket-confirmed-manual',
       );
@@ -828,6 +880,7 @@ async function handleItn(
               businessName: application.businessName,
               ticketCode,
               amountZAR: payment.amountZAR,
+              attendeeCount: application.attendeeCount || 1,
             }),
             'ticket-confirmed',
           );

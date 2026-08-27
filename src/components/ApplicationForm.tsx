@@ -2,14 +2,15 @@
  * SME application modal (funnel step 01).
  *
  * Submitting is free; it creates a PENDING_REVIEW record for the Silver Crest
- * team to vet. Field errors come back keyed by field name from the server and
- * are rendered inline.
+ * team to vet. Attendance is strictly curated (1-2 businesses per category).
+ * Allows applying for 1 representative (R450) or 2 representatives (R900).
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Loader2, X } from 'lucide-react';
+import { CheckCircle2, Loader2, Users, X } from 'lucide-react';
 import { Button, FieldError } from './Brand';
-import { api, ApiRequestError } from '../lib/api';
+import { INDUSTRY_CATEGORIES } from '../config/event';
+import { api, ApiRequestError, formatZAR } from '../lib/api';
 
 interface ApplicationFormProps {
   open: boolean;
@@ -19,25 +20,43 @@ interface ApplicationFormProps {
 interface FormState {
   businessName: string;
   contactName: string;
+  applicantRole: string;
   email: string;
   phone: string;
   industry: string;
+  customIndustry: string;
   website: string;
   registrationNumber: string;
   about: string;
+  productsServices: string;
+  communityContribution: string;
   lookingFor: string;
+  attendeeCount: 1 | 2;
+  rep2Name: string;
+  rep2Role: string;
+  rep2Email: string;
+  rep2Phone: string;
 }
 
 const EMPTY: FormState = {
   businessName: '',
   contactName: '',
+  applicantRole: '',
   email: '',
   phone: '',
-  industry: '',
+  industry: INDUSTRY_CATEGORIES[0],
+  customIndustry: '',
   website: '',
   registrationNumber: '',
   about: '',
+  productsServices: '',
+  communityContribution: '',
   lookingFor: '',
+  attendeeCount: 1,
+  rep2Name: '',
+  rep2Role: '',
+  rep2Email: '',
+  rep2Phone: '',
 };
 
 interface SubmitResult {
@@ -55,7 +74,6 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
-  // Lock the page behind the dialog and move focus into it.
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = 'hidden';
@@ -72,8 +90,6 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
     };
   }, [open, onClose]);
 
-  // Reset only after the dialog has closed, so the success state stays visible
-  // for as long as the user has it open.
   useEffect(() => {
     if (open) return;
     const id = window.setTimeout(() => {
@@ -87,8 +103,11 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
 
   if (!open) return null;
 
-  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setValues((prev) => ({ ...prev, [key]: e.target.value }));
+  const set = (key: keyof FormState) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
+    const val = e.target.value;
+    setValues((prev) => ({ ...prev, [key]: val }));
     if (fieldErrors[key]) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -104,10 +123,20 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
     setFormError(null);
     setFieldErrors({});
 
+    const finalIndustry =
+      values.industry === 'Other / Specialized Services' && values.customIndustry.trim()
+        ? values.customIndustry.trim()
+        : values.industry;
+
+    const payload = {
+      ...values,
+      industry: finalIndustry,
+    };
+
     try {
       const response = await api<{ reference: string; message: string }>('/api/applications', {
         method: 'POST',
-        body: values,
+        body: payload,
       });
       setResult({ reference: response.reference, message: response.message });
     } catch (err) {
@@ -124,9 +153,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm"
       onMouseDown={(e) => {
-        // Close only on a click that both starts and ends on the backdrop.
         if (e.target === e.currentTarget) onClose();
       }}
     >
@@ -135,13 +163,13 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
         role="dialog"
         aria-modal="true"
         aria-labelledby="application-title"
-        className="relative w-full max-w-2xl my-8 rounded-lg border border-gold/25 bg-ink-raised shadow-2xl"
+        className="relative w-full max-w-2xl my-6 rounded-lg border border-gold/25 bg-ink-raised shadow-2xl max-h-[92vh] overflow-y-auto"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close application form"
-          className="absolute top-4 right-4 p-2 text-muted hover:text-bone transition-colors"
+          className="absolute top-4 right-4 p-2 text-muted hover:text-bone transition-colors z-10"
         >
           <X className="w-5 h-5" />
         </button>
@@ -150,7 +178,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
           <div className="p-8 sm:p-12 text-center">
             <CheckCircle2 className="w-12 h-12 text-gold mx-auto" aria-hidden="true" />
             <h2 id="application-title" className="mt-6 font-display text-2xl font-bold text-bone">
-              Application received
+              Application Received
             </h2>
             <p className="mt-4 text-[14px] text-muted leading-relaxed max-w-md mx-auto">
               {result.message}
@@ -158,12 +186,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
 
             <div className="mt-8 rounded-sm border border-gold/30 bg-gold/[0.06] px-6 py-5">
               <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-                Your reference
+                Your Reference Number
               </p>
               <p className="mt-2 font-mono text-xl text-bone tracking-[0.15em]">{result.reference}</p>
             </div>
             <p className="mt-4 text-[12px] text-muted/70">
-              Keep this reference — you will need it to pay once approved.
+              Keep this reference handy. Once approved, you will receive your private payment link to secure your seat.
             </p>
 
             <Button className="mt-8 w-full sm:w-auto" onClick={onClose}>
@@ -171,17 +199,19 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
             </Button>
           </div>
         ) : (
-          <form onSubmit={submit} className="p-7 sm:p-10" noValidate>
-            <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-              Step 01: Application & Sector Review
-            </p>
-            <h2 id="application-title" className="mt-3 font-display text-2xl sm:text-3xl font-bold text-bone">
-              Apply for a Seat
-            </h2>
-            <p className="mt-3 text-[13.5px] text-muted leading-relaxed">
-              Attendance is strictly curated with a maximum of 2 to 3 businesses per industry sector.
-              Submit your details for review, and upon approval our team will email your private payment link to book your spot.
-            </p>
+          <form onSubmit={submit} className="p-6 sm:p-10" noValidate>
+            <div className="border-b border-white/8 pb-6">
+              <span className="inline-block px-2.5 py-0.5 rounded bg-gold/15 border border-gold/30 text-[10px] uppercase tracking-brand text-gold font-bold mb-2">
+                Curated B2B Showcase
+              </span>
+              <h2 id="application-title" className="font-display text-2xl sm:text-3xl font-bold text-bone">
+                Apply to Attend — Silver Crest Connect '26
+              </h2>
+              <p className="mt-2.5 text-[13px] text-muted leading-relaxed">
+                Connect is a curated event aiming for <strong>1–2 businesses per category</strong> to ensure meaningful networking and prevent service oversaturation.
+                Submitting is free. Payment is only requested once your application is approved.
+              </p>
+            </div>
 
             {formError && (
               <div className="mt-6 rounded-sm border border-red-500/40 bg-red-500/10 px-4 py-3" role="alert">
@@ -189,113 +219,279 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
               </div>
             )}
 
-            <div className="mt-7 grid gap-5 sm:grid-cols-2">
-              <Field
-                ref={firstFieldRef}
-                id="businessName"
-                label="Business name"
-                value={values.businessName}
-                onChange={set('businessName')}
-                error={fieldErrors.businessName}
-                autoComplete="organization"
-                required
-              />
-              <Field
-                id="contactName"
-                label="Your full name"
-                value={values.contactName}
-                onChange={set('contactName')}
-                error={fieldErrors.contactName}
-                autoComplete="name"
-                required
-              />
-              <Field
-                id="email"
-                label="Email address"
-                type="email"
-                value={values.email}
-                onChange={set('email')}
-                error={fieldErrors.email}
-                autoComplete="email"
-                required
-              />
-              <Field
-                id="phone"
-                label="Contact number"
-                type="tel"
-                value={values.phone}
-                onChange={set('phone')}
-                error={fieldErrors.phone}
-                autoComplete="tel"
-                placeholder="+27 82 000 0000"
-                required
-              />
-              <Field
-                id="industry"
-                label="Industry / sector"
-                value={values.industry}
-                onChange={set('industry')}
-                error={fieldErrors.industry}
-                placeholder="e.g. Catering, IT services, Logistics"
-                required
-              />
-              <Field
-                id="registrationNumber"
-                label="CIPC registration no."
-                value={values.registrationNumber}
-                onChange={set('registrationNumber')}
-                error={fieldErrors.registrationNumber}
-                placeholder="Optional"
-              />
-              <div className="sm:col-span-2">
+            {/* Representative Count Selector */}
+            <div className="mt-7">
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2.5">
+                Number of Representatives Attending <span className="text-gold">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setValues((prev) => ({ ...prev, attendeeCount: 1 }))}
+                  className={`p-4 rounded-md border text-left transition-all ${
+                    values.attendeeCount === 1
+                      ? 'border-gold bg-gold/10 text-bone shadow-sm'
+                      : 'border-white/12 bg-black/30 text-muted hover:border-white/25'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">1 Representative</span>
+                    <span className="font-bold text-gold">{formatZAR(450)}</span>
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-muted">Includes light breakfast & full access.</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setValues((prev) => ({ ...prev, attendeeCount: 2 }))}
+                  className={`p-4 rounded-md border text-left transition-all ${
+                    values.attendeeCount === 2
+                      ? 'border-gold bg-gold/10 text-bone shadow-sm'
+                      : 'border-white/12 bg-black/30 text-muted hover:border-white/25'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">2 Representatives</span>
+                    <span className="font-bold text-gold">{formatZAR(900)}</span>
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-muted">Max 2 per business (R450 each, incl. breakfast).</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Primary Applicant Details */}
+            <div className="mt-7 space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  ref={firstFieldRef}
+                  id="businessName"
+                  label="Business Name"
+                  value={values.businessName}
+                  onChange={set('businessName')}
+                  error={fieldErrors.businessName}
+                  autoComplete="organization"
+                  required
+                />
+                <Field
+                  id="contactName"
+                  label="Your Full Name"
+                  value={values.contactName}
+                  onChange={set('contactName')}
+                  error={fieldErrors.contactName}
+                  autoComplete="name"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  id="applicantRole"
+                  label="Your Role / Position"
+                  value={values.applicantRole}
+                  onChange={set('applicantRole')}
+                  error={fieldErrors.applicantRole}
+                  placeholder="e.g. Founder, Managing Director, Head of Operations"
+                  required
+                />
+                <Field
+                  id="email"
+                  label="Email Address"
+                  type="email"
+                  value={values.email}
+                  onChange={set('email')}
+                  error={fieldErrors.email}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  id="phone"
+                  label="Contact Number"
+                  type="tel"
+                  value={values.phone}
+                  onChange={set('phone')}
+                  error={fieldErrors.phone}
+                  autoComplete="tel"
+                  placeholder="+27 82 000 0000"
+                  required
+                />
+
+                {/* Industry Category Dropdown */}
+                <div>
+                  <label htmlFor="industry" className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2">
+                    Industry / Sector <span className="text-gold">*</span>
+                  </label>
+                  <select
+                    id="industry"
+                    name="industry"
+                    value={values.industry}
+                    onChange={set('industry')}
+                    className="w-full rounded-sm bg-black/50 border border-white/12 px-4 py-2.5 text-sm text-bone focus:border-gold focus:outline-none transition-colors"
+                  >
+                    {INDUSTRY_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat} className="bg-ink text-bone">
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {values.industry === 'Other / Specialized Services' && (
+                <Field
+                  id="customIndustry"
+                  label="Specify Your Industry / Niche"
+                  value={values.customIndustry}
+                  onChange={set('customIndustry')}
+                  error={fieldErrors.industry}
+                  placeholder="e.g. Renewable Energy, Marine Surveying, Aviation"
+                  required
+                />
+              )}
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  id="registrationNumber"
+                  label="CIPC Registration Number"
+                  value={values.registrationNumber}
+                  onChange={set('registrationNumber')}
+                  error={fieldErrors.registrationNumber}
+                  placeholder="Optional"
+                />
                 <Field
                   id="website"
-                  label="Website or social page"
+                  label="Website or Social Media Page"
                   value={values.website}
                   onChange={set('website')}
                   error={fieldErrors.website}
                   placeholder="Optional — helps us verify faster"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <TextArea
-                  id="about"
-                  label="Tell us about your business"
-                  value={values.about}
-                  onChange={set('about')}
-                  error={fieldErrors.about}
-                  hint="At least 20 characters."
-                  rows={4}
-                  required
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <TextArea
-                  id="lookingFor"
-                  label="What are you hoping to get from the room?"
-                  value={values.lookingFor}
-                  onChange={set('lookingFor')}
-                  error={fieldErrors.lookingFor}
-                  hint="Optional — helps us seat you well."
-                  rows={2}
-                />
-              </div>
+
+              {/* Business Description & Offerings */}
+              <TextArea
+                id="about"
+                label="Tell us about your business"
+                value={values.about}
+                onChange={set('about')}
+                error={fieldErrors.about}
+                hint="Brief background on your company and target market (minimum 20 characters)."
+                rows={3}
+                required
+              />
+
+              <TextArea
+                id="productsServices"
+                label="What products or services does your business provide?"
+                value={values.productsServices}
+                onChange={set('productsServices')}
+                error={fieldErrors.productsServices}
+                placeholder="e.g. Commercial legal advisory, bespoke software development, corporate tax accounting"
+                rows={2}
+                required
+              />
+
+              <TextArea
+                id="communityContribution"
+                label="What can you bring to the Connect community?"
+                value={values.communityContribution}
+                onChange={set('communityContribution')}
+                error={fieldErrors.communityContribution}
+                placeholder="e.g. Strategic partnership opportunities, industry insights, cross-referral network"
+                rows={2}
+                required
+              />
+
+              <TextArea
+                id="lookingFor"
+                label="What are you hoping to get from Connect?"
+                value={values.lookingFor}
+                onChange={set('lookingFor')}
+                error={fieldErrors.lookingFor}
+                hint="Optional — helps us introduce you to relevant founders in the room."
+                rows={2}
+              />
             </div>
 
-            <div className="mt-8 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
-              <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={busy} className="w-full sm:w-auto">
-                {busy ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Submitting…
-                  </>
-                ) : (
-                  'Submit application'
-                )}
-              </Button>
+            {/* Second Representative Details (if 2 selected) */}
+            {values.attendeeCount === 2 && (
+              <div className="mt-8 pt-6 border-t border-gold/20 bg-ink/40 p-5 rounded-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-4 h-4 text-gold" />
+                  <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
+                    Second Representative Details (R450)
+                  </h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    id="rep2Name"
+                    label="Full Name"
+                    value={values.rep2Name}
+                    onChange={set('rep2Name')}
+                    error={fieldErrors.rep2Name}
+                    required
+                  />
+                  <Field
+                    id="rep2Role"
+                    label="Role / Position"
+                    value={values.rep2Role}
+                    onChange={set('rep2Role')}
+                    error={fieldErrors.rep2Role}
+                    required
+                  />
+                  <Field
+                    id="rep2Email"
+                    label="Email Address"
+                    type="email"
+                    value={values.rep2Email}
+                    onChange={set('rep2Email')}
+                    error={fieldErrors.rep2Email}
+                    required
+                  />
+                  <Field
+                    id="rep2Phone"
+                    label="Contact Number"
+                    type="tel"
+                    value={values.rep2Phone}
+                    onChange={set('rep2Phone')}
+                    error={fieldErrors.rep2Phone}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Total summary & Action */}
+            <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted">
+                  Total Upon Approval:
+                </p>
+                <p className="text-xl font-bold text-gold">
+                  {formatZAR(values.attendeeCount === 2 ? 900 : 450)}{' '}
+                  <span className="text-xs text-muted font-normal">
+                    ({values.attendeeCount} {values.attendeeCount === 1 ? 'attendee' : 'attendees'}, incl. breakfast)
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={busy} className="w-full sm:w-auto">
+                  {busy ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    'Submit Application for Review'
+                  )}
+                </Button>
+              </div>
             </div>
           </form>
         )}

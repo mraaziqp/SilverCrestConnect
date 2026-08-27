@@ -440,7 +440,7 @@ const ApplicationsTab: React.FC<{
       const ind = (app.industry || 'General').trim();
       if (!map[ind]) map[ind] = { approvedOrPaid: 0, pending: 0 };
       if (app.status === 'APPROVED' || app.status === 'PAID') {
-        map[ind].approvedOrPaid += 1;
+        map[ind].approvedOrPaid += (app.attendeeCount || 1);
       } else if (app.status === 'PENDING_REVIEW') {
         map[ind].pending += 1;
       }
@@ -456,15 +456,15 @@ const ApplicationsTab: React.FC<{
 
   return (
     <div>
-      {/* Category / Industry Slot Tracker */}
+      {/* Category / Industry Slot Tracker (Target: 1-2 per category) */}
       <div className="mb-6 rounded-lg border border-gold/25 bg-ink-raised/70 p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
-              Industry Slot Tracker (Target: Max 2–3 Per Category)
+              Industry Slot Tracker (Target: 1–2 Businesses Per Category)
             </h4>
             <p className="mt-1 text-[12px] text-muted">
-              Monitoring confirmed spots per sector to prevent oversaturation in the room.
+              Monitoring confirmed spots per sector to prevent oversaturation and ensure diverse networking.
             </p>
           </div>
           <span className="text-[11px] text-muted/70">
@@ -475,8 +475,8 @@ const ApplicationsTab: React.FC<{
         {industryStats.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {industryStats.map(([industry, stats]: [string, { approvedOrPaid: number; pending: number }]) => {
-              const full = stats.approvedOrPaid >= 3;
-              const near = stats.approvedOrPaid === 2;
+              const full = stats.approvedOrPaid >= 2;
+              const near = stats.approvedOrPaid === 1;
               return (
                 <div
                   key={industry}
@@ -489,7 +489,7 @@ const ApplicationsTab: React.FC<{
                   }`}
                 >
                   <span className="font-medium">{industry}:</span>
-                  <span className="font-bold">{stats.approvedOrPaid}/3 booked</span>
+                  <span className="font-bold">{stats.approvedOrPaid}/2 booked</span>
                   {stats.pending > 0 && (
                     <span className="text-[10px] text-muted">({stats.pending} pending)</span>
                   )}
@@ -517,23 +517,33 @@ const ApplicationsTab: React.FC<{
         ))}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {visible.map((app) => (
           <Card key={app.id} className="p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="text-[15px] font-semibold text-bone">{app.businessName}</h3>
+                  <h3 className="text-[16px] font-bold text-bone">{app.businessName}</h3>
                   <StatusPill status={app.status} />
                   <span className="font-mono text-[11px] text-gold">{app.reference}</span>
+                  <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-bold text-gold">
+                    {app.attendeeCount === 2 ? '2 Reps (R900)' : '1 Rep (R450)'}
+                  </span>
                 </div>
-                <p className="mt-1.5 text-[13px] text-muted">
-                  {app.contactName} · {app.industry}
+
+                <p className="mt-2 text-[13.5px] text-bone font-medium">
+                  {app.contactName}{' '}
+                  {app.applicantRole && (
+                    <span className="text-xs text-muted font-normal">({app.applicantRole})</span>
+                  )}{' '}
+                  · <span className="text-gold font-normal">{app.industry}</span>
                 </p>
+
                 <p className="mt-1 text-[12px] text-muted/70">
                   {app.email} · {app.phone}
-                  {app.registrationNumber && ` · CIPC ${app.registrationNumber}`}
+                  {app.registrationNumber && ` · CIPC: ${app.registrationNumber}`}
                 </p>
+
                 {app.website && (
                   <a
                     href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
@@ -544,14 +554,52 @@ const ApplicationsTab: React.FC<{
                     {app.website}
                   </a>
                 )}
-                <p className="mt-3 text-[13px] text-muted leading-relaxed max-w-2xl">{app.about}</p>
-                {app.lookingFor && (
-                  <p className="mt-2 text-[12px] text-muted/70 leading-relaxed max-w-2xl">
-                    <span className="text-muted">Looking for:</span> {app.lookingFor}
-                  </p>
+
+                {/* Second Attendee Info if 2 representatives */}
+                {app.attendeeCount === 2 && (app.rep2Name || app.rep2Email) && (
+                  <div className="mt-3 p-3 rounded bg-black/40 border border-white/10 text-xs">
+                    <p className="font-semibold text-gold uppercase tracking-wider text-[10px]">
+                      Second Representative:
+                    </p>
+                    <p className="mt-1 text-bone">
+                      {app.rep2Name} {app.rep2Role && `(${app.rep2Role})`} · {app.rep2Email} · {app.rep2Phone}
+                    </p>
+                  </div>
                 )}
+
+                <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">About the Business:</span>
+                    <p className="mt-0.5 text-[13px] text-muted leading-relaxed">{app.about}</p>
+                  </div>
+
+                  {app.productsServices && (
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Products &amp; Services:</span>
+                      <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.productsServices}</p>
+                    </div>
+                  )}
+
+                  {app.communityContribution && (
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Community Value &amp; Network:</span>
+                      <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.communityContribution}</p>
+                    </div>
+                  )}
+
+                  {app.lookingFor && (
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">Looking for from Connect:</span>
+                      <p className="mt-0.5 text-[12.5px] text-muted/80 leading-relaxed">{app.lookingFor}</p>
+                    </div>
+                  )}
+                </div>
+
                 {app.ticketCode && (
-                  <p className="mt-3 font-mono text-[12px] text-gold">Ticket: {app.ticketCode}</p>
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded bg-gold/10 border border-gold/30">
+                    <span className="text-xs uppercase text-gold font-bold">Confirmed Ticket Code:</span>
+                    <span className="font-mono text-sm font-bold text-bone">{app.ticketCode}</span>
+                  </div>
                 )}
               </div>
 

@@ -24,6 +24,9 @@ interface StatusResponse {
     reference: string;
     businessName: string;
     status: ApplicationStatus;
+    attendeeCount?: 1 | 2;
+    totalPriceZAR?: number;
+    rep2Name?: string;
     ticketCode?: string;
     createdAt: string;
   };
@@ -168,6 +171,12 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
 
       {data.status === 'APPROVED' && (
         <div className="mt-8">
+          {data.attendeeCount === 2 && (
+            <div className="mb-4 p-3 rounded bg-gold/10 border border-gold/25 text-xs text-bone">
+              <span className="font-semibold text-gold">2 Approved Attendees:</span>{' '}
+              {data.businessName} (Includes light breakfast for both attendees)
+            </div>
+          )}
           <Button size="lg" className="w-full" onClick={pay} disabled={paying}>
             {paying ? (
               <>
@@ -176,7 +185,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
               </>
             ) : (
               <>
-                Pay {formatZAR(ticketPrice)} &amp; confirm
+                Pay {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))} &amp; Confirm Seat
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

@@ -180,3 +180,31 @@ test('the console driver reports success so a payment is never rolled back', asy
   assert.equal(result.ok, true);
   assert.equal(result.skipped, true);
 });
+
+test('approval and confirmation emails reflect 2 representatives and R900 pricing', () => {
+  const approvedMail = applicationApproved({
+    contactName: 'Wesley',
+    businessName: 'Bosman Catering',
+    reference: 'SCC26-REP2',
+    payUrl: 'https://example.co.za/pay/SCC26-REP2',
+    seatsRemaining: 10,
+    attendeeCount: 2,
+    totalAmountZAR: 900,
+  });
+
+  assert.ok(approvedMail.html.includes('R900.00'), 'approval must show R900 for 2 reps');
+  assert.ok(approvedMail.text.includes('2 attendees'), 'approval must note 2 attendees');
+
+  const ticketMail = ticketConfirmed({
+    contactName: 'Wesley',
+    businessName: 'Bosman Catering',
+    ticketCode: 'TICKET-REP2',
+    amountZAR: 900,
+    attendeeCount: 2,
+  });
+
+  assert.ok(ticketMail.html.includes('R900.00'), 'ticket must confirm R900');
+  assert.ok(ticketMail.subject.includes("YOU'RE CONFIRMED"), 'subject matches format');
+  assert.ok(ticketMail.text.includes('Light breakfast'), 'includes light breakfast notice');
+});
+

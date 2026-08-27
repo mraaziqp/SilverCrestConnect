@@ -155,36 +155,38 @@ export function applicationReceived(input: {
   contactName: string;
   businessName: string;
   reference: string;
+  attendeeCount?: 1 | 2;
 }): RenderedEmail {
-  const { contactName, businessName, reference } = input;
+  const { contactName, businessName, reference, attendeeCount = 1 } = input;
 
   return {
-    subject: `Application received — ${EVENT.fullName}`,
+    subject: `Thank you for applying — ${EVENT.fullName}`,
     html: shell({
-      preheader: `We have your application for ${businessName}. Reference ${reference}.`,
-      heading: 'Application received',
+      preheader: `We have received your application for ${businessName}. Reference: ${reference}.`,
+      heading: 'Application Received',
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Thank you for applying for a seat at <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)}.</p>
-<p style="margin:0 0 16px;">Our team will run a quick verification check on ${esc(businessName)} to confirm active SME status. Once you are approved we will email you a secure payment link for the ${money(EVENT.ticketPriceZAR)} attendance fee.</p>
-<p style="margin:0;">There is nothing to pay right now.</p>`,
+<p style="margin:0 0 16px;">Thank you for applying to attend <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)} for <strong style="color:${BONE};">${esc(businessName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
+<p style="margin:0 0 16px;">Because Connect is a curated event aiming for <strong>1–2 businesses per category</strong>, applications are reviewed to maintain a diverse, high-value mix of non-competing businesses and professionals.</p>
+<p style="margin:0 0 16px;">Our team is reviewing your application. If approved, you will receive an email with your private payment instructions to secure your spot.</p>
+<p style="margin:0;">There is no payment required at this stage.</p>`,
       panel: {
-        label: 'Your reference',
+        label: 'Your Reference Number',
         value: reference,
-        note: 'Keep this — you will need it to pay once approved.',
+        note: 'Keep this reference handy — you will need it once approved.',
       },
     }),
     text: `Hi ${contactName},
 
-Thank you for applying for a seat at ${EVENT.fullName} on ${EVENT.dateLabel}.
+Thank you for applying to attend ${EVENT.fullName} on ${EVENT.dateLabel} for ${businessName} (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).
 
-Our team will run a quick verification check on ${businessName} to confirm
-active SME status. Once you are approved we will email you a secure payment
-link for the ${money(EVENT.ticketPriceZAR)} attendance fee.
+Because Connect is a curated event aiming for 1-2 businesses per category, applications are reviewed to maintain a diverse, high-value mix of non-competing businesses and professionals.
 
-There is nothing to pay right now.
+Our team is reviewing your application. If approved, you will receive an email with your private payment instructions to secure your spot.
+
+There is no payment required at this stage.
 
 YOUR REFERENCE: ${reference}
-Keep this - you will need it to pay once approved.
+Keep this reference handy - you will need it once approved.
 ${textFooter()}`,
   };
 }
@@ -196,8 +198,18 @@ export function applicationApproved(input: {
   reference: string;
   payUrl: string;
   seatsRemaining: number;
+  attendeeCount?: 1 | 2;
+  totalAmountZAR?: number;
 }): RenderedEmail {
-  const { contactName, businessName, reference, payUrl, seatsRemaining } = input;
+  const {
+    contactName,
+    businessName,
+    reference,
+    payUrl,
+    seatsRemaining,
+    attendeeCount = 1,
+    totalAmountZAR = attendeeCount === 2 ? EVENT.ticketPriceZAR * 2 : EVENT.ticketPriceZAR,
+  } = input;
 
   const scarcity =
     seatsRemaining > 0 && seatsRemaining <= 5
@@ -205,31 +217,30 @@ export function applicationApproved(input: {
       : '';
 
   return {
-    subject: `You're approved — secure your seat at ${EVENT.fullName}`,
+    subject: `Your application is approved — Secure your seat for ${EVENT.fullName}`,
     html: shell({
-      preheader: `${businessName} is approved. Pay ${money(EVENT.ticketPriceZAR)} to confirm your seat.`,
-      heading: 'You’re approved',
+      preheader: `${businessName} is approved! Complete payment of ${money(totalAmountZAR)} to secure your seat.`,
+      heading: 'Application Approved',
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Good news — <strong style="color:${BONE};">${esc(businessName)}</strong> has been approved for ${esc(EVENT.fullName)} on ${esc(EVENT.dateLabel)}.</p>
-<p style="margin:0 0 16px;">To confirm your seat, complete the ${money(EVENT.ticketPriceZAR)} attendance fee below. Payment is handled securely by PayFast — card details are entered on their page and never touch ours.</p>
+<p style="margin:0 0 16px;">Good news — your application for <strong style="color:${BONE};">${esc(businessName)}</strong> has been approved for <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)}.</p>
+<p style="margin:0 0 16px;">Your seat is now available to secure. Total attendance fee: <strong style="color:${BONE};">${money(totalAmountZAR)}</strong> for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).</p>
+<p style="margin:0 0 16px;">Click below to complete your payment securely via PayFast.</p>
 ${scarcity}
-<p style="margin:0;">Your seat is not held until payment clears.</p>`,
-      cta: { label: `Pay ${money(EVENT.ticketPriceZAR)} & confirm`, url: payUrl },
-      panel: { label: 'Your reference', value: reference },
+<p style="margin:0;font-weight:bold;color:${GOLD};">Important: Your seat is only confirmed once payment has cleared.</p>`,
+      cta: { label: `Pay ${money(totalAmountZAR)} & Confirm Seat`, url: payUrl },
+      panel: { label: 'Your Reference', value: reference },
     }),
     text: `Hi ${contactName},
 
-Good news - ${businessName} has been approved for ${EVENT.fullName}
-on ${EVENT.dateLabel}.
+Good news - your application for ${businessName} has been approved for ${EVENT.fullName} on ${EVENT.dateLabel}.
 
-To confirm your seat, complete the ${money(EVENT.ticketPriceZAR)} attendance fee here:
+Your seat is now available to secure. Total attendance fee: ${money(totalAmountZAR)} for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).
+
+Complete your payment securely via PayFast here:
 
 ${payUrl}
 
-Payment is handled securely by PayFast - card details are entered on their
-page and never touch ours.
-${seatsRemaining > 0 && seatsRemaining <= 5 ? `\nOnly ${seatsRemaining} ${seatsRemaining === 1 ? 'seat' : 'seats'} remaining.\n` : ''}
-Your seat is not held until payment clears.
+${seatsRemaining > 0 && seatsRemaining <= 5 ? `Only ${seatsRemaining} ${seatsRemaining === 1 ? 'seat' : 'seats'} remaining.\n\n` : ''}Important: Your seat is only confirmed once payment has cleared.
 
 YOUR REFERENCE: ${reference}
 ${textFooter()}`,
@@ -242,42 +253,48 @@ export function ticketConfirmed(input: {
   businessName: string;
   ticketCode: string;
   amountZAR: number;
+  attendeeCount?: 1 | 2;
 }): RenderedEmail {
-  const { contactName, businessName, ticketCode, amountZAR } = input;
+  const { contactName, businessName, ticketCode, amountZAR, attendeeCount = 1 } = input;
 
   return {
-    subject: `Your seat is confirmed — ${EVENT.fullName}`,
+    subject: `YOU'RE CONFIRMED — SILVER CREST CONNECT '26`,
     html: shell({
-      preheader: `${businessName} is confirmed for ${EVENT.dateLabel}. Ticket ${ticketCode}.`,
-      heading: 'Your seat is confirmed',
+      preheader: `You're confirmed for Silver Crest Connect '26! Ticket code: ${ticketCode}.`,
+      heading: "YOU'RE CONFIRMED",
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Payment of <strong style="color:${BONE};">${money(amountZAR)}</strong> received. <strong style="color:${BONE};">${esc(businessName)}</strong> is confirmed for ${esc(EVENT.fullName)}.</p>
-<p style="margin:0 0 16px;"><strong style="color:${BONE};">${esc(EVENT.dateLabel)}, ${esc(EVENT.timeLabel)}</strong><br>${esc(EVENT.venue)}, ${esc(EVENT.venueCity)}</p>
-<p style="margin:0 0 16px;">Bring this ticket code with you on the day. On arrival you will receive your branded lanyard and badge, and you will have up to two minutes in the SME Spotlight to introduce your business.</p>
-<p style="margin:0;">Your ${money(amountZAR)} goes directly towards supplies for the ${esc(EVENT.causeShort)}. Thank you.</p>`,
+<p style="margin:0 0 16px;">Payment of <strong style="color:${BONE};">${money(amountZAR)}</strong> received. <strong style="color:${BONE};">${esc(businessName)}</strong> is officially confirmed for <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
+<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:16px;margin:20px 0;border-radius:4px;">
+  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Date:</strong> Friday, ${esc(EVENT.dateLabel)}</p>
+  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Time:</strong> ${esc(EVENT.timeLabel)} (Registration from 08:30)</p>
+  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Location:</strong> ${esc(EVENT.venueCity)}</p>
+  <p style="margin:0;font-size:14px;color:${GOLD};"><strong>Includes:</strong> Light breakfast, refreshments, and welcome pack</p>
+</div>
+<p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival, you will receive your custom lanyard, business badge, and executive pen. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
+<p style="margin:0;">100% of proceeds go directly towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
       panel: {
-        label: 'Your ticket',
+        label: 'Your Digital Ticket Code',
         value: ticketCode,
-        note: 'Show this at registration.',
+        note: 'Present this ticket code upon arrival at registration.',
       },
     }),
     text: `Hi ${contactName},
 
-Payment of ${money(amountZAR)} received. ${businessName} is confirmed for
-${EVENT.fullName}.
+Payment of ${money(amountZAR)} received. ${businessName} is officially confirmed for ${EVENT.fullName} (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).
 
-${EVENT.dateLabel}, ${EVENT.timeLabel}
-${EVENT.venue}, ${EVENT.venueCity}
+EVENT DETAILS:
+- Date: Friday, ${EVENT.dateLabel}
+- Time: ${EVENT.timeLabel} (Registration opens 08:30)
+- Location: ${EVENT.venueCity}
+- Includes: Light breakfast, morning refreshments, and welcome pack
 
-Bring this ticket code with you on the day. On arrival you will receive your
-branded lanyard and badge, and you will have up to two minutes in the SME
-Spotlight to introduce your business.
+WHAT TO EXPECT:
+On arrival, you will receive your custom lanyard, business badge, and executive pen. You will also have the floor during the SME Spotlight to introduce your business to the room.
 
-YOUR TICKET: ${ticketCode}
-Show this at registration.
+YOUR TICKET CODE: ${ticketCode}
+Present this code upon arrival at registration.
 
-Your ${money(amountZAR)} goes directly towards supplies for the
-${EVENT.causeShort}. Thank you.
+100% of proceeds fund the ${EVENT.causeShort}. We look forward to hosting you!
 ${textFooter()}`,
   };
 }

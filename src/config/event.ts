@@ -175,3 +175,55 @@ export const DONATION_PRESETS = [100, 250, 500, 1000] as const;
 export const DONATION_MIN_ZAR = 10;
 export const DONATION_MAX_ZAR = 100000;
 
+/** Curated industry sectors (aiming for 1-2 businesses per category). */
+export const INDUSTRY_CATEGORIES = [
+  'Accounting & Financial Services',
+  'Legal Services & Compliance',
+  'Technology, Software & IT',
+  'Marketing, Media & Design',
+  'Real Estate & Property Management',
+  'Construction, Trades & Engineering',
+  'Retail, Wholesale & eCommerce',
+  'Healthcare, Medical & Wellness',
+  'Hospitality, Events & Catering',
+  'Consulting, Coaching & HR',
+  'Logistics, Transport & Supply Chain',
+  'Manufacturing & Industrial',
+  'Education & Training',
+  'Other / Specialized Services',
+] as const;
+
+/** Items included in the R450 attendance fee. */
+export const TICKET_INCLUDES = [
+  'Silver Crest Connect 2026 full session access',
+  'Light breakfast and morning refreshments included',
+  'Expert keynote discussions and practical founder Q&A',
+  'Dedicated SME Spotlight presentation for your business',
+  'Curated B2B networking with 1-2 businesses per category',
+  'Branded lanyard, custom business badge and executive pen',
+];
+
+/** Frequently Asked Questions */
+export const FAQS = [
+  {
+    question: 'Can I bring someone from my business?',
+    answer:
+      'Yes. Each business may apply for up to two representatives. Each approved attendee is charged R450 (R900 total for 2 attendees), which includes the light breakfast, materials, and full event access.',
+  },
+  {
+    question: 'How does the curated application process work?',
+    answer:
+      'To ensure a high-value, diverse room without oversaturation, we curate 1 to 2 businesses per industry category. Step 1: Submit your free application. Step 2: Our team reviews your category fit. Step 3: Once approved, you receive your private payment link to book and confirm your seat.',
+  },
+  {
+    question: 'When is payment required?',
+    answer:
+      'Applying is completely free. Payment is only requested after your application has been reviewed and approved by the Silver Crest team.',
+  },
+  {
+    question: 'What happens if my industry category is full?',
+    answer:
+      'If your category has reached its limit, our team reviews whether your specific services offer a distinct niche. If suitable, we may approve your spot or place you on the priority waiting list.',
+  },
+];
+
