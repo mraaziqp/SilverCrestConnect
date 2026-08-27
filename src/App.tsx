@@ -27,9 +27,11 @@ import { ApplicationStatusPage } from './components/ApplicationStatusPage';
 import { NotFound } from './components/NotFound';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { api } from './lib/api';
+import type { GalleryItem } from './types';
 import type { EventSettings, WelcomePackItem, ImpactItem } from './types';
 
 interface EventSummary {
+  gallery?: GalleryItem[];
   seatsRemaining: number;
   totalRaisedZAR: number;
   supporters: number;
@@ -93,6 +95,9 @@ function LandingPage() {
         <Donate
           totalRaisedZAR={summary?.totalRaisedZAR ?? null}
           supporters={summary?.supporters ?? null}
+          gallery={summary?.gallery}
+          galleryHeading={summary?.event?.galleryHeading}
+          galleryBody={summary?.event?.galleryBody}
         />
         <Supporters />
         <ImpactStand

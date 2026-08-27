@@ -23,6 +23,7 @@ import type {
   Payment,
   ProgrammeItem,
   WelcomePackItem,
+  GalleryItem,
 } from '../types.js';
 import type { DataStore } from './store-types.js';
 import { DEFAULT_SETTINGS, DEFAULT_CONTENT } from './store.js';
@@ -325,6 +326,16 @@ export class RtdbStore implements DataStore {
 
   async updateImpactItems(items: ImpactItem[]): Promise<ImpactItem[]> {
     await this.writeContent('impactItems', { items });
+    return items;
+  }
+
+  async getGallery(): Promise<GalleryItem[]> {
+    const doc = await this.readContent<{ items: GalleryItem[] }>('gallery', { items: [] });
+    return doc.items ?? [];
+  }
+
+  async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
+    await this.writeContent('gallery', { items });
     return items;
   }
 }

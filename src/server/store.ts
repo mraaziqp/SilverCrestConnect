@@ -25,6 +25,7 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
   ImpactItem,
+  GalleryItem,
 } from '../types.js';
 import {
   EVENT,
@@ -66,6 +67,9 @@ export const DEFAULT_SETTINGS: EventSettings = {
   causeShort: EVENT.causeShort,
   footerNote: EVENT.footerNote,
   copyrightText: EVENT.copyrightText,
+  galleryHeading: 'Our last outreach drive',
+  galleryBody:
+    'Every rand raised here goes towards supplies for the next drive. These are photographs from the last one.',
 };
 
 interface Database {
@@ -75,6 +79,7 @@ interface Database {
   programme: ProgrammeItem[];
   welcomePack: WelcomePackItem[];
   impactItems: ImpactItem[];
+  gallery: GalleryItem[];
 }
 
 /**
@@ -113,6 +118,8 @@ function emptyDatabase(): Database {
     programme: DEFAULT_PROGRAMME.map((item) => ({ ...item })),
     welcomePack: DEFAULT_WELCOME_PACK.map((item) => ({ ...item })),
     impactItems: DEFAULT_IMPACT_ITEMS.map((item) => ({ ...item })),
+    // The gallery starts empty — it holds photos the team supplies.
+    gallery: [],
   };
 }
 
@@ -163,6 +170,7 @@ export class JsonStore implements DataStore {
         programme: parsed.programme ?? base.programme,
         welcomePack: parsed.welcomePack ?? base.welcomePack,
         impactItems: parsed.impactItems ?? base.impactItems,
+        gallery: parsed.gallery ?? base.gallery,
       };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -353,6 +361,16 @@ export class JsonStore implements DataStore {
 
   async getImpactItems(): Promise<ImpactItem[]> {
     return [...this.db.impactItems];
+  }
+
+  async getGallery(): Promise<GalleryItem[]> {
+    return [...this.db.gallery];
+  }
+
+  async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
+    this.db.gallery = items;
+    await this.save();
+    return items;
   }
 
   async updateImpactItems(items: ImpactItem[]): Promise<ImpactItem[]> {

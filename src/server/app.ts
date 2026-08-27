@@ -30,6 +30,7 @@ import {
   type PayFastConfig,
 } from './payfast.js';
 import { validateSettings, validateItems } from './settings-validate.js';
+import { ImageStorage, loadStorageConfig } from './storage.js';
 import {
   FieldErrors,
   email as validEmail,
@@ -75,6 +76,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
   const { store, payfast } = options;
   const mailerConfig = options.mailerConfig ?? loadMailerConfig();
   const mailer = options.mailer ?? createMailer(mailerConfig);
+  const imageStorage = new ImageStorage(loadStorageConfig());
   const app = express();
 
   // Behind Vercel/Render/nginx, req.ip must come from X-Forwarded-For for the
@@ -98,7 +100,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
     (req, res) => handleItn(req, res, store, payfast, mailer),
   );
 
-  app.use(express.json({ limit: '64kb' }));
+  // 8mb, not 64kb: the dashboard posts images as data URIs, and base64 adds
+  // about a third on top of the 5mb file limit the uploader enforces.
+  app.use(express.json({ limit: '8mb' }));
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 
   // ------------------------------------------------------------------ public API
@@ -125,6 +129,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       event: settings,
       welcomePack: await store.getWelcomePack(),
       impactItems: await store.getImpactItems(),
+      gallery: await store.getGallery(),
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
@@ -534,6 +539,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       programme: await store.getProgramme(),
       welcomePack: await store.getWelcomePack(),
       impactItems: await store.getImpactItems(),
+      gallery: await store.getGallery(),
     });
   });
 
@@ -623,6 +629,57 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     const updated = await store.updateImpactItems(items);
     return res.json({ success: true, impactItems: updated });
+  });
+
+  app.put('/api/admin/gallery', async (req: Request, res: Response) => {
+    const { items, error } = validateItems<{ url: string; caption: string }>(
+      req.body?.items,
+      { url: 200_000, caption: 200 },
+      40,
+    );
+    if (error) return res.status(400).json({ success: false, error });
+
+    // Reject anything that is not an image reference before it reaches a page.
+    const cleaned = [];
+    for (const item of items) {
+      const url = item.url.trim();
+      if (!url) continue;
+      if (!/^https?:\/\//i.test(url) && !url.startsWith('data:image/')) {
+        return res.status(400).json({
+          success: false,
+          error: `"${url.slice(0, 40)}" is not an image URL. Use an https link or upload a file.`,
+        });
+      }
+      cleaned.push({ id: makeId('img'), url, caption: item.caption || undefined });
+    }
+
+    const updated = await store.updateGallery(cleaned);
+    return res.json({ success: true, gallery: updated });
+  });
+
+  /** Reports whether direct upload is possible, so the UI can adapt. */
+  app.get('/api/admin/storage-status', async (_req: Request, res: Response) => {
+    const available = await imageStorage.isAvailable();
+    return res.json({
+      success: true,
+      available,
+      note: available
+        ? 'Image upload is available.'
+        : 'Image upload is unavailable — paste an image URL instead. Enable Firebase Storage to upload directly.',
+    });
+  });
+
+  app.post('/api/admin/upload-image', async (req: Request, res: Response) => {
+    const dataUri = typeof req.body?.dataUri === 'string' ? req.body.dataUri : '';
+    if (!dataUri) {
+      return res.status(400).json({ success: false, error: 'No image supplied.' });
+    }
+
+    const folder = req.body?.folder === 'logo' ? 'logo' : 'gallery';
+    const result = await imageStorage.upload(dataUri, folder);
+    if (!result.ok) return res.status(400).json({ success: false, error: result.error });
+
+    return res.json({ success: true, url: result.url });
   });
 
   app.post('/api/admin/upload-logo', async (req: Request, res: Response) => {

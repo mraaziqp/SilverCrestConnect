@@ -159,6 +159,9 @@ export interface EventSettings {
   cause: string;
   causeShort: string;
   customLogoUrl?: string;
+  /** Heading above the previous-drive gallery on the donate section. */
+  galleryHeading: string;
+  galleryBody: string;
   footerNote: string;
   copyrightText: string;
 }
@@ -179,3 +182,16 @@ export interface PayFastConfigStatus {
   warnings: string[];
 }
 
+
+/**
+ * A photo in the "previous outreach drive" gallery beside the donate form.
+ *
+ * `url` may be a Firebase Storage link, any public image URL, or an inline
+ * data URI — whichever the team has to hand. Nothing here assumes a
+ * particular host, so the gallery works before Storage is set up.
+ */
+export interface GalleryItem {
+  id: string;
+  url: string;
+  caption?: string;
+}

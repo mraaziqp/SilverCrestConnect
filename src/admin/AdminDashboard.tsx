@@ -30,6 +30,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Monogram, Button, Card } from '../components/Brand';
+import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import type {
   Application,
@@ -135,7 +136,7 @@ const SignIn: React.FC<{ onSignedIn: (token: string) => void }> = ({ onSignedIn 
 
 // ------------------------------------------------------------------- dashboard
 
-type Tab = 'overview' | 'applications' | 'payments' | 'settings' | 'programme';
+type Tab = 'overview' | 'applications' | 'payments' | 'settings' | 'programme' | 'gallery';
 
 const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, onSignOut }) => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -251,6 +252,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
               ['payments', `Payments (${payments.length})`],
               ['settings', 'Settings & Branding'],
               ['programme', 'Programme & Broadcast'],
+              ['gallery', 'Photo Gallery'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -288,6 +290,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
             )}
             {tab === 'payments' && <PaymentsTab payments={payments} onExport={downloadCsv} />}
             {tab === 'settings' && <SettingsTab token={token} onSaved={load} />}
+            {tab === 'gallery' && <GalleryTab token={token} />}
             {tab === 'programme' && (
               <ProgrammeTab
                 token={token}

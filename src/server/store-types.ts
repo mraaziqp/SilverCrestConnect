@@ -18,6 +18,7 @@ import type {
   Payment,
   ProgrammeItem,
   WelcomePackItem,
+  GalleryItem,
 } from '../types.js';
 
 export interface DataStore {
@@ -56,4 +57,6 @@ export interface DataStore {
   updateWelcomePack(items: WelcomePackItem[]): Promise<WelcomePackItem[]>;
   getImpactItems(): Promise<ImpactItem[]>;
   updateImpactItems(items: ImpactItem[]): Promise<ImpactItem[]>;
+  getGallery(): Promise<GalleryItem[]>;
+  updateGallery(items: GalleryItem[]): Promise<GalleryItem[]>;
 }

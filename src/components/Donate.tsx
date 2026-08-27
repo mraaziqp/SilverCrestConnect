@@ -10,14 +10,24 @@ import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
-import type { CheckoutResponse } from '../types';
+import type { CheckoutResponse, GalleryItem } from '../types';
 
 interface DonateProps {
+  /** Photos from the previous outreach drive, shown beside the form. */
+  gallery?: GalleryItem[];
+  galleryHeading?: string;
+  galleryBody?: string;
   totalRaisedZAR: number | null;
   supporters: number | null;
 }
 
-export const Donate: React.FC<DonateProps> = ({ totalRaisedZAR, supporters }) => {
+export const Donate: React.FC<DonateProps> = ({
+  totalRaisedZAR,
+  supporters,
+  gallery = [],
+  galleryHeading,
+  galleryBody,
+}) => {
   const [preset, setPreset] = useState<number | null>(DONATION_PRESETS[1]);
   const [custom, setCustom] = useState('');
   const [name, setName] = useState('');
@@ -93,7 +103,7 @@ export const Donate: React.FC<DonateProps> = ({ totalRaisedZAR, supporters }) =>
         </div>
       )}
 
-      <div className="mt-14 max-w-2xl mx-auto">
+      <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
         <Card featured className="p-8 sm:p-10">
           <form onSubmit={submit} noValidate>
             <h3 className="font-display text-xl font-bold text-bone">Make a direct donation</h3>
@@ -253,7 +263,64 @@ export const Donate: React.FC<DonateProps> = ({ totalRaisedZAR, supporters }) =>
             </p>
           </form>
         </Card>
+
+        <PreviousDrive heading={galleryHeading} body={galleryBody} items={gallery} />
       </div>
     </Section>
+  );
+};
+
+/**
+ * Photos from the last outreach drive.
+ *
+ * This is the proof behind the ask — it shows a donor what their money turned
+ * into last time. It renders nothing at all when there are no photos, so the
+ * column does not sit empty before the team has uploaded any.
+ */
+const PreviousDrive: React.FC<{
+  heading?: string;
+  body?: string;
+  items: GalleryItem[];
+}> = ({ heading, body, items }) => {
+  if (items.length === 0) return null;
+
+  const [lead, ...rest] = items;
+
+  return (
+    <div className="lg:sticky lg:top-24">
+      <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
+        {heading || 'Our last outreach drive'}
+      </p>
+      {body && <p className="mt-3 text-[14px] text-muted leading-relaxed">{body}</p>}
+
+      <figure className="mt-6 overflow-hidden rounded-lg border border-white/10">
+        <img
+          src={lead.url}
+          alt={lead.caption || 'Photograph from the previous outreach drive'}
+          loading="lazy"
+          className="w-full h-auto object-cover aspect-[4/3]"
+        />
+        {lead.caption && (
+          <figcaption className="px-4 py-3 text-[12px] text-muted bg-ink-raised">
+            {lead.caption}
+          </figcaption>
+        )}
+      </figure>
+
+      {rest.length > 0 && (
+        <ul className="mt-3 grid grid-cols-3 gap-3">
+          {rest.slice(0, 6).map((item) => (
+            <li key={item.id} className="overflow-hidden rounded-sm border border-white/10">
+              <img
+                src={item.url}
+                alt={item.caption || 'Photograph from the previous outreach drive'}
+                loading="lazy"
+                className="w-full h-full object-cover aspect-square"
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 };
