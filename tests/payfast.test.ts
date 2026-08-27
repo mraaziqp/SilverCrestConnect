@@ -213,3 +213,66 @@ test('sandbox still honours the skip flags, so local testing keeps working', () 
   assert.equal(sandbox.skipIpCheck, true);
   assert.equal(sandbox.skipServerConfirm, true);
 });
+
+/**
+ * Browser origin vs API origin.
+ *
+ * Splitting the client and the API across two hosts is a normal deployment —
+ * a static host serving the build, the API behind a rewrite. The return URLs
+ * must address the browser's host, but the ITN must address the API directly:
+ * PayFast signs the notification and the handler verifies that signature over
+ * the raw body, so a proxy hop that re-encodes it fails the check after the
+ * money has already moved.
+ */
+test('API_URL sends the ITN to the API host, leaving return URLs on the site', () => {
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'sandbox',
+    APP_URL: 'https://scconnect.co.za',
+    API_URL: 'https://api.scconnect.co.za',
+  } as NodeJS.ProcessEnv);
+
+  const fields = buildPaymentFields(config, {
+    reference: 'TKT-TEST',
+    amountZAR: 450,
+    itemName: 'Ticket',
+    itemDescription: 'One seat',
+    nameFirst: 'Thandi',
+    nameLast: 'Nkosi',
+    email: 'thandi@example.co.za',
+  });
+
+  assert.equal(fields.notify_url, 'https://api.scconnect.co.za/api/payfast/itn');
+  assert.equal(fields.return_url, 'https://scconnect.co.za/payment/return');
+  assert.equal(fields.cancel_url, 'https://scconnect.co.za/payment/cancel');
+});
+
+test('without API_URL both fall back to APP_URL, so single-origin deploys are unchanged', () => {
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'sandbox',
+    APP_URL: 'https://scconnect.co.za',
+  } as NodeJS.ProcessEnv);
+
+  assert.equal(config.apiUrl, 'https://scconnect.co.za');
+
+  const fields = buildPaymentFields(config, {
+    reference: 'TKT-TEST',
+    amountZAR: 450,
+    itemName: 'Ticket',
+    itemDescription: 'One seat',
+    nameFirst: 'Thandi',
+    nameLast: 'Nkosi',
+    email: 'thandi@example.co.za',
+  });
+
+  assert.equal(fields.notify_url, 'https://scconnect.co.za/api/payfast/itn');
+});
+
+test('a trailing slash on API_URL does not produce a double slash in the ITN URL', () => {
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'sandbox',
+    APP_URL: 'https://scconnect.co.za',
+    API_URL: 'https://api.scconnect.co.za/',
+  } as NodeJS.ProcessEnv);
+
+  assert.equal(config.apiUrl, 'https://api.scconnect.co.za');
+});

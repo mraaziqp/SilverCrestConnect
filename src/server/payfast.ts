@@ -73,8 +73,20 @@ export interface PayFastConfig {
   merchantId: string;
   merchantKey: string;
   passphrase: string;
-  /** Public base URL of this app, used to build return/cancel/notify URLs. */
+  /** Public base URL the *browser* sees. Builds return/cancel URLs. */
   appUrl: string;
+  /**
+   * Public base URL of the *API*. Builds the ITN notify URL.
+   *
+   * These are the same thing on a single-origin deployment, and default that
+   * way. They differ when the client is hosted apart from the API — a static
+   * host serving the build with the API behind a rewrite. There the ITN must
+   * address the API directly: PayFast signs the notification and the handler
+   * verifies that signature over the raw request body, so a proxy hop that
+   * re-encodes the body would fail every payment confirmation, silently, with
+   * the money already taken.
+   */
+  apiUrl: string;
   /** True when real credentials were supplied via the environment. */
   isConfigured: boolean;
   /** Skip the source-IP allowlist on ITN. Only for local testing. */
@@ -104,6 +116,7 @@ export function loadPayFastConfig(env: NodeJS.ProcessEnv = process.env): PayFast
     merchantKey: mode === 'live' ? merchantKey || SANDBOX_DEFAULTS.merchantKey : sandboxKey,
     passphrase: (env.PAYFAST_PASSPHRASE || '').trim(),
     appUrl: (env.APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
+    apiUrl: (env.API_URL || env.APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     isConfigured,
     // Both skips are local-testing affordances, so live mode ignores them
     // outright rather than trusting whoever set the environment to unset them.
@@ -211,7 +224,7 @@ export function buildPaymentFields(
     merchant_key: config.merchantKey,
     return_url: `${config.appUrl}/payment/return`,
     cancel_url: `${config.appUrl}/payment/cancel`,
-    notify_url: `${config.appUrl}/api/payfast/itn`,
+    notify_url: `${config.apiUrl}/api/payfast/itn`,
     name_first: truncate(input.nameFirst, 100),
     name_last: truncate(input.nameLast, 100),
     email_address: truncate(input.email, 100),
@@ -385,9 +398,14 @@ export function describeConfig(config: PayFastConfig, env: NodeJS.ProcessEnv = p
       'APP_URL is not HTTPS. PayFast will not deliver ITN callbacks to an insecure URL in live mode.',
     );
   }
-  if (config.appUrl.includes('localhost')) {
+  if (config.apiUrl.includes('localhost')) {
     warnings.push(
-      'APP_URL points at localhost, so PayFast cannot reach the ITN endpoint. Use a public URL or a tunnel when testing.',
+      'The API URL points at localhost, so PayFast cannot reach the ITN endpoint. Use a public URL or a tunnel when testing.',
+    );
+  }
+  if (config.mode === 'live' && config.apiUrl.startsWith('http://')) {
+    warnings.push(
+      'The API URL is not HTTPS. PayFast will not deliver ITN callbacks to an insecure URL in live mode.',
     );
   }
   if (config.skipIpCheck) {
@@ -416,7 +434,7 @@ export function describeConfig(config: PayFastConfig, env: NodeJS.ProcessEnv = p
     merchantKeyMasked: maskKey(config.merchantKey),
     passphraseSet: Boolean(config.passphrase),
     processUrl: processUrl(config),
-    notifyUrl: `${config.appUrl}/api/payfast/itn`,
+    notifyUrl: `${config.apiUrl}/api/payfast/itn`,
     returnUrl: `${config.appUrl}/payment/return`,
     cancelUrl: `${config.appUrl}/payment/cancel`,
     warnings,
