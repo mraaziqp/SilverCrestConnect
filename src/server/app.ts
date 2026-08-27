@@ -981,6 +981,15 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
     return;
   }
 
+  const ip = req.ip ?? 'unknown';
+  if (isLockedOut(ip)) {
+    res.status(429).json({
+      success: false,
+      error: 'Too many failed sign-in attempts. Try again in a few minutes.',
+    });
+    return;
+  }
+
   const header = req.get('authorization') || '';
   const provided = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
 
@@ -989,11 +998,54 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
   // mismatch — padding the strings instead would compare characters against
   // bytes and blow up on any non-ASCII token, turning a 401 into a 500.
   if (!timingSafeCompare(provided, expected)) {
+    recordAdminFailure(ip);
     res.status(401).json({ success: false, error: 'Invalid admin token.' });
     return;
   }
 
+  clearAdminFailures(ip);
   next();
+}
+
+/**
+ * Brute-force brake on the admin gate.
+ *
+ * Only failures are counted. The dashboard makes many authorised calls per
+ * page, so limiting all admin traffic would throttle the actual admin long
+ * before it inconvenienced anyone guessing. A correct token clears the tally.
+ */
+const ADMIN_MAX_FAILURES = 10;
+const ADMIN_LOCKOUT_MS = 15 * 60_000;
+const adminFailures = new Map<string, { count: number; until: number }>();
+
+export function isLockedOut(ip: string): boolean {
+  const entry = adminFailures.get(ip);
+  if (!entry) return false;
+  if (entry.until < Date.now()) {
+    adminFailures.delete(ip);
+    return false;
+  }
+  return entry.count >= ADMIN_MAX_FAILURES;
+}
+
+export function recordAdminFailure(ip: string): void {
+  const now = Date.now();
+  const entry = adminFailures.get(ip);
+
+  if (!entry || entry.until < now) {
+    adminFailures.set(ip, { count: 1, until: now + ADMIN_LOCKOUT_MS });
+  } else {
+    entry.count += 1;
+    entry.until = now + ADMIN_LOCKOUT_MS;
+  }
+
+  if (adminFailures.size > 5000) {
+    for (const [key, value] of adminFailures) if (value.until < now) adminFailures.delete(key);
+  }
+}
+
+export function clearAdminFailures(ip: string): void {
+  adminFailures.delete(ip);
 }
 
 /** Constant-time string comparison that is safe for any input length. */
