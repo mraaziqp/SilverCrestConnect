@@ -57,7 +57,7 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
           <a href="#top" className="flex items-center gap-3 shrink-0" aria-label={`${fullName} home`}>
             <Monogram size={34} customLogoUrl={customLogoUrl} />
             <span className="font-display text-[13px] sm:text-[15px] uppercase tracking-brand text-bone font-bold leading-none">
-              {event?.name || 'Silver Crest'}<span className="hidden sm:inline"> Connect</span>
+              {event?.name || EVENT.name}
             </span>
           </a>
 

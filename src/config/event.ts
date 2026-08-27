@@ -34,7 +34,7 @@ export const EVENT = {
   venueCity: 'Cape Town, South Africa',
 
   heroParagraph:
-    'An exclusive half-day B2B networking showcase for 15–20 vetted SME founders — where local business growth funds real community impact.',
+    'An exclusive half-day B2B networking showcase for 40–50 vetted SME founders — where local business growth funds real community impact.',
   aboutTitle: 'A room built for real business, funding real community work.',
   aboutLead:
     'Silver Crest Connect is an exclusive half-day showcase bringing together vetted SME founders for high-intent B2B networking. Every seat sold funds the Year-End Community Outreach Drive — 100% of attendance proceeds go straight to the cause.',
@@ -43,11 +43,11 @@ export const EVENT = {
 
   /** Attendance fee per SME, in ZAR. 100% funds the outreach drive. */
   ticketPriceZAR: 450,
-  /** The proposal caps the room at 15–20 vetted SMEs. */
-  capacityMin: 15,
-  capacityMax: 20,
+  /** The proposal caps the room at vetted SMEs. */
+  capacityMin: 40,
+  capacityMax: 50,
   /** Hard ceiling used by the server to stop overselling. */
-  capacity: 20,
+  capacity: 50,
 
   cause: "Silver Crest's Year-End Community Outreach Drive",
   causeShort: 'Year-End Community Outreach Drive',
