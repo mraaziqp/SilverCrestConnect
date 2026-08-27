@@ -32,6 +32,7 @@ import {
   PROGRAMME as DEFAULT_PROGRAMME,
   WELCOME_PACK as DEFAULT_WELCOME_PACK,
   IMPACT_ITEMS as DEFAULT_IMPACT_ITEMS,
+  DEFAULT_GALLERY,
 } from '../config/event.js';
 
 export const DEFAULT_SETTINGS: EventSettings = {
@@ -118,8 +119,7 @@ function emptyDatabase(): Database {
     programme: DEFAULT_PROGRAMME.map((item) => ({ ...item })),
     welcomePack: DEFAULT_WELCOME_PACK.map((item) => ({ ...item })),
     impactItems: DEFAULT_IMPACT_ITEMS.map((item) => ({ ...item })),
-    // The gallery starts empty — it holds photos the team supplies.
-    gallery: [],
+    gallery: DEFAULT_GALLERY.map((item) => ({ ...item })),
   };
 }
 

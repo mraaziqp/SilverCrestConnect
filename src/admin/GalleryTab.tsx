@@ -26,7 +26,6 @@ const nextKey = () => `row-${(rowCounter += 1)}`;
 export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   const [rows, setRows] = useState<GalleryRow[]>([]);
   const [canUpload, setCanUpload] = useState<boolean | null>(null);
-  const [uploadNote, setUploadNote] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,10 +43,9 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
       )
       .catch(() => setError('Could not load the current gallery.'));
 
-    api<{ available: boolean; note: string }>('/api/admin/storage-status', { token })
+    api<{ available: boolean }>('/api/admin/storage-status', { token })
       .then((result) => {
         setCanUpload(result.available);
-        setUploadNote(result.note);
       })
       .catch(() => setCanUpload(false));
   }, [token]);
@@ -72,12 +70,14 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   };
 
   const uploadFile = async (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      setError('Photo must be smaller than 8MB.');
+      return;
+    }
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
-      // Read as a data URI so the server needs no multipart handling for what
-      // amounts to a handful of images.
       const dataUri = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
@@ -85,14 +85,24 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
         reader.readAsDataURL(file);
       });
 
-      const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
-        method: 'POST',
-        token,
-        body: { dataUri, folder: 'gallery' },
-      });
-      await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
+      if (canUpload) {
+        try {
+          const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+            method: 'POST',
+            token,
+            body: { dataUri, folder: 'gallery' },
+          });
+          await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
+          return;
+        } catch {
+          // Fall back to storing dataUri directly
+        }
+      }
+      // Save data URI directly if cloud storage is not active
+      await persist([...rows, { key: nextKey(), url: dataUri, caption: '' }]);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Upload failed.');
+    } finally {
       setBusy(false);
     }
   };
@@ -104,24 +114,20 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <Card className="p-6 sm:p-8">
-        <h3 className="font-display text-lg font-bold text-bone">Previous drive photos</h3>
-        <p className="mt-2 text-[13px] text-muted leading-relaxed">
-          Shown beside the donation form, so supporters can see what the last drive achieved.
-          The first photo appears large; the rest as thumbnails below it.
-        </p>
-
-        {canUpload === false && (
-          <div className="mt-5 rounded-sm border border-amber-500/30 bg-amber-500/[0.07] px-4 py-3">
-            <p className="text-[13px] text-amber-100/80">{uploadNote}</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-display text-lg font-bold text-bone">Previous Drive Photo Gallery</h3>
+            <p className="mt-2 text-[13px] text-muted leading-relaxed max-w-xl">
+              Photos shown beside and around the donation form to show the impact of previous outreach drives.
+              Supporters can click and browse through the real supplies and care packs distributed.
+            </p>
           </div>
-        )}
 
-        {canUpload === true && (
-          <label className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-sm border border-white/15 text-[11px] uppercase tracking-[0.12em] text-muted hover:text-gold hover:border-gold/50 cursor-pointer transition-colors">
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-sm bg-gold text-black text-xs font-semibold hover:bg-gold/90 cursor-pointer transition-colors">
             <ImageIcon className="w-4 h-4" aria-hidden="true" />
-            Upload a photo
+            Upload Photo
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
@@ -130,14 +136,13 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) uploadFile(file);
-                // Clear it, so choosing the same file twice still fires.
                 event.target.value = '';
               }}
             />
           </label>
-        )}
+        </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-8 space-y-4">
           {rows.length === 0 && (
             <p className="text-[13px] text-muted/60">No photos yet.</p>
           )}

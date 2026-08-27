@@ -273,53 +273,82 @@ export const Donate: React.FC<DonateProps> = ({
 /**
  * Photos from the last outreach drive.
  *
- * This is the proof behind the ask — it shows a donor what their money turned
- * into last time. It renders nothing at all when there are no photos, so the
- * column does not sit empty before the team has uploaded any.
+ * Displays the real care packages and supplies from past outreach drives so donors
+ * can see the direct community impact.
  */
 const PreviousDrive: React.FC<{
   heading?: string;
   body?: string;
   items: GalleryItem[];
 }> = ({ heading, body, items }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   if (items.length === 0) return null;
 
-  const [lead, ...rest] = items;
+  const current = items[selectedIndex] || items[0];
 
   return (
-    <div className="lg:sticky lg:top-24">
-      <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-        {heading || 'Our last outreach drive'}
-      </p>
-      {body && <p className="mt-3 text-[14px] text-muted leading-relaxed">{body}</p>}
+    <div className="lg:sticky lg:top-24 space-y-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-brand text-gold font-semibold">
+          {heading || 'Where Your Donations Go'}
+        </p>
+        <h4 className="mt-1 font-display text-lg font-bold text-bone">
+          Previous Outreach Drive
+        </h4>
+        <p className="mt-2 text-[13px] text-muted leading-relaxed">
+          {body || 'Real supplies, care parcels, and winter warmth kits prepared and distributed to local families.'}
+        </p>
+      </div>
 
-      <figure className="mt-6 overflow-hidden rounded-lg border border-white/10">
-        <img
-          src={lead.url}
-          alt={lead.caption || 'Photograph from the previous outreach drive'}
-          loading="lazy"
-          className="w-full h-auto object-cover aspect-[4/3]"
-        />
-        {lead.caption && (
-          <figcaption className="px-4 py-3 text-[12px] text-muted bg-ink-raised">
-            {lead.caption}
+      {/* Featured Photo Display */}
+      <figure className="overflow-hidden rounded-xl border border-white/12 bg-ink-raised shadow-xl">
+        <div className="relative aspect-[4/3] bg-black/60 overflow-hidden">
+          <img
+            src={current.url}
+            alt={current.caption || 'Care supplies from previous outreach drive'}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+          />
+        </div>
+        {current.caption && (
+          <figcaption className="px-5 py-3.5 text-xs text-muted/90 bg-ink/90 border-t border-white/8 leading-relaxed">
+            {current.caption}
           </figcaption>
         )}
       </figure>
 
-      {rest.length > 0 && (
-        <ul className="mt-3 grid grid-cols-3 gap-3">
-          {rest.slice(0, 6).map((item) => (
-            <li key={item.id} className="overflow-hidden rounded-sm border border-white/10">
-              <img
-                src={item.url}
-                alt={item.caption || 'Photograph from the previous outreach drive'}
-                loading="lazy"
-                className="w-full h-full object-cover aspect-square"
-              />
-            </li>
-          ))}
-        </ul>
+      {/* Thumbnails list */}
+      {items.length > 1 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted/70 mb-2 font-medium">
+            Click to view packages ({selectedIndex + 1} of {items.length})
+          </p>
+          <div className="grid grid-cols-4 gap-2.5">
+            {items.map((item, idx) => {
+              const active = idx === selectedIndex;
+              return (
+                <button
+                  key={item.id || idx}
+                  type="button"
+                  onClick={() => setSelectedIndex(idx)}
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-square transition-all ${
+                    active
+                      ? 'border-gold shadow-md shadow-gold/20 scale-[1.02]'
+                      : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                  }`}
+                  aria-label={`View photo ${idx + 1}`}
+                >
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

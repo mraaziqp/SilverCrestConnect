@@ -141,6 +141,30 @@ export const WELCOME_PACK = [
   { id: 'wp-2', title: 'Executive Branded Pen', body: 'Sleek metallic executive pen custom-engraved with the Silver Crest Connect branding.' },
 ];
 
+/** Default photos from the previous outreach drive shown beside the donation form. */
+export const DEFAULT_GALLERY = [
+  {
+    id: 'photo-1',
+    url: '/outreach/drive-pack-1.jpg',
+    caption: 'Personal care and hygiene kits prepared for community distribution.',
+  },
+  {
+    id: 'photo-2',
+    url: '/outreach/drive-pack-2.jpg',
+    caption: 'Winter warmth packages, knitted beanies, and daily toiletries.',
+  },
+  {
+    id: 'photo-3',
+    url: '/outreach/drive-pack-3.jpg',
+    caption: 'Pantry staples, soup mixes, canned foods, and nutrition parcels.',
+  },
+  {
+    id: 'photo-4',
+    url: '/outreach/drive-pack-4.jpg',
+    caption: 'Complete outreach care parcel with blankets, food supplies, and toiletries.',
+  },
+];
+
 /** Preset donation amounts in ZAR offered on the Donate card. */
 export const DONATION_PRESETS = [100, 250, 500, 1000] as const;
 export const DONATION_MIN_ZAR = 10;
