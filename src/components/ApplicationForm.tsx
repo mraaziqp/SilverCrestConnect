@@ -9,7 +9,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2, X } from 'lucide-react';
 import { Button, FieldError } from './Brand';
-import { EVENT } from '../config/event';
 import { api, ApiRequestError } from '../lib/api';
 
 interface ApplicationFormProps {
@@ -174,14 +173,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
         ) : (
           <form onSubmit={submit} className="p-7 sm:p-10" noValidate>
             <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-              Step 01 — Application
+              Step 01: Application & Sector Review
             </p>
             <h2 id="application-title" className="mt-3 font-display text-2xl sm:text-3xl font-bold text-bone">
-              Apply for a seat
+              Apply for a Seat
             </h2>
             <p className="mt-3 text-[13.5px] text-muted leading-relaxed">
-              {EVENT.capacityMin}–{EVENT.capacityMax} seats, {EVENT.dateLabel}. We run a quick CIPC and
-              digital footprint check to confirm active SME status, then email you a payment link.
+              Attendance is strictly curated with a maximum of 2 to 3 businesses per industry sector.
+              Submit your details for review, and upon approval our team will email your private payment link to book your spot.
             </p>
 
             {formError && (

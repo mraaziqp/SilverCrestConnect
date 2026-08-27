@@ -39,13 +39,13 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   return (
     <Section id="tickets" className="border-t border-white/5">
       <SectionHeading
-        eyebrow="Tickets"
+        eyebrow="Curated Attendance"
         title={
           <>
-            Claim your <span className="text-gold">seat</span>
+            Apply for your <span className="text-gold">sector spot</span>
           </>
         }
-        lead={`Limited seating available. All ticket sales directly support the ${causeShort}.`}
+        lead={`Strictly 2 to 3 businesses per industry category. Submit your application for review, and upon approval we email your private payment link to book your seat. 100% of attendance proceeds support the ${causeShort}.`}
       />
 
       <div className="mt-14 grid gap-6 lg:grid-cols-[1.15fr_1fr] items-start">
@@ -53,10 +53,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
         <Card featured className="p-8 sm:p-10">
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div>
-              <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
-                SME Attendance
-              </p>
-              <h3 className="mt-3 font-display text-2xl sm:text-3xl font-bold text-bone">
+              <span className="inline-block px-2.5 py-1 rounded bg-gold/15 border border-gold/30 text-[10px] uppercase tracking-brand text-gold font-bold mb-2">
+                Max 2–3 Per Industry
+              </span>
+              <h3 className="font-display text-2xl sm:text-3xl font-bold text-bone">
                 Standard Ticket
               </h3>
             </div>
@@ -84,7 +84,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <div className="text-center">
                 <p className="text-sm font-semibold text-bone">All seats have been taken.</p>
                 <p className="mt-2 text-[13px] text-muted">
-                  Apply anyway and we will add you to the waiting list.
+                  Apply anyway and we will add you to the waiting list if a spot opens in your category.
                 </p>
                 <Button size="lg" variant="outline" className="mt-6 w-full" onClick={() => setFormOpen(true)}>
                   Join the waiting list
@@ -94,10 +94,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <>
                 <Button size="lg" className="w-full" onClick={() => setFormOpen(true)}>
                   <Ticket className="w-4 h-4" />
-                  Apply for a seat
+                  Apply for Review & Spot
                 </Button>
                 <p className="mt-4 text-center text-[12px] text-muted/80 leading-relaxed">
-                  Applying is free. We verify your business, then email a secure payment link.
+                  Submitting is free. We review your category fit, then email a secure link to pay and confirm.
                 </p>
               </>
             )}

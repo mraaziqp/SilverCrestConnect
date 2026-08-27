@@ -117,14 +117,19 @@ export const FUNNEL_STEPS: ReadonlyArray<{
   body: (priceZAR: number) => string;
 }> = [
   {
-    title: 'Application Form',
+    title: 'Application & Sector Submission',
     body: () =>
-      'Business owners submit a concise online application with company details and industry sector.',
+      'Submit your business details and industry category. Attendance is strictly limited to 2 to 3 businesses per category to prevent oversaturation.',
   },
   {
-    title: 'Approval & Ticket',
+    title: 'Review & Category Approval',
+    body: () =>
+      'The Silver Crest team reviews your application to ensure industry fit and slot availability for your sector.',
+  },
+  {
+    title: 'Payment Link & Spot Confirmation',
     body: (priceZAR) =>
-      `Approved SMEs receive a secure payment link to finalise the R${priceZAR} fee, followed by their official digital event ticket.`,
+      `Approved businesses receive an exclusive payment link to complete the R${priceZAR} fee and lock in their official event ticket.`,
   },
 ];
 

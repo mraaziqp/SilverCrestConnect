@@ -6,7 +6,7 @@
  * secret is ever sent to this page — the merchant key arrives masked.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Banknote,
@@ -434,6 +434,20 @@ const ApplicationsTab: React.FC<{
 }> = ({ applications, onUpdate }) => {
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
 
+  const industryStats = useMemo(() => {
+    const map: Record<string, { approvedOrPaid: number; pending: number }> = {};
+    for (const app of applications) {
+      const ind = (app.industry || 'General').trim();
+      if (!map[ind]) map[ind] = { approvedOrPaid: 0, pending: 0 };
+      if (app.status === 'APPROVED' || app.status === 'PAID') {
+        map[ind].approvedOrPaid += 1;
+      } else if (app.status === 'PENDING_REVIEW') {
+        map[ind].pending += 1;
+      }
+    }
+    return Object.entries(map).sort((a, b) => b[1].approvedOrPaid - a[1].approvedOrPaid);
+  }, [applications]);
+
   const visible = filter === 'ALL' ? applications : applications.filter((a) => a.status === filter);
 
   if (applications.length === 0) {
@@ -442,6 +456,50 @@ const ApplicationsTab: React.FC<{
 
   return (
     <div>
+      {/* Category / Industry Slot Tracker */}
+      <div className="mb-6 rounded-lg border border-gold/25 bg-ink-raised/70 p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
+              Industry Slot Tracker (Target: Max 2–3 Per Category)
+            </h4>
+            <p className="mt-1 text-[12px] text-muted">
+              Monitoring confirmed spots per sector to prevent oversaturation in the room.
+            </p>
+          </div>
+          <span className="text-[11px] text-muted/70">
+            {industryStats.length} active sectors
+          </span>
+        </div>
+
+        {industryStats.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {industryStats.map(([industry, stats]: [string, { approvedOrPaid: number; pending: number }]) => {
+              const full = stats.approvedOrPaid >= 3;
+              const near = stats.approvedOrPaid === 2;
+              return (
+                <div
+                  key={industry}
+                  className={`px-3 py-1.5 rounded-md border text-xs flex items-center gap-2 ${
+                    full
+                      ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                      : near
+                      ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+                      : 'border-white/12 bg-black/40 text-bone'
+                  }`}
+                >
+                  <span className="font-medium">{industry}:</span>
+                  <span className="font-bold">{stats.approvedOrPaid}/3 booked</span>
+                  {stats.pending > 0 && (
+                    <span className="text-[10px] text-muted">({stats.pending} pending)</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2 mb-6">
         {(['ALL', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'WAITLISTED', 'REJECTED'] as const).map((key) => (
           <button
