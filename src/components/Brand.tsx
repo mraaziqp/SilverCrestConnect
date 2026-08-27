@@ -6,66 +6,28 @@
 
 import React from 'react';
 
-/** The geometric crest monogram matching Image 3 with sharp angular interlocking contours. */
-export const Monogram: React.FC<{ size?: number; className?: string; customLogoUrl?: string }> = ({
+/** The official Silver Crest logo emblem. */
+export const Monogram: React.FC<{
+  size?: number;
+  className?: string;
+  customLogoUrl?: string;
+  variant?: 'gold' | 'white';
+}> = ({
   size = 40,
   className = '',
   customLogoUrl,
+  variant = 'gold',
 }) => {
-  if (customLogoUrl) {
-    return (
-      <img
-        src={customLogoUrl}
-        alt="Logo"
-        style={{ width: size, height: size, objectFit: 'contain' }}
-        className={`inline-block ${className}`}
-      />
-    );
-  }
+  const src = customLogoUrl || (variant === 'white' ? '/logo-white.svg' : '/logo-gold.svg');
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 120 120"
-      fill="none"
-      className={className}
+    <img
+      src={src}
+      alt="Silver Crest Logo"
+      style={{ width: size, height: size, objectFit: 'contain' }}
+      className={`inline-block shrink-0 ${className}`}
       aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id="brand-gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#F5D78A" />
-          <stop offset="50%" stopColor="#C5A059" />
-          <stop offset="100%" stopColor="#967732" />
-        </linearGradient>
-      </defs>
-      {/* Upper geometric chevron polygon */}
-      <path
-        d="M60 12 L104 56 L88 72 L60 44 L32 72 L16 56 Z"
-        stroke="#FFFFFF"
-        strokeWidth="6"
-        strokeLinejoin="miter"
-        strokeMiterlimit="4"
-        fill="none"
-      />
-      {/* Lower interlocking geometric polygon */}
-      <path
-        d="M60 108 L16 64 L32 48 L60 76 L88 48 L104 64 Z"
-        stroke="#FFFFFF"
-        strokeWidth="6"
-        strokeLinejoin="miter"
-        strokeMiterlimit="4"
-        fill="none"
-      />
-      {/* Center sharp bridge */}
-      <path
-        d="M44 60 L76 60"
-        stroke="url(#brand-gold)"
-        strokeWidth="4"
-        strokeLinecap="square"
-      />
-    </svg>
+    />
   );
 };
 
