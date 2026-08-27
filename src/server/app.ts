@@ -80,7 +80,13 @@ export async function createApp(options: AppOptions): Promise<Express> {
   const app = express();
 
   // Behind Vercel/Render/nginx, req.ip must come from X-Forwarded-For for the
-  // ITN source-IP check and the rate limiter to see the real client.
+  // ITN source-IP check to see the real client.
+  //
+  // One hop, deliberately. PayFast posts the ITN straight to this service, so
+  // one hop is exactly right for the check that has to be trustworthy. Browser
+  // traffic may arrive via a second proxy when the client is hosted separately
+  // — there req.ip is that proxy, which is why the rate limiters below key on
+  // clientKey() instead of req.ip.
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
@@ -981,7 +987,7 @@ function adminAuth(req: Request, res: Response, next: NextFunction): void {
     return;
   }
 
-  const ip = req.ip ?? 'unknown';
+  const ip = clientKey(req);
   if (isLockedOut(ip)) {
     res.status(429).json({
       success: false,
@@ -1062,13 +1068,36 @@ function securityHeaders(_req: Request, res: Response, next: NextFunction): void
   next();
 }
 
+/**
+ * Best-effort caller identity, for throttling only.
+ *
+ * req.ip is the right answer for the ITN source-IP check, which must not be
+ * spoofable. It is the wrong answer for rate limiting when a second proxy sits
+ * in front — every visitor then shares that proxy's address and one shared
+ * bucket, so a handful of unrelated people filling in the form in the same
+ * minute would lock the rest out.
+ *
+ * The leftmost X-Forwarded-For entry is the original client. It is client-set
+ * and therefore forgeable, which is acceptable here and nowhere else: forging
+ * it only lets someone dodge their own throttle, which is true of any IP-based
+ * limit, and the alternative punishes real users. Never use this for auth.
+ */
+export function clientKey(req: Request): string {
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return req.ip ?? 'unknown';
+}
+
 /** Small fixed-window limiter, enough to blunt casual abuse of the public forms. */
 function rateLimit(max: number, windowMs: number) {
   const hits = new Map<string, { count: number; resetAt: number }>();
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const now = Date.now();
-    const key = req.ip ?? 'unknown';
+    const key = clientKey(req);
     const entry = hits.get(key);
 
     if (!entry || entry.resetAt < now) {

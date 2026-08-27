@@ -1,0 +1,30 @@
+# AWS App Runner — the API and server-rendered routes for Silver Crest Connect.
+#
+# The static client is served by Amplify Hosting; Amplify rewrites /api/* here.
+# This service also serves the built client, so the App Runner URL is a working
+# copy of the whole site on its own — useful for testing before DNS is moved.
+#
+# App Runner supplies PORT (server.ts honours it) and terminates TLS in front
+# of the container, so the app itself listens plainly on 0.0.0.0.
+version: 1.0
+runtime: nodejs22
+
+build:
+  commands:
+    build:
+      # npm ci, not npm install: the lockfile is the point of a reproducible
+      # deploy. The full build is needed here — build:client for the assets
+      # this service serves, build:server for dist/server.mjs that npm start runs.
+      - npm ci
+      - npm run build
+
+run:
+  command: npm start
+  network:
+    port: 3000
+  env:
+    # Non-secret defaults. Everything secret is set in the App Runner console
+    # or, better, referenced from Secrets Manager — never listed here, because
+    # this file is committed.
+    - name: NODE_ENV
+      value: production

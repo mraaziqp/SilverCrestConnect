@@ -1,3 +1,8 @@
+# AWS Amplify Hosting — the static client only.
+#
+# The API is not here. It runs on App Runner, and Amplify rewrites /api/* to it
+# (App settings -> Rewrites and redirects; see DEPLOY_AWS.md). Amplify Hosting
+# serves files, so without that rewrite every form on the site fails.
 version: 1
 frontend:
   phases:
@@ -6,7 +11,11 @@ frontend:
         - npm ci
     build:
       commands:
-        - npm run build
+        # build:client, not build. The full build also bundles the Express
+        # server into dist/server.mjs, which App Runner runs and this host has
+        # no use for — publishing it here would put the server bundle up as a
+        # downloadable static asset for no reason.
+        - npm run build:client
   artifacts:
     baseDirectory: dist
     files:

@@ -16,6 +16,7 @@ import {
   isLockedOut,
   recordAdminFailure,
   clearAdminFailures,
+  clientKey,
 } from '../src/server/app.ts';
 
 test('an exact match is accepted', () => {
@@ -103,4 +104,43 @@ test('addresses are tracked separately, so one attacker cannot lock out the admi
   assert.equal(isLockedOut(admin), false, 'a stranger must not be able to lock the admin out');
 
   clearAdminFailures(attacker);
+});
+
+/**
+ * Caller identity for throttling.
+ *
+ * When the client is hosted apart from the API, browser traffic arrives via a
+ * second proxy and req.ip is that proxy — one bucket for every visitor. These
+ * pin down that the throttles key on the original client instead.
+ */
+const fakeReq = (headers: Record<string, string>, ip?: string) =>
+  ({
+    get: (name: string) => headers[name.toLowerCase()],
+    ip,
+  }) as unknown as Parameters<typeof clientKey>[0];
+
+test('the original client is taken from the left of X-Forwarded-For', () => {
+  const key = clientKey(fakeReq({ 'x-forwarded-for': '203.0.113.7, 70.132.0.1' }, '70.132.0.1'));
+  assert.equal(key, '203.0.113.7', 'must be the visitor, not the proxy in front of us');
+});
+
+test('two visitors behind one proxy get different keys', () => {
+  const a = clientKey(fakeReq({ 'x-forwarded-for': '203.0.113.7, 70.132.0.1' }, '70.132.0.1'));
+  const b = clientKey(fakeReq({ 'x-forwarded-for': '203.0.113.99, 70.132.0.1' }, '70.132.0.1'));
+  assert.notEqual(a, b, 'a shared proxy must not mean a shared rate-limit bucket');
+});
+
+test('whitespace around the forwarded address is ignored', () => {
+  assert.equal(clientKey(fakeReq({ 'x-forwarded-for': '  203.0.113.7  , 70.132.0.1' })), '203.0.113.7');
+});
+
+test('without the header it falls back to the socket address', () => {
+  assert.equal(clientKey(fakeReq({}, '198.51.100.5')), '198.51.100.5');
+});
+
+test('an empty forwarded header does not produce an empty key', () => {
+  // Every caller would otherwise share the "" bucket.
+  assert.equal(clientKey(fakeReq({ 'x-forwarded-for': '' }, '198.51.100.5')), '198.51.100.5');
+  assert.equal(clientKey(fakeReq({ 'x-forwarded-for': ' , 70.132.0.1' }, '198.51.100.5')), '198.51.100.5');
+  assert.equal(clientKey(fakeReq({}, undefined)), 'unknown');
 });
