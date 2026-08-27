@@ -42,7 +42,7 @@ export const EVENT = {
     'Curated introductions between local founders, four expert keynotes, and a dedicated SME Spotlight where every business gets the floor for an elevator pitch.',
 
   /** Attendance fee per SME, in ZAR. 100% funds the outreach drive. */
-  ticketPriceZAR: 350,
+  ticketPriceZAR: 450,
   /** The proposal caps the room at 15–20 vetted SMEs. */
   capacityMin: 15,
   capacityMax: 20,

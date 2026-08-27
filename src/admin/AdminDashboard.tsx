@@ -849,7 +849,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
               required
             />
-            <p className="mt-1 text-[11px] text-muted/60">R350</p>
+            <p className="mt-1 text-[11px] text-muted/60">R450</p>
           </div>
         </div>
       </Card>
