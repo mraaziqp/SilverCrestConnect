@@ -206,7 +206,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
           <form onSubmit={submit} className="p-6 sm:p-10" noValidate>
             <div className="border-b border-white/8 pb-6">
               <span className="inline-block px-2.5 py-0.5 rounded bg-gold/15 border border-gold/30 text-[10px] uppercase tracking-brand text-gold font-bold mb-2">
-                Curated B2B Showcase
+                Curated Business-to-Business Showcase
               </span>
               <h2 id="application-title" className="font-display text-2xl sm:text-3xl font-bold text-bone">
                 Apply to Attend — Silver Crest Connect '26

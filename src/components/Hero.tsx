@@ -124,9 +124,17 @@ export const Hero: React.FC<HeroProps> = ({ seatsRemaining, event }) => {
           {countdown && seatsRemaining !== null && (
             <span className="hidden sm:block w-px h-3 bg-white/15" aria-hidden="true" />
           )}
+          {/* A count of zero is not a count. "0 of 50 seats remaining" reads as
+              a bug rather than as news, so a full room says so in words. */}
           {seatsRemaining !== null && (
             <span>
-              <span className="text-gold font-semibold">{seatsRemaining}</span> of {capacity} seats remaining
+              {seatsRemaining <= 0 ? (
+                <span className="text-gold font-semibold">All seats taken</span>
+              ) : (
+                <>
+                  <span className="text-gold font-semibold">{seatsRemaining}</span> of {capacity} seats remaining
+                </>
+              )}
             </span>
           )}
         </div>

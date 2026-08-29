@@ -270,7 +270,7 @@ export function ticketConfirmed(input: {
   <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Location:</strong> ${esc(EVENT.venueCity)}</p>
   <p style="margin:0;font-size:14px;color:${GOLD};"><strong>Includes:</strong> Light breakfast, refreshments, and welcome pack</p>
 </div>
-<p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival, you will receive your custom lanyard, business badge, and executive pen. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
+<p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival you will receive your welcome pack. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
 <p style="margin:0;">100% of proceeds go directly towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
       panel: {
         label: 'Your Digital Ticket Code',
@@ -289,7 +289,7 @@ EVENT DETAILS:
 - Includes: Light breakfast, morning refreshments, and welcome pack
 
 WHAT TO EXPECT:
-On arrival, you will receive your custom lanyard, business badge, and executive pen. You will also have the floor during the SME Spotlight to introduce your business to the room.
+On arrival you will receive your welcome pack. You will also have the floor during the SME Spotlight to introduce your business to the room.
 
 YOUR TICKET CODE: ${ticketCode}
 Present this code upon arrival at registration.

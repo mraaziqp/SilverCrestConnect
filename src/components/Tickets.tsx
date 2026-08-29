@@ -25,6 +25,11 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+  const capacity = event?.capacity ?? EVENT.capacity;
+
+  // A seat is a person, not a business: a two-representative booking takes two.
+  // Below five left the count is worth calling out; above that it is just a fact.
+  const seatsScarce = seatsRemaining !== null && seatsRemaining > 0 && seatsRemaining <= 5;
 
   return (
     <Section id="tickets" className="border-t border-white/5">
@@ -58,6 +63,19 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-muted/70">
                 per person
               </p>
+              {/* Null means the count has not loaded yet. Rendering nothing is
+                  right: "0 seats remaining" during a fetch would read as sold
+                  out and turn people away. */}
+              {seatsRemaining !== null && !soldOut && (
+                <p
+                  className={`mt-3 text-[12px] font-semibold ${
+                    seatsScarce ? 'text-gold' : 'text-muted'
+                  }`}
+                >
+                  <span className="tabular-nums">{seatsRemaining}</span> of{' '}
+                  <span className="tabular-nums">{capacity}</span> seats remaining
+                </p>
+              )}
             </div>
           </div>
 

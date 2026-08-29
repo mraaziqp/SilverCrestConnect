@@ -34,10 +34,10 @@ export const EVENT = {
   venueCity: 'Cape Town, South Africa',
 
   heroParagraph:
-    'An exclusive half-day B2B networking showcase for local SME founders, where business growth directly supports community outreach.',
+    'An exclusive half-day business-to-business networking showcase for local SME founders, where business growth directly supports community outreach.',
   aboutTitle: 'A room built for real business, funding real community work.',
   aboutLead:
-    'Silver Crest Connect brings together local business founders for focused B2B networking. Every ticket sold directly funds our Year-End Community Outreach Drive with zero overheads retained.',
+    'Silver Crest Connect brings together local business founders for focused business-to-business networking. Every ticket sold directly funds our Year-End Community Outreach Drive with zero overheads retained.',
   aboutBody:
     'Curated introductions between founders, practical keynote sessions, and a dedicated SME Spotlight where each business owner has the floor to present their services.',
 
@@ -71,7 +71,7 @@ export const PILLARS = [
   {
     id: 'connect',
     title: 'Connect With Purpose',
-    body: `Gathering ${EVENT.capacityMin}–${EVENT.capacityMax} selected local SME owners for curated, high-intent B2B networking and collaboration in a structured environment.`,
+    body: `Gathering ${EVENT.capacityMin}–${EVENT.capacityMax} selected local SME owners for curated, high-intent business-to-business networking and collaboration in a structured environment.`,
   },
   {
     id: 'learn',
@@ -142,7 +142,6 @@ export const IMPACT_ITEMS = [
 
 /** What every registered SME receives (proposal, section 06). */
 export const WELCOME_PACK = [
-  { id: 'wp-1', title: 'Custom Lanyard & Business Tag', body: 'Branded Silver Crest Connect lanyard with a custom badge showing business name and founder details.' },
   { id: 'wp-2', title: 'Executive Branded Pen', body: 'Sleek metallic executive pen custom-engraved with the Silver Crest Connect branding.' },
 ];
 
@@ -199,8 +198,8 @@ export const TICKET_INCLUDES = [
   'Light breakfast and morning refreshments included',
   'Expert keynote discussions and practical founder Q&A',
   'Dedicated SME Spotlight presentation for your business',
-  'Curated B2B networking with 1-2 businesses per category',
-  'Branded lanyard, custom business badge and executive pen',
+  'Curated business-to-business networking with 1-2 businesses per category',
+  'Welcome pack with executive branded pen',
 ];
 
 /** Frequently Asked Questions */

@@ -1,7 +1,7 @@
 # Silver Crest Connect '26
 
 Landing page, SME application funnel and PayFast payment engine for **Silver Crest Connect '26** —
-an exclusive half-day B2B networking showcase presented by Silver Crest Consulting.
+an exclusive half-day business-to-business networking showcase presented by Silver Crest Consulting.
 
 > **Building Business. Strengthening Community.**
 > 24 October 2026 · 09:00–13:00 · Cape Town
