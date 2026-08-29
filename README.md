@@ -4,10 +4,10 @@ Landing page, SME application funnel and PayFast payment engine for **Silver Cre
 an exclusive half-day business-to-business networking showcase presented by Silver Crest Consulting.
 
 > **Building Business. Strengthening Community.**
-> 24 October 2026 · 09:00–13:00 · Cape Town
+> 23 October 2026 · 09:00–13:00 · Cape Town
 
-15–20 vetted SME founders, R350 per business, and 100% of proceeds funding the Year-End Community
-Outreach Drive.
+40–50 vetted SME founders, R450 per representative, and a portion of proceeds funding the Year-End
+Community Outreach Drive.
 
 ---
 

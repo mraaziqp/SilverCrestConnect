@@ -276,3 +276,48 @@ test('a trailing slash on API_URL does not produce a double slash in the ITN URL
 
   assert.equal(config.apiUrl, 'https://api.scconnect.co.za');
 });
+
+/**
+ * Applications stay open when payments cannot be taken.
+ *
+ * The client wants to collect and review applications while payment is still
+ * being set up. The danger is the sandbox fallback: with no real credentials
+ * loadPayFastConfig uses PayFast's public test merchant, so an approved
+ * applicant would be emailed a link to a test gateway and told their seat was
+ * secured once it cleared. Payments therefore default to closed until real
+ * credentials exist.
+ */
+test('payments are closed when no real credentials are set', () => {
+  const config = loadPayFastConfig({ PAYFAST_MODE: 'sandbox' } as NodeJS.ProcessEnv);
+  assert.equal(config.isConfigured, false);
+  assert.equal(config.paymentsOpen, false, 'the sandbox fallback must not count as ready to charge');
+});
+
+test('payments open once real credentials are present', () => {
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'live',
+    PAYFAST_MERCHANT_ID: '10000100',
+    PAYFAST_MERCHANT_KEY: '46f0cd694581a',
+  } as NodeJS.ProcessEnv);
+  assert.equal(config.paymentsOpen, true);
+});
+
+test('PAYMENTS_OPEN=false holds payments shut even with credentials', () => {
+  // Lets the client gather applications before opening the gateway.
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'live',
+    PAYFAST_MERCHANT_ID: '10000100',
+    PAYFAST_MERCHANT_KEY: '46f0cd694581a',
+    PAYMENTS_OPEN: 'false',
+  } as NodeJS.ProcessEnv);
+  assert.equal(config.isConfigured, true);
+  assert.equal(config.paymentsOpen, false);
+});
+
+test('PAYMENTS_OPEN=true opens sandbox, so an end-to-end test payment is possible', () => {
+  const config = loadPayFastConfig({
+    PAYFAST_MODE: 'sandbox',
+    PAYMENTS_OPEN: 'true',
+  } as NodeJS.ProcessEnv);
+  assert.equal(config.paymentsOpen, true);
+});

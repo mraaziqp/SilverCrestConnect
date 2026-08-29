@@ -121,6 +121,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       persistent: store.isPersistent,
       storage: store.storageNote,
       payfastConfigured: payfast.isConfigured,
+      paymentsOpen: payfast.paymentsOpen,
       payfastMode: payfast.mode,
       timestamp: new Date().toISOString(),
     });
@@ -139,6 +140,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
+      // Lets the client offer applications while saying plainly that payment
+      // is not open, instead of presenting a button that returns a 503.
+      paymentsOpen: payfast.paymentsOpen,
     });
   });
 
@@ -268,6 +272,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
       },
       event: settings,
       programme: isPaid ? await store.getProgramme() : undefined,
+      // The approval email sends people here. If payment is not open yet the
+      // page has to say so, rather than offer a button that returns a 503.
+      paymentsOpen: payfast.paymentsOpen,
     });
   });
 
@@ -276,6 +283,15 @@ export async function createApp(options: AppOptions): Promise<Express> {
    * The amount is calculated dynamically based on 1 vs 2 representatives.
    */
   app.post('/api/checkout/ticket', rateLimit(10, 60_000), async (req: Request, res: Response) => {
+    if (!payfast.paymentsOpen) {
+      return res.status(503).json({
+        success: false,
+        error:
+          'Payments are not open yet. Your application is safe and under review — we will email you as soon as payment opens.',
+        paymentsOpen: false,
+      });
+    }
+
     const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
     if (!reference) {
       return res.status(400).json({ success: false, error: 'An application reference is required.' });
@@ -338,7 +354,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       reference: payment.reference,
       amountZAR: payment.amountZAR,
       itemName: `${EVENT.fullName} - ${attendeeCount === 2 ? '2 Representatives' : 'SME Ticket'}`,
-      itemDescription: `Attendance for ${application.businessName} (${attendeeCount} attendee${attendeeCount === 2 ? 's' : ''}, incl. breakfast) on ${EVENT.dateLabel}. 100% funds ${EVENT.causeShort}.`,
+      itemDescription: `Attendance for ${application.businessName} (${attendeeCount} attendee${attendeeCount === 2 ? 's' : ''}, incl. breakfast) on ${EVENT.dateLabel}. Supports ${EVENT.causeShort}.`,
       nameFirst: first,
       nameLast: last,
       email: application.email,
@@ -359,6 +375,14 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   /** Starts a PayFast checkout for a custom-amount donation to the outreach drive. */
   app.post('/api/checkout/donation', rateLimit(10, 60_000), async (req: Request, res: Response) => {
+    if (!payfast.paymentsOpen) {
+      return res.status(503).json({
+        success: false,
+        error: 'Donations are not open yet. Please check back shortly — thank you for wanting to help.',
+        paymentsOpen: false,
+      });
+    }
+
     const errors = new FieldErrors();
     const body = req.body ?? {};
 
@@ -544,6 +568,9 @@ export async function createApp(options: AppOptions): Promise<Express> {
           seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
           attendeeCount,
           totalAmountZAR,
+          // With payments closed the link would lead nowhere useful, so the
+          // mail tells them they are approved and that payment follows.
+          paymentsOpen: payfast.paymentsOpen,
         }),
         'application-approved',
       );

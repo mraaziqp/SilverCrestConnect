@@ -19,6 +19,8 @@ interface DonateProps {
   galleryBody?: string;
   totalRaisedZAR: number | null;
   supporters: number | null;
+  /** False while the site cannot take money yet. */
+  paymentsOpen?: boolean;
 }
 
 export const Donate: React.FC<DonateProps> = ({
@@ -27,6 +29,7 @@ export const Donate: React.FC<DonateProps> = ({
   gallery = [],
   galleryHeading,
   galleryBody,
+  paymentsOpen = true,
 }) => {
   const [preset, setPreset] = useState<number | null>(DONATION_PRESETS[1]);
   const [custom, setCustom] = useState('');
@@ -82,7 +85,7 @@ export const Donate: React.FC<DonateProps> = ({
             Fund the <span className="text-gold">Community Outreach Drive</span>
           </>
         }
-        lead={`You do not have to attend to make an impact. Every rand goes towards supplies for the ${EVENT.causeShort}.`}
+        lead={`You do not have to attend to make an impact. A portion of every donation goes towards supplies for the ${EVENT.causeShort}.`}
       />
 
       {/* Running total, when there is one worth showing. */}
@@ -243,24 +246,38 @@ export const Donate: React.FC<DonateProps> = ({
               <span className="text-[13px] text-muted">Keep my donation anonymous</span>
             </label>
 
-            <Button type="submit" size="lg" className="w-full mt-8" disabled={busy || !amountValid}>
-              {busy ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Redirecting to PayFast…
-                </>
-              ) : (
-                <>
-                  <Heart className="w-4 h-4" />
-                  Donate {amountValid ? formatZAR(amount) : ''}
-                </>
-              )}
-            </Button>
+            {paymentsOpen ? (
+              <>
+                <Button type="submit" size="lg" className="w-full mt-8" disabled={busy || !amountValid}>
+                  {busy ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Redirecting to PayFast…
+                    </>
+                  ) : (
+                    <>
+                      <Heart className="w-4 h-4" />
+                      Donate {amountValid ? formatZAR(amount) : ''}
+                    </>
+                  )}
+                </Button>
 
-            <p className="mt-4 text-center text-[12px] text-muted/70 leading-relaxed">
-              Processed securely by PayFast. Card details are entered on PayFast's page and never
-              touch this site.
-            </p>
+                <p className="mt-4 text-center text-[12px] text-muted/70 leading-relaxed">
+                  Processed securely by PayFast. Card details are entered on PayFast's page and never
+                  touch this site.
+                </p>
+              </>
+            ) : (
+              /* Taking someone through the form only to fail at the gateway
+                 wastes their goodwill. Say it up front instead. */
+              <div className="mt-8 rounded-sm border border-gold/30 bg-gold/[0.06] px-5 py-4 text-center">
+                <p className="text-sm font-semibold text-gold">Donations open shortly</p>
+                <p className="mt-2 text-[13px] text-muted leading-relaxed">
+                  We are finalising our secure payment setup. Thank you for wanting to
+                  help — please check back soon.
+                </p>
+              </div>
+            )}
           </form>
         </Card>
 

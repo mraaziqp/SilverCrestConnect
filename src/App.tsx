@@ -38,6 +38,7 @@ interface EventSummary {
   event?: EventSettings;
   welcomePack?: WelcomePackItem[];
   impactItems?: ImpactItem[];
+  paymentsOpen?: boolean;
 }
 
 export default function App() {
@@ -98,6 +99,7 @@ function LandingPage() {
           gallery={summary?.gallery}
           galleryHeading={summary?.event?.galleryHeading}
           galleryBody={summary?.event?.galleryBody}
+          paymentsOpen={summary?.paymentsOpen !== false}
         />
         <Supporters />
         <ImpactStand

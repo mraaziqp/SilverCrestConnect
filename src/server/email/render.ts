@@ -127,7 +127,7 @@ function shell({ preheader, heading, body, cta, panel }: ShellOptions): string {
   </table>
 
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:20px;">
-    100% of proceeds fund the ${esc(EVENT.causeShort)}.
+    A portion of proceeds funds the ${esc(EVENT.causeShort)}.
   </div>
 
 </td></tr>
@@ -145,7 +145,7 @@ ${EVENT.dateLabel} - ${EVENT.timeLabel} - ${EVENT.venueCity}
 Presented by ${EVENT.presentedBy}
 ${EVENT.contactEmail}
 
-100% of proceeds fund the ${EVENT.causeShort}.`;
+A portion of proceeds funds the ${EVENT.causeShort}.`;
 }
 
 // ------------------------------------------------------------------ templates
@@ -200,6 +200,8 @@ export function applicationApproved(input: {
   seatsRemaining: number;
   attendeeCount?: 1 | 2;
   totalAmountZAR?: number;
+  /** False while the site is collecting applications but cannot take money. */
+  paymentsOpen?: boolean;
 }): RenderedEmail {
   const {
     contactName,
@@ -209,6 +211,7 @@ export function applicationApproved(input: {
     seatsRemaining,
     attendeeCount = 1,
     totalAmountZAR = attendeeCount === 2 ? EVENT.ticketPriceZAR * 2 : EVENT.ticketPriceZAR,
+    paymentsOpen = true,
   } = input;
 
   const scarcity =
@@ -217,28 +220,46 @@ export function applicationApproved(input: {
       : '';
 
   return {
-    subject: `Your application is approved — Secure your seat for ${EVENT.fullName}`,
+    subject: paymentsOpen
+      ? `Your application is approved — Secure your seat for ${EVENT.fullName}`
+      : `Your application is approved — ${EVENT.fullName}`,
     html: shell({
-      preheader: `${businessName} is approved! Complete payment of ${money(totalAmountZAR)} to secure your seat.`,
+      preheader: paymentsOpen
+        ? `${businessName} is approved! Complete payment of ${money(totalAmountZAR)} to secure your seat.`
+        : `${businessName} is approved. We will send your payment link shortly.`,
       heading: 'Application Approved',
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
 <p style="margin:0 0 16px;">Good news — your application for <strong style="color:${BONE};">${esc(businessName)}</strong> has been approved for <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)}.</p>
-<p style="margin:0 0 16px;">Your seat is now available to secure. Total attendance fee: <strong style="color:${BONE};">${money(totalAmountZAR)}</strong> for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).</p>
-<p style="margin:0 0 16px;">Click below to complete your payment securely via PayFast.</p>
+<p style="margin:0 0 16px;">${paymentsOpen ? 'Your seat is now available to secure. ' : ''}Total attendance fee: <strong style="color:${BONE};">${money(totalAmountZAR)}</strong> for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).</p>
+${
+  paymentsOpen
+    ? `<p style="margin:0 0 16px;">Click below to complete your payment securely via PayFast.</p>
 ${scarcity}
-<p style="margin:0;font-weight:bold;color:${GOLD};">Important: Your seat is only confirmed once payment has cleared.</p>`,
-      cta: { label: `Pay ${money(totalAmountZAR)} & Confirm Seat`, url: payUrl },
+<p style="margin:0;font-weight:bold;color:${GOLD};">Important: Your seat is only confirmed once payment has cleared.</p>`
+    : `<p style="margin:0 0 16px;">Payment is not open just yet. We are finalising it now and will email you a secure payment link as soon as it is ready — there is nothing you need to do in the meantime.</p>
+${scarcity}
+<p style="margin:0;font-weight:bold;color:${GOLD};">Your approval is recorded against the reference below. Your seat is confirmed once payment has cleared.</p>`
+}`,
+      ...(paymentsOpen
+        ? { cta: { label: `Pay ${money(totalAmountZAR)} & Confirm Seat`, url: payUrl } }
+        : {}),
       panel: { label: 'Your Reference', value: reference },
     }),
     text: `Hi ${contactName},
 
 Good news - your application for ${businessName} has been approved for ${EVENT.fullName} on ${EVENT.dateLabel}.
 
-Your seat is now available to secure. Total attendance fee: ${money(totalAmountZAR)} for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).
+${paymentsOpen ? 'Your seat is now available to secure. ' : ''}Total attendance fee: ${money(totalAmountZAR)} for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).
 
-Complete your payment securely via PayFast here:
+${
+  paymentsOpen
+    ? `Complete your payment securely via PayFast here:
 
-${payUrl}
+${payUrl}`
+    : `Payment is not open just yet. We are finalising it now and will email you
+a secure payment link as soon as it is ready. There is nothing you need
+to do in the meantime.`
+}
 
 ${seatsRemaining > 0 && seatsRemaining <= 5 ? `Only ${seatsRemaining} ${seatsRemaining === 1 ? 'seat' : 'seats'} remaining.\n\n` : ''}Important: Your seat is only confirmed once payment has cleared.
 
@@ -271,7 +292,7 @@ export function ticketConfirmed(input: {
   <p style="margin:0;font-size:14px;color:${GOLD};"><strong>Includes:</strong> Light breakfast, refreshments, and welcome pack</p>
 </div>
 <p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival you will receive your welcome pack. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
-<p style="margin:0;">100% of proceeds go directly towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
+<p style="margin:0;">A portion of proceeds goes towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
       panel: {
         label: 'Your Digital Ticket Code',
         value: ticketCode,
@@ -294,7 +315,7 @@ On arrival you will receive your welcome pack. You will also have the floor duri
 YOUR TICKET CODE: ${ticketCode}
 Present this code upon arrival at registration.
 
-100% of proceeds fund the ${EVENT.causeShort}. We look forward to hosting you!
+A portion of proceeds funds the ${EVENT.causeShort}. We look forward to hosting you!
 ${textFooter()}`,
   };
 }
@@ -313,8 +334,7 @@ export function donationReceipt(input: {
       preheader: `Your ${money(amountZAR)} donation to the ${EVENT.causeShort} has been received.`,
       heading: 'Thank you',
       body: `<p style="margin:0 0 16px;">Hi ${esc(name)},</p>
-<p style="margin:0 0 16px;">Your donation of <strong style="color:${BONE};">${money(amountZAR)}</strong> has been received, and goes directly towards supplies for the ${esc(EVENT.cause)}.</p>
-<p style="margin:0 0 16px;">Nothing is held back for event overheads. Every rand reaches the drive.</p>
+<p style="margin:0 0 16px;">Your donation of <strong style="color:${BONE};">${money(amountZAR)}</strong> has been received. A portion goes towards supplies for the ${esc(EVENT.cause)}.</p>
 <p style="margin:0;">This email is your receipt.</p>`,
       panel: {
         label: 'Receipt reference',
@@ -324,10 +344,8 @@ export function donationReceipt(input: {
     }),
     text: `Hi ${name},
 
-Your donation of ${money(amountZAR)} has been received, and goes directly
+Your donation of ${money(amountZAR)} has been received. A portion goes
 towards supplies for the ${EVENT.cause}.
-
-Nothing is held back for event overheads. Every rand reaches the drive.
 
 This email is your receipt.
 

@@ -208,3 +208,47 @@ test('approval and confirmation emails reflect 2 representatives and R900 pricin
   assert.ok(ticketMail.text.includes('Light breakfast'), 'includes light breakfast notice');
 });
 
+
+/**
+ * The approval email must not send anyone to a payment page that cannot take
+ * their money. With payments closed it confirms the approval and says a link
+ * follows — carrying no payment URL at all, in either MIME part.
+ */
+test('an approval sent while payments are closed carries no payment link', () => {
+  const mail = applicationApproved({
+    contactName: 'Thandi',
+    businessName: 'Audit Traders',
+    reference: 'SCC26-ABC123',
+    payUrl: 'https://scconnect.co.za/pay/SCC26-ABC123',
+    seatsRemaining: 12,
+    attendeeCount: 2,
+    totalAmountZAR: 900,
+    paymentsOpen: false,
+  });
+
+  assert.equal(mail.html.includes('/pay/SCC26-ABC123'), false, 'html must not link to payment');
+  assert.equal(mail.text.includes('/pay/SCC26-ABC123'), false, 'text must not link to payment');
+  assert.doesNotMatch(mail.subject, /Secure your seat/);
+  assert.match(mail.text, /Payment is not open just yet/);
+  // The approval itself, and the amount to expect, still have to come through.
+  assert.match(mail.text, /has been approved/);
+  assert.match(mail.text, /R900\.00/);
+  assert.match(mail.text, /SCC26-ABC123/);
+});
+
+test('an approval sent while payments are open still links to payment', () => {
+  const mail = applicationApproved({
+    contactName: 'Thandi',
+    businessName: 'Audit Traders',
+    reference: 'SCC26-ABC123',
+    payUrl: 'https://scconnect.co.za/pay/SCC26-ABC123',
+    seatsRemaining: 12,
+    attendeeCount: 1,
+    totalAmountZAR: 450,
+    paymentsOpen: true,
+  });
+
+  assert.ok(mail.html.includes('/pay/SCC26-ABC123'));
+  assert.ok(mail.text.includes('/pay/SCC26-ABC123'));
+  assert.match(mail.subject, /Secure your seat/);
+});

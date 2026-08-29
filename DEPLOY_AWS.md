@@ -66,6 +66,7 @@ FIREBASE_PROJECT_ID=<project id>
 FIREBASE_DATABASE_URL=https://<project>.firebaseio.com
 FIREBASE_SERVICE_ACCOUNT=<the service-account JSON, as a single line>
 
+PAYMENTS_OPEN=false                                  # collect applications, take no money yet
 PAYFAST_MODE=sandbox                                 # live only after a test payment
 PAYFAST_MERCHANT_ID=<from the PayFast dashboard>
 PAYFAST_MERCHANT_KEY=<from the PayFast dashboard>
@@ -174,8 +175,14 @@ In order:
 3. A test application submits, appears in the dashboard, and approval sends mail.
 4. A sandbox payment completes and the ITN marks it `PAID` — check the payment
    in the dashboard carries no `itnError`.
-5. Only then set `PAYFAST_MODE=live` with the live credentials, and do one real
-   low-value payment end to end before announcing anything.
+5. Only then set `PAYFAST_MODE=live` with the live credentials, remove
+   `PAYMENTS_OPEN=false`, and do one real low-value payment end to end before
+   announcing anything.
+
+You can launch before any of the payment steps are done. With `PAYMENTS_OPEN=false`
+the site still takes applications and you can review and approve them; approval
+emails say a payment link will follow rather than carrying one, and the pay page
+explains instead of failing. Nothing has to be re-entered when payments open.
 
 Two known blockers, neither in the code:
 

@@ -71,7 +71,7 @@ export const DEFAULT_SETTINGS: EventSettings = {
   copyrightText: EVENT.copyrightText,
   galleryHeading: 'Our last outreach drive',
   galleryBody:
-    'Every rand raised here goes towards supplies for the next drive. These are photographs from the last one.',
+    'A portion of what is raised here goes towards supplies for the next drive. These are photographs from the last one.',
 };
 
 interface Database {

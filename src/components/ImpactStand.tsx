@@ -51,7 +51,7 @@ export const ImpactStand: React.FC<ImpactStandProps> = ({
       </div>
 
       <p className="mt-12 text-center text-[13px] text-muted/70 max-w-2xl mx-auto leading-relaxed">
-        All ticket proceeds, on-site contributions, and donations fund supplies directly for the {causeShort}.
+        A portion of ticket proceeds, on-site contributions, and donations funds supplies for the {causeShort}.
       </p>
     </Section>
   );

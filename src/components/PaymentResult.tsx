@@ -106,7 +106,7 @@ export const PaymentReturn: React.FC = () => {
         body={
           isTicket
             ? `${businessName ?? 'Your business'} is confirmed for ${EVENT.fullName} on ${EVENT.dateLabel}. A confirmation email with your digital ticket is on its way.`
-            : `Your donation of ${formatZAR(payment.amountZAR)} goes directly towards the ${EVENT.causeShort}. Thank you.`
+            : `A portion of your donation of ${formatZAR(payment.amountZAR)} goes towards the ${EVENT.causeShort}. Thank you.`
         }
       >
         <div className="mt-8 rounded-sm border border-gold/30 bg-gold/[0.06] px-6 py-5 text-center">

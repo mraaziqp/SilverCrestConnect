@@ -32,11 +32,12 @@ interface StatusResponse {
   };
   event?: EventSettings;
   programme?: ProgrammeItem[];
+  paymentsOpen?: boolean;
 }
 
 /** Copy for each funnel state, keyed so the page never shows a raw enum. */
 const STATE: Record<
-  ApplicationStatus,
+  ApplicationStatus | 'APPROVED_AWAITING_PAYMENT',
   { title: string; body: (business: string, eventName: string) => string; tone: 'wait' | 'go' | 'done' | 'stop' }
 > = {
   PENDING_REVIEW: {
@@ -50,6 +51,15 @@ const STATE: Record<
     tone: 'go',
     body: (b) =>
       `${b} has been approved. Complete the attendance fee below to confirm your seat. Your seat is not held until payment clears.`,
+  },
+  // Same status, but with nothing to complete yet. Kept as its own entry rather
+  // than patched inline, so the heading and the panel below it cannot drift
+  // apart and tell the applicant two different things.
+  APPROVED_AWAITING_PAYMENT: {
+    title: 'Approved',
+    tone: 'go',
+    body: (b) =>
+      `${b} has been approved and your place is recorded. Payment is not open yet — we will email you a secure link as soon as it is.`,
   },
   PAID: {
     title: 'Your seat is confirmed',
@@ -76,6 +86,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
   const [programme, setProgramme] = useState<ProgrammeItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [paymentsOpen, setPaymentsOpen] = useState(true);
   const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
@@ -87,6 +98,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
       setData(result.application);
       if (result.event) setEventData(result.event);
       if (result.programme) setProgramme(result.programme);
+      setPaymentsOpen(result.paymentsOpen !== false);
     } catch (err) {
       setLoadError(
         err instanceof ApiRequestError && err.status === 404
@@ -143,7 +155,8 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
     );
   }
 
-  const state = STATE[data.status];
+  const state =
+    data.status === 'APPROVED' && !paymentsOpen ? STATE.APPROVED_AWAITING_PAYMENT : STATE[data.status];
   const Icon =
     state.tone === 'done' ? CheckCircle2 : state.tone === 'stop' ? XCircle : state.tone === 'go' ? CheckCircle2 : Clock;
 
@@ -177,23 +190,45 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
               {data.businessName} (Includes light breakfast for both attendees)
             </div>
           )}
-          <Button size="lg" className="w-full" onClick={pay} disabled={paying}>
-            {paying ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Redirecting to PayFast…
-              </>
-            ) : (
-              <>
-                Pay {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))} &amp; Confirm Seat
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
-          <FieldError message={payError ?? undefined} />
-          <p className="mt-4 text-[12px] text-muted/70 leading-relaxed">
-            Secured by PayFast. Card details are entered on PayFast's page and never touch this site.
-          </p>
+          {paymentsOpen ? (
+            <>
+              <Button size="lg" className="w-full" onClick={pay} disabled={paying}>
+                {paying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Redirecting to PayFast…
+                  </>
+                ) : (
+                  <>
+                    Pay {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))} &amp; Confirm Seat
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+              <FieldError message={payError ?? undefined} />
+              <p className="mt-4 text-[12px] text-muted/70 leading-relaxed">
+                Secured by PayFast. Card details are entered on PayFast's page and never touch this site.
+              </p>
+            </>
+          ) : (
+            /* Approved, but the site cannot take money yet. Showing a disabled
+               button would read as a fault on their side, so this says what is
+               actually happening and that their place is not at risk. */
+            <div className="rounded-sm border border-gold/30 bg-gold/[0.06] px-5 py-4">
+              <p className="text-sm font-semibold text-gold">Payment is not open yet</p>
+              <p className="mt-2 text-[13px] text-muted leading-relaxed">
+                Your application is approved and your reference is recorded. We are
+                finalising payment now and will email you a secure link as soon as it
+                is ready — there is nothing you need to do in the meantime.
+              </p>
+              <p className="mt-3 text-[12px] text-muted/70">
+                Amount to expect:{' '}
+                <span className="text-bone font-semibold">
+                  {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 

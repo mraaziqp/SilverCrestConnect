@@ -89,6 +89,20 @@ export interface PayFastConfig {
   apiUrl: string;
   /** True when real credentials were supplied via the environment. */
   isConfigured: boolean;
+  /**
+   * Whether the site may take money yet.
+   *
+   * Applications are deliberately independent of this: the client wants to
+   * collect and review them while payment is still being set up. When this is
+   * false the checkout endpoints refuse, the approval email omits its payment
+   * link, and the pay page explains rather than failing.
+   *
+   * The default is the safe one. With no real merchant credentials the config
+   * below falls back to PayFast's public sandbox, so an approved applicant
+   * would otherwise be emailed a link to a test gateway and told their seat was
+   * secured once it "cleared".
+   */
+  paymentsOpen: boolean;
   /** Skip the source-IP allowlist on ITN. Only for local testing. */
   skipIpCheck: boolean;
   /** Skip the server-to-server confirmation POST. Only for local testing. */
@@ -115,6 +129,10 @@ export function loadPayFastConfig(env: NodeJS.ProcessEnv = process.env): PayFast
     merchantId: mode === 'live' ? merchantId || SANDBOX_DEFAULTS.merchantId : sandboxId,
     merchantKey: mode === 'live' ? merchantKey || SANDBOX_DEFAULTS.merchantKey : sandboxKey,
     passphrase: (env.PAYFAST_PASSPHRASE || '').trim(),
+    // Explicit wins either way; otherwise payments open only once real
+    // credentials exist, never on the sandbox fallback.
+    paymentsOpen:
+      env.PAYMENTS_OPEN === 'true' ? true : env.PAYMENTS_OPEN === 'false' ? false : isConfigured,
     appUrl: (env.APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     apiUrl: (env.API_URL || env.APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     isConfigured,
@@ -427,8 +445,17 @@ export function describeConfig(config: PayFastConfig, env: NodeJS.ProcessEnv = p
     );
   }
 
+  if (!config.paymentsOpen) {
+    warnings.push(
+      config.isConfigured
+        ? 'Payments are CLOSED by PAYMENTS_OPEN=false. Applications are still accepted and reviewable.'
+        : 'Payments are CLOSED because no real PayFast credentials are set. Applications are still accepted and reviewable.',
+    );
+  }
+
   return {
     configured: config.isConfigured,
+    paymentsOpen: config.paymentsOpen,
     mode: config.mode,
     merchantId: config.merchantId,
     merchantKeyMasked: maskKey(config.merchantKey),
