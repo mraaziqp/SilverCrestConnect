@@ -25,6 +25,8 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+  const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
+  const twoRepTotal = ticketPrice + additionalRepPrice;
   const capacity = event?.capacity ?? EVENT.capacity;
 
   // A seat is a person, not a business: a two-representative booking takes two.
@@ -61,7 +63,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                 {formatZAR(ticketPrice)}
               </p>
               <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-muted/70">
-                per person
+                primary booking
               </p>
               {/* Null means the count has not loaded yet. Rendering nothing is
                   right: "0 seats remaining" during a fetch would read as sold
@@ -94,10 +96,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <Users className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               <div>
                 <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
-                  Want to bring someone from your business?
+                  Bringing an employee, partner or co-worker?
                 </h4>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at {formatZAR(ticketPrice)} per person ({formatZAR(ticketPrice * 2)} total for 2 attendees, including light breakfast).
+                  You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at {formatZAR(additionalRepPrice)} ({formatZAR(twoRepTotal)} total for 2 attendees, including light breakfast).
                 </p>
               </div>
             </div>
@@ -160,7 +162,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
         </div>
       </div>
 
-      <ApplicationForm open={formOpen} onClose={() => setFormOpen(false)} />
+      <ApplicationForm open={formOpen} onClose={() => setFormOpen(false)} event={event} />
     </Section>
   );
 };

@@ -62,6 +62,7 @@ export const DEFAULT_SETTINGS: EventSettings = {
   aboutLead: EVENT.aboutLead,
   aboutBody: EVENT.aboutBody,
   ticketPriceZAR: EVENT.ticketPriceZAR,
+  additionalRepPriceZAR: EVENT.additionalRepPriceZAR,
   capacityMin: EVENT.capacityMin,
   capacityMax: EVENT.capacityMax,
   capacity: EVENT.capacity,

@@ -168,6 +168,8 @@ export interface EventSettings {
   aboutLead: string;
   aboutBody: string;
   ticketPriceZAR: number;
+  /** Additional fee in ZAR for a second representative / employee / co-worker (defaults to ticketPriceZAR). */
+  additionalRepPriceZAR?: number;
   capacityMin: number;
   capacityMax: number;
   capacity: number;

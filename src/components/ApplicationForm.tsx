@@ -9,12 +9,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2, Users, X } from 'lucide-react';
 import { Button, FieldError } from './Brand';
-import { INDUSTRY_CATEGORIES } from '../config/event';
+import { EVENT, INDUSTRY_CATEGORIES } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
+import type { EventSettings } from '../types';
 
 interface ApplicationFormProps {
   open: boolean;
   onClose: () => void;
+  event?: Partial<EventSettings>;
 }
 
 interface FormState {
@@ -68,12 +70,16 @@ interface SubmitResult {
   message: string;
 }
 
-export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose }) => {
+export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose, event }) => {
   const [values, setValues] = useState<FormState>(EMPTY);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+
+  const basePrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+  const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
+  const twoRepTotal = basePrice + additionalRepPrice;
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -240,9 +246,9 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">1 Representative</span>
-                    <span className="font-bold text-gold">{formatZAR(350)}</span>
+                    <span className="font-bold text-gold">{formatZAR(basePrice)}</span>
                   </div>
-                  <p className="mt-1 text-[11.5px] text-muted">Includes light breakfast & full access.</p>
+                  <p className="mt-1 text-[11.5px] text-muted">Primary booking. Includes breakfast & full access.</p>
                 </button>
 
                 <button
@@ -256,9 +262,11 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">2 Representatives</span>
-                    <span className="font-bold text-gold">{formatZAR(700)}</span>
+                    <span className="font-bold text-gold">{formatZAR(twoRepTotal)}</span>
                   </div>
-                  <p className="mt-1 text-[11.5px] text-muted">Max 2 per business (R350 each, incl. breakfast).</p>
+                  <p className="mt-1 text-[11.5px] text-muted">
+                    +{formatZAR(additionalRepPrice)} for employee/co-worker (incl. breakfast).
+                  </p>
                 </button>
               </div>
             </div>
@@ -433,7 +441,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="w-4 h-4 text-gold" />
                   <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
-                    Second Representative Details (R350)
+                    Second Representative Details (+{formatZAR(additionalRepPrice)})
                   </h4>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -482,7 +490,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                   Total Upon Approval:
                 </p>
                 <p className="text-xl font-bold text-gold">
-                  {formatZAR(values.attendeeCount === 2 ? 700 : 350)}{' '}
+                  {formatZAR(values.attendeeCount === 2 ? twoRepTotal : basePrice)}{' '}
                   <span className="text-xs text-muted font-normal">
                     ({values.attendeeCount} {values.attendeeCount === 1 ? 'attendee' : 'attendees'}, incl. breakfast)
                   </span>

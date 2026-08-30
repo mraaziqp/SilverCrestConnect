@@ -194,7 +194,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
     }
 
     const settings = await store.getSettings();
-    const totalPriceZAR = attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR;
+    const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
+    const totalPriceZAR = attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR;
 
     const now = new Date().toISOString();
     const application: Application = {
@@ -255,8 +256,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
     const settings = await store.getSettings();
     const isPaid = application.status === 'PAID';
     const attendeeCount = application.attendeeCount || 1;
+    const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
     const totalPriceZAR =
-      application.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+      application.totalPriceZAR ||
+      (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
     return res.json({
       success: true,
@@ -332,8 +335,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
     }
 
     const attendeeCount = application.attendeeCount || 1;
+    const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
     const amountZAR =
-      application.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+      application.totalPriceZAR ||
+      (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
     const { first, last } = splitName(application.contactName);
     const payment: Payment = {
@@ -554,8 +559,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
     if (updated && status === 'APPROVED' && (!wasApproved || req.body?.resend === true)) {
       const settings = await store.getSettings();
       const attendeeCount = updated.attendeeCount || 1;
+      const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
       const totalAmountZAR =
-        updated.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+        updated.totalPriceZAR ||
+        (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
       sendInBackground(
         mailer,
@@ -580,8 +587,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
     if (updated && status === 'PAID' && application.status !== 'PAID' && updated.ticketCode) {
       const settings = await store.getSettings();
       const attendeeCount = updated.attendeeCount || 1;
+      const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
       const totalAmountZAR =
-        updated.totalPriceZAR || (attendeeCount === 2 ? settings.ticketPriceZAR * 2 : settings.ticketPriceZAR);
+        updated.totalPriceZAR ||
+        (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
       sendInBackground(
         mailer,

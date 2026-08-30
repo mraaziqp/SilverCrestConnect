@@ -904,62 +904,93 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
           <Sliders className="w-5 h-5 text-gold" />
           <h3 className="font-display text-lg font-bold text-bone">Capacity &amp; Ticket Pricing</h3>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Total Seats (Capacity)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={settings.capacity}
-              onChange={(e) => setSettings({ ...settings, capacity: parseInt(e.target.value) || 0 })}
-              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
-              required
-            />
-            <p className="mt-1 text-[11px] text-muted/60">Hard capacity ceiling</p>
+
+        <div>
+          <h4 className="text-xs uppercase tracking-brand text-gold font-semibold mb-3">Event Capacity</h4>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div>
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+                Total Seats (Capacity)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={settings.capacity}
+                onChange={(e) => setSettings({ ...settings, capacity: parseInt(e.target.value) || 0 })}
+                className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+                required
+              />
+              <p className="mt-1 text-[11px] text-muted/60">Hard capacity ceiling (e.g. 50)</p>
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+                Min Seats Target
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={settings.capacityMin}
+                onChange={(e) => setSettings({ ...settings, capacityMin: parseInt(e.target.value) || 0 })}
+                className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+                required
+              />
+              <p className="mt-1 text-[11px] text-muted/60">e.g. 40</p>
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+                Max Seats Target
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={settings.capacityMax}
+                onChange={(e) => setSettings({ ...settings, capacityMax: parseInt(e.target.value) || 0 })}
+                className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+                required
+              />
+              <p className="mt-1 text-[11px] text-muted/60">e.g. 50</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Min Seats Target
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={settings.capacityMin}
-              onChange={(e) => setSettings({ ...settings, capacityMin: parseInt(e.target.value) || 0 })}
-              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
-              required
-            />
-            <p className="mt-1 text-[11px] text-muted/60">e.g. 15</p>
-          </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Max Seats Target
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={settings.capacityMax}
-              onChange={(e) => setSettings({ ...settings, capacityMax: parseInt(e.target.value) || 0 })}
-              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
-              required
-            />
-            <p className="mt-1 text-[11px] text-muted/60">e.g. 20</p>
-          </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Ticket Price (ZAR)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={settings.ticketPriceZAR}
-              onChange={(e) => setSettings({ ...settings, ticketPriceZAR: parseFloat(e.target.value) || 0 })}
-              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
-              required
-            />
-            <p className="mt-1 text-[11px] text-muted/60">R350</p>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <h4 className="text-xs uppercase tracking-brand text-gold font-semibold mb-3">Attendance &amp; Representative Pricing</h4>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+                Primary Booking Fee (ZAR)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={settings.ticketPriceZAR}
+                onChange={(e) => setSettings({ ...settings, ticketPriceZAR: parseFloat(e.target.value) || 0 })}
+                className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+                required
+              />
+              <p className="mt-1 text-[11px] text-muted/60">Base fee charged for primary business application (e.g. R350)</p>
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+                Additional Representative / Employee Fee (ZAR)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={settings.additionalRepPriceZAR ?? settings.ticketPriceZAR}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    additionalRepPriceZAR: parseFloat(e.target.value) || 0,
+                  })
+                }
+                className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
+                required
+              />
+              <p className="mt-1 text-[11px] text-muted/60">
+                Additional fee added when bringing a 2nd representative/co-worker (e.g. R350)
+              </p>
+            </div>
           </div>
         </div>
       </Card>

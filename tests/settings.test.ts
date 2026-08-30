@@ -105,12 +105,14 @@ test('out-of-range numbers are rejected', () => {
 
 test('valid numbers are accepted, with counts rounded and money kept to cents', () => {
   const { settings, errors } = validateSettings(
-    { capacity: 30.6, ticketPriceZAR: 499.999 },
+    { capacity: 30.6, ticketPriceZAR: 499.999, additionalRepPriceZAR: 249.999 },
     CURRENT,
   );
   assert.equal(errors.capacity, undefined);
+  assert.equal(errors.additionalRepPriceZAR, undefined);
   assert.equal(settings.capacity, 31);
   assert.equal(settings.ticketPriceZAR, 500);
+  assert.equal(settings.additionalRepPriceZAR, 250);
 });
 
 test('a numeric string from a form input is accepted', () => {

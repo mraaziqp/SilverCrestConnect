@@ -134,6 +134,9 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
   const timeLabel = eventData?.timeLabel || EVENT.timeLabel;
   const venueLocation = eventData?.venueCity || eventData?.venue || EVENT.venueCity;
   const ticketPrice = eventData?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
+  const additionalRepPrice = eventData?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
+  const calculatedTotal = data && data.attendeeCount === 2 ? ticketPrice + additionalRepPrice : ticketPrice;
+  const finalPrice = data?.totalPriceZAR || calculatedTotal;
 
   if (loadError) {
     return (
@@ -200,7 +203,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
                   </>
                 ) : (
                   <>
-                    Pay {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))} &amp; Confirm Seat
+                    Pay {formatZAR(finalPrice)} &amp; Confirm Seat
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -224,7 +227,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
               <p className="mt-3 text-[12px] text-muted/70">
                 Amount to expect:{' '}
                 <span className="text-bone font-semibold">
-                  {formatZAR(data.totalPriceZAR || (data.attendeeCount === 2 ? ticketPrice * 2 : ticketPrice))}
+                  {formatZAR(finalPrice)}
                 </span>
               </p>
             </div>

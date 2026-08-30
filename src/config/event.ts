@@ -41,8 +41,10 @@ export const EVENT = {
   aboutBody:
     'Curated introductions between founders, practical keynote sessions, and a dedicated SME Spotlight where each business owner has the floor to present their services.',
 
-  /** Attendance fee per SME, in ZAR. A portion funds the outreach drive. */
+  /** Attendance fee per SME (primary representative), in ZAR. A portion funds the outreach drive. */
   ticketPriceZAR: 350,
+  /** Additional fee in ZAR for a second representative / employee / co-worker. */
+  additionalRepPriceZAR: 350,
   /** The proposal caps the room at vetted SMEs. */
   capacityMin: 40,
   capacityMax: 50,

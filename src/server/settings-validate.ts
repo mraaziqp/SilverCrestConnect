@@ -48,6 +48,7 @@ const TEXT_FIELDS: Record<string, number> = {
 /** Whole-number fields, with their permitted range. */
 const NUMBER_FIELDS: Record<string, { min: number; max: number }> = {
   ticketPriceZAR: { min: 0, max: 100_000 },
+  additionalRepPriceZAR: { min: 0, max: 100_000 },
   capacity: { min: 1, max: 10_000 },
   capacityMin: { min: 1, max: 10_000 },
   capacityMax: { min: 1, max: 10_000 },
@@ -163,7 +164,9 @@ export function validateSettings(
     }
     // Money is stored to the cent; counts must be whole.
     (out as Record<string, unknown>)[field] =
-      field === 'ticketPriceZAR' ? Math.round(num * 100) / 100 : Math.round(num);
+      field === 'ticketPriceZAR' || field === 'additionalRepPriceZAR'
+        ? Math.round(num * 100) / 100
+        : Math.round(num);
   }
 
   // ---- urls
