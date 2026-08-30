@@ -104,7 +104,9 @@ export const Hero: React.FC<HeroProps> = ({ seatsRemaining, event }) => {
         <div className="mt-11 flex flex-col sm:flex-row items-center justify-center gap-4">
           <ButtonLink href="#tickets" size="lg" className="w-full sm:w-auto">
             <Ticket className="w-4 h-4" />
-            APPLY TO ATTEND — {formatZAR(ticketPrice)}
+            {event?.ticketPriceZAR !== undefined
+              ? `APPLY TO ATTEND — ${formatZAR(ticketPrice)}`
+              : 'APPLY TO ATTEND'}
           </ButtonLink>
           <ButtonLink href="#donate" variant="outline" size="lg" className="w-full sm:w-auto">
             <Heart className="w-4 h-4 text-gold" />

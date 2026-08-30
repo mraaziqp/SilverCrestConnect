@@ -25,6 +25,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
+  // Wait for the API to load before showing any prices — otherwise visitors
+  // see the hardcoded fallback for ~3 s, then the real admin-configured price
+  // swaps in, which looks buggy and misleading.
+  const priceReady = event?.ticketPriceZAR !== undefined;
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
   const twoRepTotal = ticketPrice + additionalRepPrice;
@@ -64,9 +68,13 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <p className="mt-1 text-xs text-muted">Includes light breakfast & morning refreshments</p>
             </div>
             <div className="text-right">
-              <p className="font-display text-4xl sm:text-5xl font-bold text-gold leading-none">
-                {formatZAR(ticketPrice)}
-              </p>
+              {priceReady ? (
+                <p className="font-display text-4xl sm:text-5xl font-bold text-gold leading-none">
+                  {formatZAR(ticketPrice)}
+                </p>
+              ) : (
+                <div className="h-12 w-28 rounded bg-gold/10 animate-pulse" />
+              )}
               <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-muted/70">
                 primary booking
               </p>
@@ -103,9 +111,13 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                 <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
                   Bringing an employee, partner or co-worker?
                 </h4>
-                <p className="mt-1 text-xs text-muted leading-relaxed">
-                  You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at {formatZAR(additionalRepPrice)} ({formatZAR(twoRepTotal)} total for 2 attendees, including light breakfast).
-                </p>
+                {priceReady ? (
+                  <p className="mt-1 text-xs text-muted leading-relaxed">
+                    You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at {formatZAR(additionalRepPrice)} ({formatZAR(twoRepTotal)} total for 2 attendees, including light breakfast).
+                  </p>
+                ) : (
+                  <div className="mt-1 h-4 w-3/4 rounded bg-white/5 animate-pulse" />
+                )}
               </div>
             </div>
           </div>
@@ -121,7 +133,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                   Join the Waiting List
                 </Button>
               </div>
-            ) : (
+            ) : priceReady ? (
               <>
                 <Button size="lg" className="w-full" onClick={() => setFormOpen(true)}>
                   <Ticket className="w-4 h-4" />
@@ -131,13 +143,15 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                   Submitting is free. We review your application to maintain a balanced room, then email your private payment link.
                 </p>
               </>
+            ) : (
+              <div className="h-12 w-full rounded bg-gold/10 animate-pulse" />
             )}
           </div>
         </Card>
 
         {/* Pay / status panel & FAQ */}
         <div className="space-y-6">
-          <ReferenceLookup ticketPrice={ticketPrice} />
+          <ReferenceLookup ticketPrice={ticketPrice} priceReady={priceReady} />
 
           {/* FAQ Box */}
           <Card className="p-7">
@@ -200,7 +214,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
  * page handles every funnel state, so someone still under review gets a clear
  * "we're reviewing it" instead of a bare error.
  */
-const ReferenceLookup: React.FC<{ ticketPrice?: number }> = ({ ticketPrice = EVENT.ticketPriceZAR }) => {
+const ReferenceLookup: React.FC<{ ticketPrice?: number; priceReady?: boolean }> = ({
+  ticketPrice = EVENT.ticketPriceZAR,
+  priceReady = true,
+}) => {
   const [reference, setReference] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -221,8 +238,8 @@ const ReferenceLookup: React.FC<{ ticketPrice?: number }> = ({ ticketPrice = EVE
       </p>
       <h4 className="mt-3 text-base font-semibold text-bone">Check your status or pay</h4>
       <p className="mt-2 text-[13px] text-muted leading-relaxed">
-        Enter the reference from your email to see where your application stands, and to pay the{' '}
-        {formatZAR(ticketPrice)} fee once approved.
+        Enter the reference from your email to see where your application stands
+        {priceReady ? <>, and to pay the {formatZAR(ticketPrice)} fee once approved.</> : <> and to pay the fee once approved.</>}
       </p>
 
       <form onSubmit={submit} className="mt-5" noValidate>
