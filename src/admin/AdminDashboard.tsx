@@ -38,6 +38,7 @@ import {
 import { Monogram, Button, Card } from '../components/Brand';
 import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
+import { copyToClipboard } from '../lib/clipboard';
 import type {
   Application,
   ApplicationStatus,
@@ -479,8 +480,9 @@ const ApplicationsTab: React.FC<{
     return list;
   }, [applications, filter, searchQuery]);
 
-  const copyRef = (app: Application) => {
-    navigator.clipboard.writeText(app.reference);
+  const copyRef = async (app: Application) => {
+    // Only confirm a copy that actually happened.
+    if (!(await copyToClipboard(app.reference))) return;
     setCopiedId(app.id);
     setTimeout(() => setCopiedId(null), 2000);
   };

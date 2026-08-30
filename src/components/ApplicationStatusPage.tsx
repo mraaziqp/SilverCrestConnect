@@ -17,6 +17,7 @@ import { EVENT } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
 import type { ApplicationStatus, CheckoutResponse, EventSettings, ProgrammeItem } from '../types';
+import { copyToClipboard } from '../lib/clipboard';
 
 interface StatusResponse {
   success: true;
@@ -184,9 +185,9 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
           </p>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               const textToCopy = data.ticketCode ?? data.reference;
-              navigator.clipboard.writeText(textToCopy);
+              if (!(await copyToClipboard(textToCopy))) return;
               setCopiedCode(true);
               setTimeout(() => setCopiedCode(false), 2000);
             }}

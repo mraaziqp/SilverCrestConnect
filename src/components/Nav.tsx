@@ -57,9 +57,13 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
         <div className="flex items-center justify-between h-[72px]">
           {/* Wordmark */}
-          <a href="#top" className="flex items-center gap-3 shrink-0" aria-label={`${fullName} home`}>
+          {/* min-w-0 rather than shrink-0, and the name truncates. The event name
+              is editable in /admin, so this has to survive a longer one than the
+              default — and at 320px (a folded Galaxy) the default alone was
+              already wider than the bar. Tracking and size step down below sm. */}
+          <a href="#top" className="flex items-center gap-3 min-w-0" aria-label={`${fullName} home`}>
             <Monogram size={34} customLogoUrl={customLogoUrl} />
-            <span className="font-display text-[13px] sm:text-[15px] uppercase tracking-brand text-bone font-bold leading-none">
+            <span className="font-display text-[11px] sm:text-[15px] uppercase tracking-[0.14em] sm:tracking-brand text-bone font-bold leading-none truncate">
               {event?.name || EVENT.name}
             </span>
           </a>
@@ -78,9 +82,14 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
           </nav>
 
           <div className="flex items-center gap-3">
-            <ButtonLink href="#tickets" className="hidden sm:inline-flex">
-              Apply to Attend
-            </ButtonLink>
+            {/* The wrapper hides this, not the button. ButtonLink carries its own
+                display utility, so a `hidden` added alongside it competes with
+                that one in the same layer and the cascade decided by stylesheet
+                order rather than by intent — leaving the desktop CTA rendered
+                off-screen on phones. A plain wrapper has nothing to compete with. */}
+            <span className="hidden sm:block">
+              <ButtonLink href="#tickets">Apply to Attend</ButtonLink>
+            </span>
 
             <button
               type="button"

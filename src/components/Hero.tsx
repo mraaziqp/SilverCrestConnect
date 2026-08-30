@@ -73,7 +73,7 @@ export const Hero: React.FC<HeroProps> = ({ seatsRemaining, event }) => {
         }}
       />
 
-      <div className="relative text-center max-w-4xl mx-auto">
+      <div className="relative text-center max-w-4xl mx-auto min-w-0">
         {/* Brand Logo & Wordmark matching Image 3 */}
         <BrandLogo
           customLogoUrl={customLogoUrl}

@@ -50,9 +50,9 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
         lead="Connect is a curated event aiming for 1–2 businesses per category to create meaningful networking. Applications are reviewed first; payment is only requested once approved."
       />
 
-      <div className="mt-14 grid gap-8 lg:grid-cols-[1.15fr_1fr] items-start">
+      <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
         {/* Ticket card */}
-        <Card featured className="p-8 sm:p-10">
+        <Card featured className="min-w-0 p-6 sm:p-8 lg:p-10">
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div>
               <span className="inline-block px-2.5 py-1 rounded bg-gold/15 border border-gold/30 text-[10px] uppercase tracking-brand text-gold font-bold mb-2">
@@ -156,7 +156,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                       type="button"
                       onClick={() => setOpenFaq(isOpen ? null : idx)}
                       aria-expanded={isOpen}
-                      className="w-full flex items-center justify-between text-left group py-1"
+                      className="w-full flex items-center justify-between text-left group py-3 min-h-[44px]"
                     >
                       <span className="text-xs font-semibold text-bone group-hover:text-gold transition-colors pr-2">
                         {faq.question}

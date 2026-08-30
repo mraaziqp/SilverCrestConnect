@@ -13,6 +13,7 @@ import { Button, FieldError } from './Brand';
 import { EVENT, INDUSTRY_CATEGORIES } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import type { EventSettings } from '../types';
+import { copyToClipboard } from '../lib/clipboard';
 
 interface ApplicationFormProps {
   open: boolean;
@@ -204,8 +205,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
                 <p className="font-mono text-xl text-bone tracking-[0.15em]">{result.reference}</p>
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(result.reference);
+                  onClick={async () => {
+                    if (!(await copyToClipboard(result.reference))) return;
                     setCopiedRef(true);
                     setTimeout(() => setCopiedRef(false), 2000);
                   }}
