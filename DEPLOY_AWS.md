@@ -166,7 +166,22 @@ redeploy, so PayFast return links and applicant emails point at the real site.
 
 ---
 
-## 4. Going live
+## 4. Checking it actually works
+
+From the repo, against whichever URL you are testing:
+
+```bash
+npx tsx scripts/check-deployment.ts https://main.xxxx.amplifyapp.com
+```
+
+It reports which pieces are wired and what to do about the ones that are not.
+Run it before asking anyone to try a booking — a static host serves the page
+perfectly while every form behind it 404s, and from a browser those look
+identical until someone hits submit.
+
+---
+
+## 5. Going live
 
 In order:
 

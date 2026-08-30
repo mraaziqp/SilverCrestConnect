@@ -39,6 +39,8 @@ npm run dev             # http://localhost:3000
 | `npm start` | Runs the production server from `dist/` |
 | `npm test` | 95 unit tests — PayFast signing, validation, email rendering, currency, seating, admin auth |
 | `npm run lint` | `tsc --noEmit` |
+| `npx tsx scripts/check-deployment.ts <url>` | Checks a deployed site from outside: API reachable, storage durable, deep links routed |
+| `npx tsx scripts/sync-copy.ts` | Pushes copy corrections into an already-seeded datastore (`--apply` to write) |
 
 ---
 
