@@ -57,6 +57,14 @@ const REWRITES: ReadonlyArray<readonly [RegExp, string]> = [
     'A portion of the proceeds from tickets and donations goes towards supplies for the $1.',
   ],
   [
+    /100% of ticket proceeds and every donation fund supplies for the (.+?)\. Nothing is retained for event overheads\./g,
+    'A portion of the proceeds from tickets and donations goes towards supplies for the $1.',
+  ],
+  [
+    /100% of ticket proceeds and every donation fund supplies for the (.+?)\./g,
+    'A portion of the proceeds from tickets and donations goes towards supplies for the $1.',
+  ],
+  [
     /Every ticket sold directly funds our (.+?) with zero overheads retained\./g,
     'A portion of every ticket sold funds our $1.',
   ],
