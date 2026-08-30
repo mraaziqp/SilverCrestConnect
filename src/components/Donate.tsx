@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Heart, Loader2 } from 'lucide-react';
+import { Heart, Loader2, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
@@ -106,7 +106,7 @@ export const Donate: React.FC<DonateProps> = ({
         </div>
       )}
 
-      <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
+      <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] items-start">
         <Card featured className="p-8 sm:p-10">
           <form onSubmit={submit} noValidate>
             <h3 className="font-display text-xl font-bold text-bone">Make a direct donation</h3>
@@ -291,7 +291,7 @@ export const Donate: React.FC<DonateProps> = ({
  * Photos from the last outreach drive.
  *
  * Displays the real care packages and supplies from past outreach drives so donors
- * can see the direct community impact.
+ * can see the direct community impact, with an interactive popup lightbox for full-screen view.
  */
 const PreviousDrive: React.FC<{
   heading?: string;
@@ -299,6 +299,19 @@ const PreviousDrive: React.FC<{
   items: GalleryItem[];
 }> = ({ heading, body, items }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // Keyboard navigation for lightbox
+  React.useEffect(() => {
+    if (!isLightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+      if (e.key === 'ArrowRight') setSelectedIndex((prev) => (prev + 1) % items.length);
+      if (e.key === 'ArrowLeft') setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, items.length]);
 
   if (items.length === 0) return null;
 
@@ -318,15 +331,27 @@ const PreviousDrive: React.FC<{
         </p>
       </div>
 
-      {/* Featured Photo Display */}
-      <figure className="overflow-hidden rounded-xl border border-white/12 bg-ink-raised shadow-xl">
+      {/* Featured Photo Display with Click to Expand */}
+      <figure
+        onClick={() => setIsLightboxOpen(true)}
+        className="group relative cursor-pointer overflow-hidden rounded-xl border border-white/12 bg-ink-raised shadow-xl transition-all duration-300 hover:border-gold/50 hover:shadow-gold/10"
+      >
         <div className="relative aspect-[4/3] bg-black/60 overflow-hidden">
           <img
             src={current.url}
             alt={current.caption || 'Care supplies from previous outreach drive'}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
+          {/* Zoom Overlay Badge */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/80 text-gold text-xs font-semibold backdrop-blur-sm border border-gold/40">
+              <Maximize2 className="w-3.5 h-3.5" /> Click to enlarge
+            </span>
+            <span className="text-[11px] text-white/80 font-mono">
+              {selectedIndex + 1} / {items.length}
+            </span>
+          </div>
         </div>
         {current.caption && (
           <figcaption className="px-5 py-3.5 text-xs text-muted/90 bg-ink/90 border-t border-white/8 leading-relaxed">
@@ -338,9 +363,18 @@ const PreviousDrive: React.FC<{
       {/* Thumbnails list */}
       {items.length > 1 && (
         <div>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-muted/70 mb-2 font-medium">
-            Click to view packages ({selectedIndex + 1} of {items.length})
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted/70 font-medium">
+              Care Packages ({selectedIndex + 1} of {items.length})
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsLightboxOpen(true)}
+              className="text-[11px] text-gold hover:underline inline-flex items-center gap-1"
+            >
+              <Maximize2 className="w-3 h-3" /> View full screen
+            </button>
+          </div>
           <div className="grid grid-cols-4 gap-2.5">
             {items.map((item, idx) => {
               const active = idx === selectedIndex;
@@ -366,6 +400,81 @@ const PreviousDrive: React.FC<{
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Popup Lightbox Modal */}
+      {isLightboxOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo Preview"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 sm:p-8 animate-in fade-in duration-200"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(false)}
+            className="absolute top-5 right-5 p-2 rounded-full bg-white/10 text-bone hover:bg-white/20 hover:text-gold transition-colors z-10"
+            aria-label="Close photo preview"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Previous photo button */}
+          {items.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
+              }}
+              className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 border border-white/20 text-bone hover:border-gold hover:text-gold transition-all z-10"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Next photo button */}
+          {items.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedIndex((prev) => (prev + 1) % items.length);
+              }}
+              className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 border border-white/20 text-bone hover:border-gold hover:text-gold transition-all z-10"
+              aria-label="Next photo"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Modal Content */}
+          <div
+            className="relative max-w-4xl max-h-[85vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={current.url}
+              alt={current.caption || 'Community outreach photo'}
+              className="max-w-full max-h-[70vh] rounded-lg object-contain shadow-2xl border border-white/15"
+            />
+            <div className="mt-4 text-center max-w-2xl px-4">
+              {current.caption ? (
+                <p className="text-sm sm:text-base text-bone font-medium leading-relaxed">
+                  {current.caption}
+                </p>
+              ) : (
+                <p className="text-sm text-muted">Silver Crest Outreach Drive Supplies</p>
+              )}
+              <p className="mt-1 text-xs font-mono text-gold/80">
+                Photo {selectedIndex + 1} of {items.length}
+              </p>
+            </div>
           </div>
         </div>
       )}

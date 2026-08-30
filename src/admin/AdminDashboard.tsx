@@ -1205,12 +1205,96 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
           </div>
           <div>
             <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Presented By
+            </label>
+            <input
+              type="text"
+              value={settings.presentedBy || ''}
+              onChange={(e) => setSettings({ ...settings, presentedBy: e.target.value })}
+              placeholder="Silver Crest Executive Management Consulting"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Contact Phone / WhatsApp
+            </label>
+            <input
+              type="tel"
+              value={settings.contactPhone || ''}
+              onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+              placeholder="+27 ..."
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Community Outreach Cause (Full Name)
+            </label>
+            <input
+              type="text"
+              value={settings.cause || ''}
+              onChange={(e) => setSettings({ ...settings, cause: e.target.value })}
+              placeholder="Silver Crest's Year-End Community Outreach Drive"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Community Outreach Cause (Short Name)
+            </label>
+            <input
+              type="text"
+              value={settings.causeShort || ''}
+              onChange={(e) => setSettings({ ...settings, causeShort: e.target.value })}
+              placeholder="Year-End Community Outreach Drive"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Donation Gallery Eyebrow Heading
+            </label>
+            <input
+              type="text"
+              value={settings.galleryHeading || ''}
+              onChange={(e) => setSettings({ ...settings, galleryHeading: e.target.value })}
+              placeholder="Where Your Donations Go"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Donation Gallery Lead Description
+            </label>
+            <textarea
+              rows={2}
+              value={settings.galleryBody || ''}
+              onChange={(e) => setSettings({ ...settings, galleryBody: e.target.value })}
+              placeholder="Real supplies, care parcels, and winter warmth kits prepared and distributed to local families."
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
               Footer Note ("Where your money goes")
             </label>
             <textarea
               rows={2}
               value={settings.footerNote}
               onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Copyright Footer Notice
+            </label>
+            <input
+              type="text"
+              value={settings.copyrightText || ''}
+              onChange={(e) => setSettings({ ...settings, copyrightText: e.target.value })}
+              placeholder="Silver Crest Connect. All rights reserved."
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
           </div>
