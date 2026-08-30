@@ -41,6 +41,7 @@ npm run dev             # http://localhost:3000
 | `npm run lint` | `tsc --noEmit` |
 | `npx tsx scripts/check-deployment.ts <url>` | Checks a deployed site from outside: API reachable, storage durable, deep links routed |
 | `npx tsx scripts/sync-copy.ts` | Pushes copy corrections into an already-seeded datastore (`--apply` to write) |
+| `npx tsx scripts/vercel-env.ts` | Pushes .env to a linked Vercel project, with pre-flight checks (`--apply` to write) |
 
 ---
 
