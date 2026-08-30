@@ -6,10 +6,12 @@
  * the same Express app behind Vercel's Node runtime so the deployed site has a
  * working API and a reachable PayFast ITN endpoint.
  *
- * Note: serverless filesystems are ephemeral, so the JSON store degrades to
- * memory here and records do not survive between invocations. Set DATA_DIR to
- * a mounted volume, or move the Store to a database, before taking live
- * payments on this target. See README, "Deploying".
+ * Storage matters more here than anywhere else. Serverless filesystems are
+ * ephemeral, so the JSON store degrades to memory and a record written by one
+ * invocation is gone by the next — writes succeed, the applicant sees a
+ * success page, and a paid ticket disappears. Set STORE_DRIVER=rtdb with the
+ * FIREBASE_* variables so records go to Firebase instead. /api/health reports
+ * `persistent`; if it is false, nothing that arrives will be kept.
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';

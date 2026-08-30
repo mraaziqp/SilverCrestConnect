@@ -11,7 +11,7 @@
  *   anything else      404
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 
 import { Nav } from './components/Nav';
 import { Hero } from './components/Hero';
@@ -25,7 +25,18 @@ import { Footer } from './components/Footer';
 import { PaymentReturn, PaymentCancelled } from './components/PaymentResult';
 import { ApplicationStatusPage } from './components/ApplicationStatusPage';
 import { NotFound } from './components/NotFound';
-import { AdminDashboard } from './admin/AdminDashboard';
+
+/**
+ * The dashboard is loaded on demand.
+ *
+ * It is by far the largest thing in the app and only Wesley ever opens it, so
+ * bundling it statically made every visitor download the whole admin surface
+ * before they could read the front page — on a South African mobile
+ * connection, for a page they will never see.
+ */
+const AdminDashboard = lazy(() =>
+  import('./admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
+);
 import { api } from './lib/api';
 import type { GalleryItem } from './types';
 import type { EventSettings, WelcomePackItem, ImpactItem } from './types';
@@ -48,7 +59,13 @@ export default function App() {
   if (path === '/') return <LandingPage />;
   if (path === '/payment/return') return <PaymentReturn />;
   if (path === '/payment/cancel') return <PaymentCancelled />;
-  if (path === '/admin') return <AdminDashboard />;
+  if (path === '/admin') {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-ink" aria-busy="true" />}>
+        <AdminDashboard />
+      </Suspense>
+    );
+  }
 
   const payMatch = path.match(/^\/pay\/([^/]+)$/);
   if (payMatch) {
