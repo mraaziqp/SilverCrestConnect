@@ -244,7 +244,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
           </div>
         </div>
 
-        <nav className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-wrap gap-1 -mb-px" aria-label="Dashboard sections">
+        <nav className="max-w-7xl mx-auto px-5 sm:px-8 flex gap-1 -mb-px overflow-x-auto whitespace-nowrap scrollbar-none" aria-label="Dashboard sections">
           {(
             [
               ['overview', 'Overview'],

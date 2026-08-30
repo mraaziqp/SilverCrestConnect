@@ -181,7 +181,7 @@ test('the console driver reports success so a payment is never rolled back', asy
   assert.equal(result.skipped, true);
 });
 
-test('approval and confirmation emails reflect 2 representatives and R900 pricing', () => {
+test('approval and confirmation emails reflect 2 representatives and R700 pricing', () => {
   const approvedMail = applicationApproved({
     contactName: 'Wesley',
     businessName: 'Bosman Catering',
@@ -189,21 +189,21 @@ test('approval and confirmation emails reflect 2 representatives and R900 pricin
     payUrl: 'https://example.co.za/pay/SCC26-REP2',
     seatsRemaining: 10,
     attendeeCount: 2,
-    totalAmountZAR: 900,
+    totalAmountZAR: 700,
   });
 
-  assert.ok(approvedMail.html.includes('R900.00'), 'approval must show R900 for 2 reps');
+  assert.ok(approvedMail.html.includes('R700.00'), 'approval must show R700 for 2 reps');
   assert.ok(approvedMail.text.includes('2 attendees'), 'approval must note 2 attendees');
 
   const ticketMail = ticketConfirmed({
     contactName: 'Wesley',
     businessName: 'Bosman Catering',
     ticketCode: 'TICKET-REP2',
-    amountZAR: 900,
+    amountZAR: 700,
     attendeeCount: 2,
   });
 
-  assert.ok(ticketMail.html.includes('R900.00'), 'ticket must confirm R900');
+  assert.ok(ticketMail.html.includes('R700.00'), 'ticket must confirm R700');
   assert.ok(ticketMail.subject.includes("YOU'RE CONFIRMED"), 'subject matches format');
   assert.ok(ticketMail.text.includes('Light breakfast'), 'includes light breakfast notice');
 });
@@ -222,7 +222,7 @@ test('an approval sent while payments are closed carries no payment link', () =>
     payUrl: 'https://scconnect.co.za/pay/SCC26-ABC123',
     seatsRemaining: 12,
     attendeeCount: 2,
-    totalAmountZAR: 900,
+    totalAmountZAR: 700,
     paymentsOpen: false,
   });
 
@@ -232,7 +232,7 @@ test('an approval sent while payments are closed carries no payment link', () =>
   assert.match(mail.text, /Payment is not open just yet/);
   // The approval itself, and the amount to expect, still have to come through.
   assert.match(mail.text, /has been approved/);
-  assert.match(mail.text, /R900\.00/);
+  assert.match(mail.text, /R700\.00/);
   assert.match(mail.text, /SCC26-ABC123/);
 });
 
@@ -244,7 +244,7 @@ test('an approval sent while payments are open still links to payment', () => {
     payUrl: 'https://scconnect.co.za/pay/SCC26-ABC123',
     seatsRemaining: 12,
     attendeeCount: 1,
-    totalAmountZAR: 450,
+    totalAmountZAR: 350,
     paymentsOpen: true,
   });
 

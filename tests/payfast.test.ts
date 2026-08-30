@@ -233,7 +233,7 @@ test('API_URL sends the ITN to the API host, leaving return URLs on the site', (
 
   const fields = buildPaymentFields(config, {
     reference: 'TKT-TEST',
-    amountZAR: 450,
+    amountZAR: 350,
     itemName: 'Ticket',
     itemDescription: 'One seat',
     nameFirst: 'Thandi',
@@ -256,7 +256,7 @@ test('without API_URL both fall back to APP_URL, so single-origin deploys are un
 
   const fields = buildPaymentFields(config, {
     reference: 'TKT-TEST',
-    amountZAR: 450,
+    amountZAR: 350,
     itemName: 'Ticket',
     itemDescription: 'One seat',
     nameFirst: 'Thandi',

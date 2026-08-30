@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { CalendarDays, MapPin, Ticket, Heart } from 'lucide-react';
 import { BrandLogo, ButtonLink } from './Brand';
 import { EVENT } from '../config/event';
+import { formatZAR } from '../lib/api';
 import type { EventSettings } from '../types';
 
 interface HeroProps {
@@ -42,6 +43,7 @@ export const Hero: React.FC<HeroProps> = ({ seatsRemaining, event }) => {
   const venueLocation = event?.venueCity || event?.venue || EVENT.venueCity;
   const heroParagraph = event?.heroParagraph || EVENT.heroParagraph;
   const capacity = event?.capacity ?? EVENT.capacity;
+  const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const tagline = event?.tagline || EVENT.tagline;
   const customLogoUrl = event?.customLogoUrl;
 

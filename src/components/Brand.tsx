@@ -63,15 +63,15 @@ export const BrandLogo: React.FC<{
   return (
     <div className={`flex flex-col items-center justify-center text-center select-none ${className}`}>
       {/* Image 3 Geometric Monogram */}
-      <Monogram size={76} className="mb-6" />
+      <Monogram size={64} className="sm:w-[76px] sm:h-[76px] mb-4 sm:mb-6" />
 
       {/* SILVER CREST */}
-      <div className="font-serif tracking-[0.38em] sm:tracking-[0.45em] text-sm sm:text-base lg:text-lg text-white font-medium uppercase pl-[0.45em] mb-2">
+      <div className="font-serif tracking-[0.32em] sm:tracking-[0.45em] text-xs sm:text-base lg:text-lg text-white font-medium uppercase pl-[0.32em] sm:pl-[0.45em] mb-1 sm:mb-2">
         SILVER CREST
       </div>
 
       {/* CONNECT with Golden Segmented Ring O and Golden 3-Bar E */}
-      <div className="flex items-center justify-center font-sans font-extrabold text-4xl sm:text-6xl lg:text-7xl text-white tracking-[0.14em] sm:tracking-[0.18em] pl-[0.18em] my-1">
+      <div className="flex items-center justify-center font-sans font-extrabold text-3xl xs:text-4xl sm:text-6xl lg:text-7xl text-white tracking-[0.1em] sm:tracking-[0.18em] pl-[0.1em] sm:pl-[0.18em] my-1">
         <span>C</span>
         {/* Stylized Golden Ring O with crosshair cuts */}
         <span className="relative inline-flex items-center justify-center w-[0.85em] h-[0.85em] mx-[0.04em] text-gold shrink-0">
@@ -114,8 +114,8 @@ export const BrandLogo: React.FC<{
 
       {/* Sub-banner: BUILDING BUSINESS. STRENGTHENING COMMUNITY. */}
       {showTagline && (
-        <div className="mt-5 pt-3 border-t border-gold/30 max-w-lg w-full flex items-center justify-center">
-          <p className="text-[10px] sm:text-[11.5px] uppercase tracking-[0.22em] text-gold font-semibold">
+        <div className="mt-4 sm:mt-5 pt-2.5 sm:pt-3 border-t border-gold/30 max-w-lg w-full flex items-center justify-center">
+          <p className="text-[9px] sm:text-[11.5px] uppercase tracking-[0.16em] sm:tracking-[0.22em] text-gold font-semibold">
             {tagline}
           </p>
         </div>

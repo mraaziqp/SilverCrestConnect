@@ -27,6 +27,8 @@ export const Footer: React.FC<FooterProps> = ({ event }) => {
   const venueLocation = event?.venueCity || event?.venue || EVENT.venueCity;
   const contactEmail = event?.contactEmail || EVENT.contactEmail;
   const companyWebsite = event?.companyWebsite || 'https://scconsults.co.za';
+  const websiteHref = companyWebsite.startsWith('http') ? companyWebsite : `https://${companyWebsite}`;
+  const websiteLabel = companyWebsite.replace(/^https?:\/\//i, '').replace(/\/$/, '');
   const customLogoUrl = event?.customLogoUrl;
   const footerNote = event?.footerNote || EVENT.footerNote;
   const copyrightText = event?.copyrightText || `${fullName}. All rights reserved.`;
@@ -63,13 +65,13 @@ export const Footer: React.FC<FooterProps> = ({ event }) => {
               </li>
               <li>
                 <a
-                  href={companyWebsite}
+                  href={websiteHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 text-[13px] text-muted hover:text-gold transition-colors"
                 >
                   <Globe className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  scconsults.co.za
+                  {websiteLabel}
                 </a>
               </li>
             </ul>

@@ -130,7 +130,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
 
         {/* Pay / status panel & FAQ */}
         <div className="space-y-6">
-          <ReferenceLookup />
+          <ReferenceLookup ticketPrice={ticketPrice} />
 
           {/* FAQ Box */}
           <Card className="p-7">
@@ -172,7 +172,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
  * page handles every funnel state, so someone still under review gets a clear
  * "we're reviewing it" instead of a bare error.
  */
-const ReferenceLookup: React.FC = () => {
+const ReferenceLookup: React.FC<{ ticketPrice?: number }> = ({ ticketPrice = EVENT.ticketPriceZAR }) => {
   const [reference, setReference] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -194,7 +194,7 @@ const ReferenceLookup: React.FC = () => {
       <h4 className="mt-3 text-base font-semibold text-bone">Check your status or pay</h4>
       <p className="mt-2 text-[13px] text-muted leading-relaxed">
         Enter the reference from your email to see where your application stands, and to pay the{' '}
-        {formatZAR(EVENT.ticketPriceZAR)} fee once approved.
+        {formatZAR(ticketPrice)} fee once approved.
       </p>
 
       <form onSubmit={submit} className="mt-5" noValidate>

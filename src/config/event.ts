@@ -119,7 +119,7 @@ export const FUNNEL_STEPS: ReadonlyArray<{
   {
     title: 'Application & Sector Submission',
     body: () =>
-      'Submit your business details and industry category. Attendance is strictly limited to 2 to 3 businesses per category to prevent oversaturation.',
+      'Submit your business details and industry category. Attendance is strictly limited to 1 to 2 businesses per category to prevent oversaturation.',
   },
   {
     title: 'Review & Category Approval',

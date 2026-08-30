@@ -38,7 +38,7 @@ export interface Application {
   lookingFor?: string;
   /** Number of representatives applying (1 or 2). */
   attendeeCount: 1 | 2;
-  /** Calculated total price in ZAR (R450 for 1 rep, R900 for 2 reps). */
+  /** Calculated total price in ZAR (R350 for 1 rep, R700 for 2 reps). */
   totalPriceZAR?: number;
   /** Second representative details if attendeeCount === 2 */
   rep2Name?: string;

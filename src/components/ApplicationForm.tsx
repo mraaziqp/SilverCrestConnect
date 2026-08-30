@@ -3,7 +3,7 @@
  *
  * Submitting is free; it creates a PENDING_REVIEW record for the Silver Crest
  * team to vet. Attendance is strictly curated (1-2 businesses per category).
- * Allows applying for 1 representative (R450) or 2 representatives (R900).
+ * Allows applying for 1 representative (R350) or 2 representatives (R700).
  */
 
 import React, { useEffect, useRef, useState } from 'react';
