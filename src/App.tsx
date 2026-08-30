@@ -117,6 +117,7 @@ function LandingPage() {
           galleryHeading={summary?.event?.galleryHeading}
           galleryBody={summary?.event?.galleryBody}
           paymentsOpen={summary?.paymentsOpen !== false}
+          event={summary?.event}
         />
         <Supporters />
         <ImpactStand

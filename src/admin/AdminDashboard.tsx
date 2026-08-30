@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   Banknote,
   Calendar,
+  Check,
   CheckCircle2,
+  Copy,
   Download,
   FileText,
   HandCoins,
@@ -19,10 +21,14 @@ import {
   ListChecks,
   Loader2,
   LogOut,
+  Mail,
+  MessageCircle,
   Package,
+  Phone,
   Plus,
   RefreshCw,
   Save,
+  Search,
   Send,
   Sliders,
   Ticket,
@@ -433,6 +439,8 @@ const ApplicationsTab: React.FC<{
   onUpdate: (id: string, status: ApplicationStatus) => void;
 }> = ({ applications, onUpdate }) => {
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // The curation rule is 1-2 *businesses* per category, so this counts
   // businesses. Counting attendees instead made a single two-representative
@@ -452,7 +460,30 @@ const ApplicationsTab: React.FC<{
     return Object.entries(map).sort((a, b) => b[1].approvedOrPaid - a[1].approvedOrPaid);
   }, [applications]);
 
-  const visible = filter === 'ALL' ? applications : applications.filter((a) => a.status === filter);
+  const visible = useMemo(() => {
+    let list = filter === 'ALL' ? applications : applications.filter((a) => a.status === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (a) =>
+          a.businessName.toLowerCase().includes(q) ||
+          a.contactName.toLowerCase().includes(q) ||
+          a.email.toLowerCase().includes(q) ||
+          a.reference.toLowerCase().includes(q) ||
+          (a.industry && a.industry.toLowerCase().includes(q)) ||
+          (a.registrationNumber && a.registrationNumber.toLowerCase().includes(q)) ||
+          (a.rep2Name && a.rep2Name.toLowerCase().includes(q)) ||
+          (a.rep2Email && a.rep2Email.toLowerCase().includes(q)),
+      );
+    }
+    return list;
+  }, [applications, filter, searchQuery]);
+
+  const copyRef = (app: Application) => {
+    navigator.clipboard.writeText(app.reference);
+    setCopiedId(app.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   if (applications.length === 0) {
     return <Empty message="No applications yet." />;
@@ -504,136 +535,218 @@ const ApplicationsTab: React.FC<{
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {(['ALL', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'WAITLISTED', 'REJECTED'] as const).map((key) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={[
-              'px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-[0.12em] font-semibold border transition-colors',
-              filter === key
-                ? 'border-gold text-gold bg-gold/8'
-                : 'border-white/12 text-muted hover:text-bone',
-            ].join(' ')}
-          >
-            {key.replace('_', ' ')}
-          </button>
-        ))}
+      {/* Search Bar & Filter Pills */}
+      <div className="space-y-4 mb-6">
+        <div className="relative">
+          <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search applications by business name, founder, email, reference, or sector..."
+            className="w-full pl-10 pr-16 py-2.5 rounded-md bg-ink-raised border border-white/12 text-sm text-bone placeholder:text-muted/50 focus:border-gold focus:outline-none transition-colors"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-bone uppercase font-bold"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {(['ALL', 'PENDING_REVIEW', 'APPROVED', 'PAID', 'WAITLISTED', 'REJECTED'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={[
+                  'px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-[0.12em] font-semibold border transition-colors',
+                  filter === key
+                    ? 'border-gold text-gold bg-gold/8'
+                    : 'border-white/12 text-muted hover:text-bone',
+                ].join(' ')}
+              >
+                {key.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-muted">
+            Showing {visible.length} of {applications.length} applications
+          </span>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {visible.map((app) => (
-          <Card key={app.id} className="p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="text-[16px] font-bold text-bone">{app.businessName}</h3>
-                  <StatusPill status={app.status} />
-                  <span className="font-mono text-[11px] text-gold">{app.reference}</span>
-                  <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-bold text-gold">
-                    {app.attendeeCount === 2 ? `2 Reps (${formatZAR(app.totalPriceZAR || 700)})` : `1 Rep (${formatZAR(app.totalPriceZAR || 350)})`}
-                  </span>
+      {visible.length === 0 ? (
+        <Empty message="No applications match your search or filter." />
+      ) : (
+        <div className="space-y-4">
+          {visible.map((app) => (
+            <Card key={app.id} className="p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="text-[16px] font-bold text-bone">{app.businessName}</h3>
+                    <StatusPill status={app.status} />
+                    <button
+                      type="button"
+                      onClick={() => copyRef(app)}
+                      className="px-2 py-0.5 rounded bg-gold/10 border border-gold/25 font-mono text-[11px] text-gold hover:bg-gold/20 transition-colors inline-flex items-center gap-1"
+                      title="Click to copy reference"
+                    >
+                      {copiedId === app.id ? (
+                        <Check className="w-3 h-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      <span>{app.reference}</span>
+                    </button>
+                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-bold text-gold">
+                      {app.attendeeCount === 2 ? `2 Reps (${formatZAR(app.totalPriceZAR || 700)})` : `1 Rep (${formatZAR(app.totalPriceZAR || 350)})`}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-[13.5px] text-bone font-medium">
+                    {app.contactName}{' '}
+                    {app.applicantRole && (
+                      <span className="text-xs text-muted font-normal">({app.applicantRole})</span>
+                    )}{' '}
+                    · <span className="text-gold font-normal">{app.industry}</span>
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-muted">
+                    <span>{app.email}</span>
+                    <span>·</span>
+                    <span>{app.phone}</span>
+                    {app.registrationNumber && (
+                      <>
+                        <span>·</span>
+                        <span>CIPC: {app.registrationNumber}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Quick Action Contact Links for Admin */}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <a
+                      href={`mailto:${app.email}?subject=Silver%20Crest%20Connect%20%2726%20-%20${encodeURIComponent(app.businessName)}`}
+                      className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-muted hover:text-gold hover:border-gold/30 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span>Email Founder</span>
+                    </a>
+                    {app.phone && (
+                      <>
+                        <a
+                          href={`https://wa.me/${app.phone.replace(/[^0-9]/g, '').replace(/^0/, '27')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/25 text-[11px] text-emerald-300 hover:bg-emerald-500/20 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+                        <a
+                          href={`tel:${app.phone}`}
+                          className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-muted hover:text-gold hover:border-gold/30 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Phone className="w-3 h-3 text-gold" />
+                          <span>Call</span>
+                        </a>
+                      </>
+                    )}
+                  </div>
+
+                  {app.website && (
+                    <a
+                      href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-[12px] text-gold hover:underline break-all"
+                    >
+                      {app.website}
+                    </a>
+                  )}
+
+                  {/* Second Attendee Info if 2 representatives */}
+                  {app.attendeeCount === 2 && (app.rep2Name || app.rep2Email) && (
+                    <div className="mt-3 p-3 rounded bg-black/40 border border-white/10 text-xs">
+                      <p className="font-semibold text-gold uppercase tracking-wider text-[10px]">
+                        Second Representative:
+                      </p>
+                      <p className="mt-1 text-bone">
+                        {app.rep2Name} {app.rep2Role && `(${app.rep2Role})`} · {app.rep2Email} · {app.rep2Phone}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3">
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">About the Business:</span>
+                      <p className="mt-0.5 text-[13px] text-muted leading-relaxed">{app.about}</p>
+                    </div>
+
+                    {app.productsServices && (
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Products &amp; Services:</span>
+                        <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.productsServices}</p>
+                      </div>
+                    )}
+
+                    {app.communityContribution && (
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Community Value &amp; Network:</span>
+                        <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.communityContribution}</p>
+                      </div>
+                    )}
+
+                    {app.lookingFor && (
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">Looking for from Connect:</span>
+                        <p className="mt-0.5 text-[12.5px] text-muted/80 leading-relaxed">{app.lookingFor}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {app.ticketCode && (
+                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded bg-gold/10 border border-gold/30">
+                      <span className="text-xs uppercase text-gold font-bold">Confirmed Ticket Code:</span>
+                      <span className="font-mono text-sm font-bold text-bone">{app.ticketCode}</span>
+                    </div>
+                  )}
                 </div>
 
-                <p className="mt-2 text-[13.5px] text-bone font-medium">
-                  {app.contactName}{' '}
-                  {app.applicantRole && (
-                    <span className="text-xs text-muted font-normal">({app.applicantRole})</span>
-                  )}{' '}
-                  · <span className="text-gold font-normal">{app.industry}</span>
-                </p>
-
-                <p className="mt-1 text-[12px] text-muted/70">
-                  {app.email} · {app.phone}
-                  {app.registrationNumber && ` · CIPC: ${app.registrationNumber}`}
-                </p>
-
-                {app.website && (
-                  <a
-                    href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block text-[12px] text-gold hover:underline break-all"
-                  >
-                    {app.website}
-                  </a>
-                )}
-
-                {/* Second Attendee Info if 2 representatives */}
-                {app.attendeeCount === 2 && (app.rep2Name || app.rep2Email) && (
-                  <div className="mt-3 p-3 rounded bg-black/40 border border-white/10 text-xs">
-                    <p className="font-semibold text-gold uppercase tracking-wider text-[10px]">
-                      Second Representative:
-                    </p>
-                    <p className="mt-1 text-bone">
-                      {app.rep2Name} {app.rep2Role && `(${app.rep2Role})`} · {app.rep2Email} · {app.rep2Phone}
-                    </p>
+                <div className="flex flex-col items-stretch gap-2 shrink-0 w-full sm:w-auto">
+                  <p className="text-[11px] text-muted/50 sm:text-right">
+                    {formatDateTime(app.createdAt)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {app.status !== 'APPROVED' && app.status !== 'PAID' && (
+                      <MiniButton onClick={() => onUpdate(app.id, 'APPROVED')}>Approve</MiniButton>
+                    )}
+                    {app.status !== 'WAITLISTED' && app.status !== 'PAID' && (
+                      <MiniButton onClick={() => onUpdate(app.id, 'WAITLISTED')}>Waitlist</MiniButton>
+                    )}
+                    {app.status !== 'PAID' && (
+                      <MiniButton onClick={() => onUpdate(app.id, 'PAID')} title="Use for EFT or cash payments taken outside PayFast">
+                        Mark paid
+                      </MiniButton>
+                    )}
+                    {app.status !== 'REJECTED' && (
+                      <MiniButton danger onClick={() => onUpdate(app.id, 'REJECTED')}>
+                        Reject
+                      </MiniButton>
+                    )}
                   </div>
-                )}
-
-                <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3">
-                  <div>
-                    <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">About the Business:</span>
-                    <p className="mt-0.5 text-[13px] text-muted leading-relaxed">{app.about}</p>
-                  </div>
-
-                  {app.productsServices && (
-                    <div>
-                      <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Products &amp; Services:</span>
-                      <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.productsServices}</p>
-                    </div>
-                  )}
-
-                  {app.communityContribution && (
-                    <div>
-                      <span className="text-[11px] uppercase tracking-wider text-gold font-semibold">Community Value &amp; Network:</span>
-                      <p className="mt-0.5 text-[13px] text-bone/90 leading-relaxed">{app.communityContribution}</p>
-                    </div>
-                  )}
-
-                  {app.lookingFor && (
-                    <div>
-                      <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">Looking for from Connect:</span>
-                      <p className="mt-0.5 text-[12.5px] text-muted/80 leading-relaxed">{app.lookingFor}</p>
-                    </div>
-                  )}
                 </div>
-
-                {app.ticketCode && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded bg-gold/10 border border-gold/30">
-                    <span className="text-xs uppercase text-gold font-bold">Confirmed Ticket Code:</span>
-                    <span className="font-mono text-sm font-bold text-bone">{app.ticketCode}</span>
-                  </div>
-                )}
               </div>
-
-              <div className="flex flex-col items-stretch gap-2 shrink-0 w-full sm:w-auto">
-                <p className="text-[11px] text-muted/50 sm:text-right">
-                  {formatDateTime(app.createdAt)}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {app.status !== 'APPROVED' && app.status !== 'PAID' && (
-                    <MiniButton onClick={() => onUpdate(app.id, 'APPROVED')}>Approve</MiniButton>
-                  )}
-                  {app.status !== 'WAITLISTED' && app.status !== 'PAID' && (
-                    <MiniButton onClick={() => onUpdate(app.id, 'WAITLISTED')}>Waitlist</MiniButton>
-                  )}
-                  {app.status !== 'PAID' && (
-                    <MiniButton onClick={() => onUpdate(app.id, 'PAID')} title="Use for EFT or cash payments taken outside PayFast">
-                      Mark paid
-                    </MiniButton>
-                  )}
-                  {app.status !== 'REJECTED' && (
-                    <MiniButton danger onClick={() => onUpdate(app.id, 'REJECTED')}>
-                      Reject
-                    </MiniButton>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -642,34 +755,144 @@ const PaymentsTab: React.FC<{ payments: Payment[]; onExport: () => void }> = ({
   payments,
   onExport,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  const stats = useMemo(() => {
+    let totalCompletedZAR = 0;
+    let totalFeesZAR = 0;
+    let completedCount = 0;
+    let pendingCount = 0;
+
+    for (const p of payments) {
+      if (p.status === 'COMPLETE') {
+        totalCompletedZAR += p.amountZAR;
+        totalFeesZAR += p.feeZAR || 0;
+        completedCount++;
+      } else if (p.status === 'PENDING') {
+        pendingCount++;
+      }
+    }
+
+    return {
+      totalCompletedZAR,
+      netZAR: totalCompletedZAR - totalFeesZAR,
+      completedCount,
+      pendingCount,
+    };
+  }, [payments]);
+
+  const visible = useMemo(() => {
+    let list = statusFilter === 'ALL' ? payments : payments.filter((p) => p.status === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.reference.toLowerCase().includes(q) ||
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.email && p.email.toLowerCase().includes(q)) ||
+          (p.pfPaymentId && p.pfPaymentId.toLowerCase().includes(q)) ||
+          p.kind.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [payments, statusFilter, searchQuery]);
+
   if (payments.length === 0) {
     return <Empty message="No payments yet." />;
   }
 
   return (
     <div>
-      <div className="flex justify-end mb-5">
-        <Button variant="outline" onClick={onExport}>
-          <Download className="w-4 h-4" />
-          Export CSV
-        </Button>
+      {/* Quick Metrics Header */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        <Card className="p-4 bg-ink-raised/60">
+          <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">Total Revenue Collected</p>
+          <p className="mt-1 font-display text-2xl font-bold text-bone">{formatZAR(stats.totalCompletedZAR, true)}</p>
+          <p className="mt-1 text-[11px] text-muted">Net after fees: {formatZAR(stats.netZAR, true)}</p>
+        </Card>
+        <Card className="p-4 bg-ink-raised/60">
+          <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">Completed Transactions</p>
+          <p className="mt-1 font-display text-2xl font-bold text-emerald-400">{stats.completedCount}</p>
+          <p className="mt-1 text-[11px] text-muted">Verified &amp; confirmed</p>
+        </Card>
+        <Card className="p-4 bg-ink-raised/60">
+          <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">Pending Checkouts</p>
+          <p className="mt-1 font-display text-2xl font-bold text-amber-300">{stats.pendingCount}</p>
+          <p className="mt-1 text-[11px] text-muted">Awaiting settlement or payment</p>
+        </Card>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-white/8">
-        <table className="w-full text-left border-collapse min-w-[820px]">
-          <thead>
-            <tr className="bg-ink-raised">
-              {['Reference', 'Type', 'Payer', 'Amount', 'Status', 'PayFast ID', 'Date'].map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted font-semibold whitespace-nowrap"
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
+      {/* Search and Filter Bar */}
+      <div className="space-y-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search payments by reference, payer, email, or PayFast ID..."
+              className="w-full pl-10 pr-16 py-2.5 rounded-md bg-ink-raised border border-white/12 text-sm text-bone placeholder:text-muted/50 focus:border-gold focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-bone uppercase font-bold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <Button variant="outline" onClick={onExport} className="w-full sm:w-auto shrink-0">
+            <Download className="w-4 h-4" />
+            Export CSV ({visible.length})
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {(['ALL', 'COMPLETE', 'PENDING', 'FAILED', 'CANCELLED'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={[
+                  'px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-[0.12em] font-semibold border transition-colors',
+                  statusFilter === key
+                    ? 'border-gold text-gold bg-gold/8'
+                    : 'border-white/12 text-muted hover:text-bone',
+                ].join(' ')}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-muted">
+            Showing {visible.length} of {payments.length} transactions
+          </span>
+        </div>
+      </div>
+
+      {visible.length === 0 ? (
+        <Empty message="No payments match your search or filter." />
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-white/8">
+          <table className="w-full text-left border-collapse min-w-[820px]">
+            <thead>
+              <tr className="bg-ink-raised">
+                {['Reference', 'Type', 'Payer', 'Amount', 'Status', 'PayFast ID', 'Date'].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted font-semibold whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
             {payments.map((p) => (
               <tr key={p.id} className="bg-ink-raised/40 hover:bg-white/[0.02] transition-colors">
                 <td className="px-4 py-3 font-mono text-[12px] text-gold whitespace-nowrap">
@@ -704,9 +927,10 @@ const PaymentsTab: React.FC<{ payments: Payment[]; onExport: () => void }> = ({
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

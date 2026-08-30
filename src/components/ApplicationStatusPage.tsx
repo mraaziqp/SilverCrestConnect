@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock, Loader2, Search, XCircle, Calendar, MapPin } from 'lucide-react';
+import { ArrowRight, Check, CheckCircle2, Clock, Copy, Loader2, Search, XCircle, Calendar, MapPin } from 'lucide-react';
 import { Monogram, Button, ButtonLink, Card, FieldError } from './Brand';
 import { EVENT } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
@@ -88,6 +88,7 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
   const [payError, setPayError] = useState<string | null>(null);
   const [paymentsOpen, setPaymentsOpen] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -177,9 +178,25 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
         <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
           {data.ticketCode ? 'Your digital ticket' : 'Your reference'}
         </p>
-        <p className="mt-2 font-mono text-lg text-bone tracking-[0.15em]">
-          {data.ticketCode ?? data.reference}
-        </p>
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <p className="font-mono text-lg text-bone tracking-[0.15em]">
+            {data.ticketCode ?? data.reference}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const textToCopy = data.ticketCode ?? data.reference;
+              navigator.clipboard.writeText(textToCopy);
+              setCopiedCode(true);
+              setTimeout(() => setCopiedCode(false), 2000);
+            }}
+            className="px-2.5 py-1 rounded bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 transition-colors inline-flex items-center gap-1.5 text-xs font-semibold"
+            title="Copy code"
+          >
+            {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
         {data.ticketCode && (
           <p className="mt-3 text-[12px] text-muted">Show this code at event registration.</p>
         )}

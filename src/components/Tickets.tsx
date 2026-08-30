@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowRight, Check, HelpCircle, ShieldCheck, Ticket, Users } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, HelpCircle, ShieldCheck, Ticket, Users } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { ApplicationForm } from './ApplicationForm';
 import { EVENT, TICKET_INCLUDES, FAQS } from '../config/event';
@@ -22,6 +22,7 @@ interface TicketsProps {
 
 export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const [formOpen, setFormOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const soldOut = seatsRemaining !== null && seatsRemaining <= 0;
 
   const ticketPrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
@@ -142,13 +143,34 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                 Frequently Asked Questions
               </h4>
             </div>
-            <div className="space-y-4">
-              {FAQS.map((faq, idx) => (
-                <div key={idx} className="border-b border-white/8 pb-3 last:border-none last:pb-0">
-                  <p className="text-xs font-semibold text-bone">{faq.question}</p>
-                  <p className="mt-1 text-[12.5px] text-muted leading-relaxed">{faq.answer}</p>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {FAQS.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div key={idx} className="border-b border-white/8 pb-3 last:border-none last:pb-0">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center justify-between text-left group py-1"
+                    >
+                      <span className="text-xs font-semibold text-bone group-hover:text-gold transition-colors pr-2">
+                        {faq.question}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gold shrink-0 transition-transform duration-200 ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <p className="mt-2 text-[12.5px] text-muted leading-relaxed animate-fadeIn">
+                        {faq.answer}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Card>
 

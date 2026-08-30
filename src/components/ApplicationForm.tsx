@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Loader2, Users, X } from 'lucide-react';
+import { Check, CheckCircle2, Copy, Loader2, Users, X } from 'lucide-react';
 import { Button, FieldError } from './Brand';
 import { EVENT, INDUSTRY_CATEGORIES } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
@@ -76,6 +76,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [copiedRef, setCopiedRef] = useState(false);
 
   const basePrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
@@ -198,7 +199,22 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
               <p className="text-[10px] uppercase tracking-brand text-gold font-semibold">
                 Your Reference Number
               </p>
-              <p className="mt-2 font-mono text-xl text-bone tracking-[0.15em]">{result.reference}</p>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                <p className="font-mono text-xl text-bone tracking-[0.15em]">{result.reference}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(result.reference);
+                    setCopiedRef(true);
+                    setTimeout(() => setCopiedRef(false), 2000);
+                  }}
+                  className="px-2.5 py-1 rounded bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 transition-colors inline-flex items-center gap-1.5 text-xs font-semibold"
+                  title="Copy reference number"
+                >
+                  {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedRef ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
             </div>
             <p className="mt-4 text-[12px] text-muted/70">
               Keep this reference handy. Once approved, you will receive your private payment link to secure your seat.

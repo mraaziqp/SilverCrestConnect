@@ -10,7 +10,7 @@ import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
-import type { CheckoutResponse, GalleryItem } from '../types';
+import type { CheckoutResponse, EventSettings, GalleryItem } from '../types';
 
 interface DonateProps {
   /** Photos from the previous outreach drive, shown beside the form. */
@@ -21,6 +21,7 @@ interface DonateProps {
   supporters: number | null;
   /** False while the site cannot take money yet. */
   paymentsOpen?: boolean;
+  event?: Partial<EventSettings>;
 }
 
 export const Donate: React.FC<DonateProps> = ({
@@ -30,6 +31,7 @@ export const Donate: React.FC<DonateProps> = ({
   galleryHeading,
   galleryBody,
   paymentsOpen = true,
+  event,
 }) => {
   const [preset, setPreset] = useState<number | null>(DONATION_PRESETS[1]);
   const [custom, setCustom] = useState('');
@@ -76,16 +78,19 @@ export const Donate: React.FC<DonateProps> = ({
     }
   };
 
+  const cause = event?.cause || EVENT.cause;
+  const causeShort = event?.causeShort || EVENT.causeShort;
+
   return (
     <Section id="donate" className="border-t border-white/5">
       <SectionHeading
         eyebrow="Support the Cause"
         title={
           <>
-            Fund the <span className="text-gold">Community Outreach Drive</span>
+            Fund the <span className="text-gold">{causeShort}</span>
           </>
         }
-        lead={`You do not have to attend to make an impact. A portion of every donation goes towards supplies for the ${EVENT.causeShort}.`}
+        lead={`You do not have to attend to make an impact. A portion of every donation goes towards supplies for the ${causeShort}.`}
       />
 
       {/* Running total, when there is one worth showing. */}
