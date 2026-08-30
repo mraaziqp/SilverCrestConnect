@@ -6,8 +6,8 @@ an exclusive half-day business-to-business networking showcase presented by Silv
 > **Building Business. Strengthening Community.**
 > 23 October 2026 · 09:00–13:00 · Cape Town
 
-40–50 vetted SME founders, R350 per representative, and a portion of proceeds funding the Year-End
-Community Outreach Drive.
+40–50 vetted SME founders, R450 for the primary applicant plus R350 for a second representative,
+and a portion of proceeds funding the Year-End Community Outreach Drive.
 
 ---
 

@@ -605,7 +605,8 @@ const ApplicationsTab: React.FC<{
                       <span>{app.reference}</span>
                     </button>
                     <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-bold text-gold">
-                      {app.attendeeCount === 2 ? `2 Reps (${formatZAR(app.totalPriceZAR || 700)})` : `1 Rep (${formatZAR(app.totalPriceZAR || 350)})`}
+                      {app.attendeeCount === 2 ? '2 Reps' : '1 Rep'}
+                      {app.totalPriceZAR ? ` (${formatZAR(app.totalPriceZAR)})` : ''}
                     </span>
                   </div>
 
@@ -1192,7 +1193,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
                 className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
                 required
               />
-              <p className="mt-1 text-[11px] text-muted/60">Base fee charged for primary business application (e.g. R350)</p>
+              <p className="mt-1 text-[11px] text-muted/60">Base fee charged for the primary business applicant.</p>
             </div>
             <div>
               <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
@@ -1212,7 +1213,8 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
                 required
               />
               <p className="mt-1 text-[11px] text-muted/60">
-                Additional fee added when bringing a 2nd representative/co-worker (e.g. R350)
+                Charged on top of the base fee when a second representative joins. A booking for
+                two costs the base fee plus this.
               </p>
             </div>
           </div>

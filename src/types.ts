@@ -7,7 +7,7 @@
 export type ApplicationStatus =
   | 'PENDING_REVIEW' // submitted, awaiting CIPC / digital footprint check
   | 'APPROVED'       // vetted, payment link issued
-  | 'PAID'           // R350 settled, digital ticket issued
+  | 'PAID'           // attendance fee settled, digital ticket issued
   | 'REJECTED'       // did not meet the SME criteria
   | 'WAITLISTED';    // approved but the room is full
 
@@ -38,7 +38,7 @@ export interface Application {
   lookingFor?: string;
   /** Number of representatives applying (1 or 2). */
   attendeeCount: 1 | 2;
-  /** Calculated total price in ZAR (R350 for 1 rep, R700 for 2 reps). */
+  /** Total in ZAR, fixed at application time: base fee, plus the additional-representative fee for a second attendee. */
   totalPriceZAR?: number;
   /** Second representative details if attendeeCount === 2 */
   rep2Name?: string;

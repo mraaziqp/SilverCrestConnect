@@ -11,7 +11,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Check, ChevronDown, HelpCircle, ShieldCheck, Ticket, Users } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
 import { ApplicationForm } from './ApplicationForm';
-import { EVENT, TICKET_INCLUDES, FAQS } from '../config/event';
+import { EVENT, TICKET_INCLUDES, buildFaqs } from '../config/event';
 import { formatZAR } from '../lib/api';
 import type { EventSettings } from '../types';
 
@@ -29,6 +29,10 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
   const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
   const twoRepTotal = ticketPrice + additionalRepPrice;
   const capacity = event?.capacity ?? EVENT.capacity;
+
+  // Built from the live prices, so the answer that quotes them cannot go stale
+  // after someone edits the fees in /admin.
+  const faqs = buildFaqs(ticketPrice, additionalRepPrice);
 
   // A seat is a person, not a business: a two-representative booking takes two.
   // Below five left the count is worth calling out; above that it is just a fact.
@@ -144,7 +148,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               </h4>
             </div>
             <div className="space-y-3">
-              {FAQS.map((faq, idx) => {
+              {faqs.map((faq, idx) => {
                 const isOpen = openFaq === idx;
                 return (
                   <div key={idx} className="border-b border-white/8 pb-3 last:border-none last:pb-0">

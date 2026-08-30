@@ -78,7 +78,6 @@ export const Donate: React.FC<DonateProps> = ({
     }
   };
 
-  const cause = event?.cause || EVENT.cause;
   const causeShort = event?.causeShort || EVENT.causeShort;
 
   return (

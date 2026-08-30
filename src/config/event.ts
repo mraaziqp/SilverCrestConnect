@@ -42,7 +42,7 @@ export const EVENT = {
     'Curated introductions between founders, practical keynote sessions, and a dedicated SME Spotlight where each business owner has the floor to present their services.',
 
   /** Attendance fee per SME (primary representative), in ZAR. A portion funds the outreach drive. */
-  ticketPriceZAR: 350,
+  ticketPriceZAR: 450,
   /** Additional fee in ZAR for a second representative / employee / co-worker. */
   additionalRepPriceZAR: 350,
   /** The proposal caps the room at vetted SMEs. */
@@ -194,7 +194,7 @@ export const INDUSTRY_CATEGORIES = [
   'Other / Specialized Services',
 ] as const;
 
-/** Items included in the R350 attendance fee. */
+/** Items included in the attendance fee. */
 export const TICKET_INCLUDES = [
   'Silver Crest Connect 2026 full session access',
   'Light breakfast and morning refreshments included',
@@ -204,27 +204,44 @@ export const TICKET_INCLUDES = [
   'Welcome pack with executive branded pen',
 ];
 
-/** Frequently Asked Questions */
-export const FAQS = [
-  {
-    question: 'Can I bring someone from my business?',
-    answer:
-      'Yes. Each business may apply for up to two representatives. Each approved attendee is charged R350 (R700 total for 2 attendees), which includes the light breakfast, materials, and full event access.',
-  },
-  {
-    question: 'How does the curated application process work?',
-    answer:
-      'To ensure a high-value, diverse room without oversaturation, we curate 1 to 2 businesses per industry category. Step 1: Submit your free application. Step 2: Our team reviews your category fit. Step 3: Once approved, you receive your private payment link to book and confirm your seat.',
-  },
-  {
-    question: 'When is payment required?',
-    answer:
-      'Applying is completely free. Payment is only requested after your application has been reviewed and approved by the Silver Crest team.',
-  },
-  {
-    question: 'What happens if my industry category is full?',
-    answer:
-      'If your category has reached its limit, our team reviews whether your specific services offer a distinct niche. If suitable, we may approve your spot or place you on the priority waiting list.',
-  },
-];
+/**
+ * Frequently Asked Questions.
+ *
+ * A function, not a constant, because the first answer quotes prices and both
+ * of those are editable in /admin. Frozen at build time it would keep quoting
+ * the old figure after a price change — on the one part of the page people
+ * read specifically to find out what they will be charged.
+ */
+export function buildFaqs(primaryFeeZAR: number, additionalRepFeeZAR: number) {
+  const rand = (amount: number) => `R${Math.round(amount)}`;
+
+  return [
+    {
+      question: 'Can I bring someone from my business?',
+      answer:
+        `Yes. Each business may apply for up to two representatives. The primary applicant is ` +
+        `charged ${rand(primaryFeeZAR)}, and a second representative is ${rand(additionalRepFeeZAR)} ` +
+        `more — ${rand(primaryFeeZAR + additionalRepFeeZAR)} in total. Both include the light ` +
+        `breakfast, materials, and full event access.`,
+    },
+    {
+      question: 'How does the curated application process work?',
+      answer:
+        'To ensure a high-value, diverse room without oversaturation, we curate 1 to 2 businesses per industry category. Step 1: Submit your free application. Step 2: Our team reviews your category fit. Step 3: Once approved, you receive your private payment link to book and confirm your seat.',
+    },
+    {
+      question: 'When is payment required?',
+      answer:
+        'Applying is completely free. Payment is only requested after your application has been reviewed and approved by the Silver Crest team.',
+    },
+    {
+      question: 'What happens if my industry category is full?',
+      answer:
+        'If your category has reached its limit, our team reviews whether your specific services offer a distinct niche. If suitable, we may approve your spot or place you on the priority waiting list.',
+    },
+  ];
+}
+
+/** Default-priced FAQs, for anywhere without live settings to hand. */
+export const FAQS = buildFaqs(EVENT.ticketPriceZAR, EVENT.additionalRepPriceZAR);
 
