@@ -97,7 +97,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
                   Want to bring someone from your business?
                 </h4>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at R450 per person (R900 total for 2 attendees, including light breakfast).
+                  You may apply for a second representative. Additional representatives are subject to approval and availability and are charged at {formatZAR(ticketPrice)} per person ({formatZAR(ticketPrice * 2)} total for 2 attendees, including light breakfast).
                 </p>
               </div>
             </div>
@@ -118,7 +118,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               <>
                 <Button size="lg" className="w-full" onClick={() => setFormOpen(true)}>
                   <Ticket className="w-4 h-4" />
-                  APPLY TO ATTEND — R450
+                  APPLY TO ATTEND — {formatZAR(ticketPrice)}
                 </Button>
                 <p className="mt-4 text-center text-[12px] text-muted/80 leading-relaxed">
                   Submitting is free. We review your application to maintain a balanced room, then email your private payment link.

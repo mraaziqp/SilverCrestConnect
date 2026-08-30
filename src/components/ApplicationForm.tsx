@@ -240,7 +240,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">1 Representative</span>
-                    <span className="font-bold text-gold">{formatZAR(450)}</span>
+                    <span className="font-bold text-gold">{formatZAR(350)}</span>
                   </div>
                   <p className="mt-1 text-[11.5px] text-muted">Includes light breakfast & full access.</p>
                 </button>
@@ -256,9 +256,9 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">2 Representatives</span>
-                    <span className="font-bold text-gold">{formatZAR(900)}</span>
+                    <span className="font-bold text-gold">{formatZAR(700)}</span>
                   </div>
-                  <p className="mt-1 text-[11.5px] text-muted">Max 2 per business (R450 each, incl. breakfast).</p>
+                  <p className="mt-1 text-[11.5px] text-muted">Max 2 per business (R350 each, incl. breakfast).</p>
                 </button>
               </div>
             </div>
@@ -433,7 +433,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="w-4 h-4 text-gold" />
                   <h4 className="text-xs uppercase tracking-brand text-gold font-bold">
-                    Second Representative Details (R450)
+                    Second Representative Details (R350)
                   </h4>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -482,7 +482,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose 
                   Total Upon Approval:
                 </p>
                 <p className="text-xl font-bold text-gold">
-                  {formatZAR(values.attendeeCount === 2 ? 900 : 450)}{' '}
+                  {formatZAR(values.attendeeCount === 2 ? 700 : 350)}{' '}
                   <span className="text-xs text-muted font-normal">
                     ({values.attendeeCount} {values.attendeeCount === 1 ? 'attendee' : 'attendees'}, incl. breakfast)
                   </span>

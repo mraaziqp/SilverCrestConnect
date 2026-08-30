@@ -42,7 +42,7 @@ export const EVENT = {
     'Curated introductions between founders, practical keynote sessions, and a dedicated SME Spotlight where each business owner has the floor to present their services.',
 
   /** Attendance fee per SME, in ZAR. A portion funds the outreach drive. */
-  ticketPriceZAR: 450,
+  ticketPriceZAR: 350,
   /** The proposal caps the room at vetted SMEs. */
   capacityMin: 40,
   capacityMax: 50,
@@ -192,7 +192,7 @@ export const INDUSTRY_CATEGORIES = [
   'Other / Specialized Services',
 ] as const;
 
-/** Items included in the R450 attendance fee. */
+/** Items included in the R350 attendance fee. */
 export const TICKET_INCLUDES = [
   'Silver Crest Connect 2026 full session access',
   'Light breakfast and morning refreshments included',
@@ -207,7 +207,7 @@ export const FAQS = [
   {
     question: 'Can I bring someone from my business?',
     answer:
-      'Yes. Each business may apply for up to two representatives. Each approved attendee is charged R450 (R900 total for 2 attendees), which includes the light breakfast, materials, and full event access.',
+      'Yes. Each business may apply for up to two representatives. Each approved attendee is charged R350 (R700 total for 2 attendees), which includes the light breakfast, materials, and full event access.',
   },
   {
     question: 'How does the curated application process work?',

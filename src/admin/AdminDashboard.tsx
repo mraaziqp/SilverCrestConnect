@@ -531,7 +531,7 @@ const ApplicationsTab: React.FC<{
                   <StatusPill status={app.status} />
                   <span className="font-mono text-[11px] text-gold">{app.reference}</span>
                   <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-bold text-gold">
-                    {app.attendeeCount === 2 ? '2 Reps (R900)' : '1 Rep (R450)'}
+                    {app.attendeeCount === 2 ? `2 Reps (${formatZAR(app.totalPriceZAR || 700)})` : `1 Rep (${formatZAR(app.totalPriceZAR || 350)})`}
                   </span>
                 </div>
 
@@ -959,7 +959,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone font-mono focus:border-gold focus:outline-none"
               required
             />
-            <p className="mt-1 text-[11px] text-muted/60">R450</p>
+            <p className="mt-1 text-[11px] text-muted/60">R350</p>
           </div>
         </div>
       </Card>
