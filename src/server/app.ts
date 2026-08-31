@@ -20,6 +20,7 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
   Sponsor,
+  EventSettings,
 } from '../types.js';
 import { makeId, makeReference } from './store.js';
 import { seatsFor, type DataStore } from './store-types.js';
@@ -131,16 +132,28 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
   /** Public event facts, so the client never hardcodes a second copy. */
   app.get('/api/event', async (_req: Request, res: Response) => {
-    const stats = await buildStats(store);
+    // The whole page waits on this one request, so every read it needs goes out
+    // at once. Awaited in sequence these were ten round trips to a database on
+    // another continent — around six seconds before the page could settle, long
+    // enough that visitors watched the content change under them.
     const settings = await store.getSettings();
+    const [stats, welcomePack, impactItems, gallery, sponsors, funnelSteps] = await Promise.all([
+      buildStats(store, settings),
+      store.getWelcomePack(),
+      store.getImpactItems(),
+      store.getGallery(),
+      store.getSponsors(),
+      store.getFunnelSteps(),
+    ]);
+
     res.json({
       success: true,
       event: settings,
-      welcomePack: await store.getWelcomePack(),
-      impactItems: await store.getImpactItems(),
-      gallery: await store.getGallery(),
-      sponsors: await store.getSponsors(),
-      funnelSteps: await store.getFunnelSteps(),
+      welcomePack,
+      impactItems,
+      gallery,
+      sponsors,
+      funnelSteps,
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
@@ -1085,9 +1098,25 @@ function parseMoney(value: string | undefined): number | undefined {
   return Number.isFinite(num) ? Math.round(num * 100) / 100 : undefined;
 }
 
-async function buildStats(store: DataStore): Promise<DashboardStats> {
-  const settings = await store.getSettings();
-  const completed = await store.completedPayments();
+/**
+ * @param preloadedSettings Settings the caller has already fetched. Every read
+ * here is a network round trip to the database, so fetching the same document
+ * twice in one request is a wasted trip nobody sees except as latency.
+ */
+async function buildStats(
+  store: DataStore,
+  preloadedSettings?: EventSettings,
+): Promise<DashboardStats> {
+  // Independent reads, issued together. Awaiting them one after another meant
+  // paying the round trip four times over, and the database is not in the same
+  // part of the world as the server.
+  const [settings, completed, applications, paidSeats] = await Promise.all([
+    preloadedSettings ? Promise.resolve(preloadedSettings) : store.getSettings(),
+    store.completedPayments(),
+    store.countApplicationsByStatus(),
+    store.countPaidSeats(),
+  ]);
+
   const tickets = completed.filter((p) => p.kind === 'TICKET');
   const donations = completed.filter((p) => p.kind === 'DONATION');
 
@@ -1107,8 +1136,8 @@ async function buildStats(store: DataStore): Promise<DashboardStats> {
     totalRaisedZAR,
     netRaisedZAR: Math.round((totalRaisedZAR - feesZAR) * 100) / 100,
     feesZAR,
-    applications: await store.countApplicationsByStatus(),
-    seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
+    applications,
+    seatsRemaining: Math.max(0, settings.capacity - paidSeats),
     capacity: settings.capacity,
   };
 }
