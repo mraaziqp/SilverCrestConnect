@@ -33,14 +33,14 @@ import {
   Sliders,
   Ticket,
   Trash2,
-  Users,
-} from 'lucide-react';
+  Users, Image as ImageIcon } from 'lucide-react';
 import { Monogram, Button, Card } from '../components/Brand';
 import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import { copyToClipboard } from '../lib/clipboard';
 import { SponsorsTab } from './SponsorsTab';
 import { InstallButton } from '../components/InstallButton';
+import { prepareImage, formatBytes } from '../lib/image';
 import type {
   Application,
   ApplicationStatus,
@@ -1052,6 +1052,14 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  /**
+   * Whether image storage is reachable: null until the check comes back.
+   *
+   * The check is a round trip to the bucket and takes a moment. Treating
+   * "not yet known" as "not connected" told the client their storage was
+   * missing for several seconds every time this tab opened.
+   */
+  const [canUploadImages, setCanUploadImages] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1072,21 +1080,49 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
         setError(err instanceof ApiRequestError ? err.message : 'Could not load event settings.');
       })
       .finally(() => setLoading(false));
+
+    // Decides whether the logo upload control is offered at all.
+    api<{ available: boolean }>('/api/admin/storage-status', { token })
+      .then((r) => setCanUploadImages(r.available))
+      .catch(() => setCanUploadImages(false));
   }, [token]);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * The site logo goes to image storage, like every other upload.
+   *
+   * It used to be read straight into settings as a base64 data URI, which put
+   * the logo inside the config document every visitor downloads — on every
+   * page, since the logo is in the header. The gallery and sponsor uploads were
+   * moved out of the database; this is the last one that was not.
+   */
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Logo image must be smaller than 2MB.');
+
+    if (canUploadImages === false) {
+      setError(
+        'Image storage is not connected, so the logo cannot be uploaded. Paste a link to it ' +
+          'instead, or connect Firebase Storage.',
+      );
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setSettings((prev) => (prev ? { ...prev, customLogoUrl: result } : null));
-    };
-    reader.readAsDataURL(file);
+
+    setError(null);
+    try {
+      // A header logo is never displayed large, and transparency is kept —
+      // most brand marks are transparent PNGs.
+      const prepared = await prepareImage(file, { maxDimension: 600 });
+      const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+        method: 'POST',
+        token,
+        body: { dataUri: prepared.dataUri, folder: 'logo' },
+      });
+      setSettings((prev) => (prev ? { ...prev, customLogoUrl: uploaded.url } : null));
+      setSuccess(`Logo uploaded (${formatBytes(prepared.bytes)}). Save to publish it.`);
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : (err as Error).message || 'Could not upload that logo.');
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -1380,32 +1416,88 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
           </div>
           <div className="sm:col-span-2">
             <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Custom Logo (Upload image or leave blank for official Vector Emblem)
+              Site logo
             </label>
+            <p className="text-[11.5px] text-muted/70 mb-3 leading-relaxed">
+              Used in the header, on the applicant status page and as the loading mark. Leave it
+              empty to fall back to the built-in emblem. A transparent PNG or an SVG works best —
+              it sits on a dark background.
+            </p>
+
+            {/* Preview on the same dark ground the site uses, so a dark-inked
+                logo is seen to disappear here rather than on the live page. */}
             <div className="flex flex-wrap items-center gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoUpload}
-                className="text-xs text-muted file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-xs file:font-semibold file:bg-gold file:text-black hover:file:bg-gold/90 cursor-pointer"
-              />
-              {settings.customLogoUrl && (
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-16 w-40 shrink-0 rounded border border-white/12 bg-black/80 px-3">
+                {settings.customLogoUrl ? (
                   <img
                     src={settings.customLogoUrl}
-                    alt="Custom Logo"
-                    className="h-10 max-w-[120px] object-contain bg-black/80 p-1 rounded border border-gold/40"
+                    alt="Current site logo"
+                    className="max-h-full max-w-full object-contain"
                   />
+                ) : (
+                  <span className="text-[10px] uppercase tracking-wider text-muted/50">
+                    Built-in emblem
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-[220px] space-y-2">
+                <label
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs font-semibold transition-colors ${
+                    canUploadImages === false
+                      ? 'bg-white/5 border-white/10 text-muted/50 cursor-not-allowed'
+                      : 'bg-gold/15 border-gold/30 text-gold cursor-pointer hover:bg-gold/25'
+                  }`}
+                  title={canUploadImages === false ? 'Image storage is not connected' : undefined}
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Upload logo
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    disabled={canUploadImages === false}
+                    onChange={handleLogoUpload}
+                  />
+                </label>
+
+                <input
+                  type="text"
+                  value={settings.customLogoUrl?.startsWith('data:') ? '' : settings.customLogoUrl ?? ''}
+                  onChange={(e) => setSettings({ ...settings, customLogoUrl: e.target.value })}
+                  placeholder={
+                    settings.customLogoUrl?.startsWith('data:')
+                      ? 'Stored in the database — re-upload to move it to storage'
+                      : 'or paste a logo URL'
+                  }
+                  className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2 text-xs text-bone focus:border-gold focus:outline-none"
+                />
+
+                {settings.customLogoUrl && (
                   <button
                     type="button"
                     onClick={() => setSettings({ ...settings, customLogoUrl: '' })}
-                    className="text-xs text-red-400 hover:text-red-300 underline"
+                    className="text-[11.5px] text-red-400 hover:text-red-300 underline"
                   >
-                    Reset to Default Logo
+                    Remove, and use the built-in emblem
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+
+            {canUploadImages === false && (
+              <p className="mt-3 text-[11.5px] text-amber-200/80 leading-relaxed">
+                Image storage is not connected, so uploading is off. Paste a link to the logo
+                instead.
+              </p>
+            )}
+            {settings.customLogoUrl?.startsWith('data:') && (
+              <p className="mt-3 text-[11.5px] text-amber-200/80 leading-relaxed">
+                This logo is stored inside the database rather than in image storage, so every
+                visitor downloads it with the page — on every page, since it sits in the header.
+                Re-upload it to move it out.
+              </p>
+            )}
           </div>
         </div>
       </Card>

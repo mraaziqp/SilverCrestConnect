@@ -31,6 +31,10 @@ const ALLOWED_TYPES: Record<string, string> = {
  * that says why is far more useful than a hang.
  */
 const BUCKET_CHECK_MS = 8_000;
+/** A bucket that exists keeps existing; no need to ask again for a while. */
+const AVAILABILITY_TTL_MS = 10 * 60_000;
+/** A miss is rechecked sooner, so switching Storage on is noticed quickly. */
+const AVAILABILITY_MISS_TTL_MS = 30_000;
 const UPLOAD_MS = 20_000;
 
 function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
@@ -116,16 +120,40 @@ export class ImageStorage {
     );
   }
 
-  /** True when the bucket actually exists, not merely when it is named. */
+  /**
+   * True when the bucket actually exists, not merely when it is named.
+   *
+   * Cached, because this is a round trip to the bucket and the dashboard asks
+   * on every tab that offers an upload — several seconds of waiting, repeated,
+   * for an answer that changes about once in the life of a project. A negative
+   * is held briefly so that enabling Storage is picked up without a restart.
+   */
+  private availability?: { value: boolean; until: number };
+
   async isAvailable(): Promise<boolean> {
     if (!this.configured) return false;
+
+    const now = Date.now();
+    if (this.availability && this.availability.until > now) return this.availability.value;
+
+    let value = false;
     try {
       ensureApp(this.config);
-      const [exists] = await getStorage().bucket(this.config.bucket).exists();
-      return exists;
+      const [exists] = await withTimeout(
+        getStorage().bucket(this.config.bucket).exists(),
+        BUCKET_CHECK_MS,
+        'Checking the storage bucket timed out.',
+      );
+      value = exists;
     } catch {
-      return false;
+      value = false;
     }
+
+    this.availability = {
+      value,
+      until: now + (value ? AVAILABILITY_TTL_MS : AVAILABILITY_MISS_TTL_MS),
+    };
+    return value;
   }
 
   /**
