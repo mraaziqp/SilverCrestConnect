@@ -43,10 +43,21 @@ export const Programme: React.FC<ProgrammeProps> = ({
         />
 
         {/* Two cards would stretch oddly across the full width, so the list is
-            capped and centred. */}
+            capped and centred.
+
+            An odd number leaves the last card alone on its row, sitting against
+            the left edge with a gap beside it. It spans both columns instead and
+            is held to one column's width, so it centres under the pair above
+            rather than looking like a layout that ran out. The gap is 1.5rem, so
+            half a column is 50% minus half the gap. */}
         <ol className="mt-12 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-          {steps.map((step, index) => (
-            <li key={step.id ?? step.title}>
+          {steps.map((step, index) => {
+            const alone = steps.length % 2 === 1 && index === steps.length - 1;
+            return (
+            <li
+              key={step.id ?? step.title}
+              className={alone ? 'md:col-span-2 md:w-[calc(50%-0.75rem)] md:mx-auto' : undefined}
+            >
               <Card className="h-full p-7">
                 <span className="font-display text-3xl font-bold text-gold/35 leading-none">
                   {String(index + 1).padStart(2, '0')}
@@ -57,7 +68,8 @@ export const Programme: React.FC<ProgrammeProps> = ({
                 </p>
               </Card>
             </li>
-          ))}
+            );
+          })}
         </ol>
       </div>
 
