@@ -31,6 +31,9 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /** Photos held as base64 in the datastore rather than in image storage. */
+  const inlineCount = rows.filter((row) => row.url.startsWith('data:')).length;
+
   useEffect(() => {
     api<{ gallery?: GalleryItem[] }>('/api/event')
       .then((result) =>
@@ -70,53 +73,34 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
     }
   };
 
-  /** Above this a data URI is too heavy to keep in the datastore. */
-  const MAX_INLINE_BYTES = 700 * 1024;
-
   const uploadFile = async (file: File) => {
+    // No silent fallback. An image that cannot go to storage used to be written
+    // into the datastore as base64, which put photographs inside the config
+    // payload every visitor downloads. Refusing is the honest answer: it says
+    // what is wrong and offers the route that does work.
+    if (!canUpload) {
+      setError(
+        'Image storage is not connected, so uploads are turned off. Paste a link to the ' +
+          'image instead, or connect Firebase Storage to upload files directly.',
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
       // Resize before anything else. A phone photo posted at full size is what
-      // made this time out at the gateway, and what left megabyte-sized strings
-      // in the datastore for every visitor to download afterwards.
+      // made this time out at the gateway.
       const prepared = await prepareImage(file, { maxDimension: 1600, quality: 0.82 });
 
-      if (canUpload) {
-        try {
-          const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
-            method: 'POST',
-            token,
-            body: { dataUri: prepared.dataUri, folder: 'gallery' },
-          });
-          await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
-          setStatus(`Photo uploaded (${formatBytes(prepared.bytes)}).`);
-          return;
-        } catch (err) {
-          // Cloud storage refused. Falling back is fine for a small image and
-          // wrong for a large one, so the size decides rather than hope.
-          if (prepared.bytes > MAX_INLINE_BYTES) {
-            setError(
-              `${err instanceof ApiRequestError ? err.message : 'Upload failed.'} ` +
-                `This photo is ${formatBytes(prepared.bytes)}, too large to store without cloud storage. ` +
-                'Paste an image URL instead.',
-            );
-            return;
-          }
-        }
-      }
-
-      if (prepared.bytes > MAX_INLINE_BYTES) {
-        setError(
-          `That photo is ${formatBytes(prepared.bytes)} after resizing, and cloud storage is not ` +
-            'available to hold it. Paste an image URL instead.',
-        );
-        return;
-      }
-
-      await persist([...rows, { key: nextKey(), url: prepared.dataUri, caption: '' }]);
-      setStatus(`Photo saved (${formatBytes(prepared.bytes)}).`);
+      const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+        method: 'POST',
+        token,
+        body: { dataUri: prepared.dataUri, folder: 'gallery' },
+      });
+      await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
+      setStatus(`Photo uploaded (${formatBytes(prepared.bytes)}).`);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : (err as Error).message || 'Upload failed.');
     } finally {
@@ -142,14 +126,21 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
             </p>
           </div>
 
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-sm bg-gold text-black text-xs font-semibold hover:bg-gold/90 cursor-pointer transition-colors">
+          <label
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-sm text-xs font-semibold transition-colors ${
+              canUpload === false
+                ? 'bg-white/10 text-muted/60 cursor-not-allowed'
+                : 'bg-gold text-black hover:bg-gold/90 cursor-pointer'
+            }`}
+            title={canUpload === false ? 'Image storage is not connected' : undefined}
+          >
             <ImageIcon className="w-4 h-4" aria-hidden="true" />
             Upload Photo
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
-              disabled={busy}
+              disabled={busy || canUpload === false}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) uploadFile(file);
@@ -158,6 +149,23 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
             />
           </label>
         </div>
+
+        {canUpload === false && (
+          <p className="mt-5 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12.5px] text-amber-200/90 leading-relaxed">
+            Image storage is not connected, so the upload button is off. Paste a link to each
+            photo for now. Once Firebase Storage is enabled, uploads start working here with no
+            further changes.
+          </p>
+        )}
+
+        {inlineCount > 0 && (
+          <p className="mt-4 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12.5px] text-amber-200/90 leading-relaxed">
+            {inlineCount} {inlineCount === 1 ? 'photo is' : 'photos are'} stored inside the
+            database rather than in image storage, from before uploads were moved out. Every
+            visitor downloads {inlineCount === 1 ? 'it' : 'them'} with the page. Re-upload{' '}
+            {inlineCount === 1 ? 'it' : 'them'} once storage is connected, or replace with a link.
+          </p>
+        )}
 
         <div className="mt-8 space-y-4">
           {rows.length === 0 && (

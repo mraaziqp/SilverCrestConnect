@@ -30,9 +30,6 @@ interface SponsorRow {
 let rowCounter = 0;
 const nextKey = () => `sponsor-${(rowCounter += 1)}`;
 
-/** A transparent logo stays PNG, so this is the ceiling without cloud storage. */
-const MAX_INLINE_BYTES = 400 * 1024;
-
 export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
   const [rows, setRows] = useState<SponsorRow[]>([]);
   const [canUpload, setCanUpload] = useState<boolean | null>(null);
@@ -40,6 +37,9 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  /** Logos held as base64 in the datastore rather than in image storage. */
+  const inlineCount = rows.filter((row) => row.logoUrl.startsWith('data:')).length;
 
   useEffect(() => {
     api<{ sponsors?: Sponsor[]; event?: { sponsorsHeading?: string } }>('/api/event')
@@ -93,6 +93,16 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
   };
 
   const uploadLogo = async (index: number, file: File) => {
+    // Same rule as the gallery: a logo that cannot reach storage is refused
+    // rather than written into the datastore as base64.
+    if (!canUpload) {
+      setError(
+        'Image storage is not connected, so uploads are turned off. Paste a link to the ' +
+          'logo instead, or connect Firebase Storage to upload files directly.',
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
     setStatus(null);
@@ -100,33 +110,15 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
       // Smaller than a photo: a logo never needs to be wider than its rail.
       const prepared = await prepareImage(file, { maxDimension: 600 });
 
-      if (canUpload) {
-        try {
-          const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
-            method: 'POST',
-            token,
-            body: { dataUri: prepared.dataUri, folder: 'gallery' },
-          });
-          update(index, { logoUrl: uploaded.url });
-          setStatus(`Logo ready (${formatBytes(prepared.bytes)}). Save to publish it.`);
-          return;
-        } catch {
-          // Fall through and keep it inline, if it is small enough.
-        }
-      }
-
-      if (prepared.bytes > MAX_INLINE_BYTES) {
-        setError(
-          `That logo is ${formatBytes(prepared.bytes)} and cloud storage is not available to hold it. ` +
-            'Use a smaller file, or paste a link to the logo instead.',
-        );
-        return;
-      }
-
-      update(index, { logoUrl: prepared.dataUri });
+      const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+        method: 'POST',
+        token,
+        body: { dataUri: prepared.dataUri, folder: 'gallery' },
+      });
+      update(index, { logoUrl: uploaded.url });
       setStatus(`Logo ready (${formatBytes(prepared.bytes)}). Save to publish it.`);
     } catch (err) {
-      setError((err as Error).message || 'Could not read that logo.');
+      setError(err instanceof ApiRequestError ? err.message : (err as Error).message || 'Could not read that logo.');
     } finally {
       setBusy(false);
     }
@@ -183,10 +175,19 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
         {status && <p className="mt-5 text-[13px] text-emerald-400">{status}</p>}
 
         {canUpload === false && (
-          <p className="mt-5 text-[12px] text-muted/80 leading-relaxed">
-            Cloud storage is not enabled, so uploaded logos are stored inside the site itself.
-            That works well up to {formatBytes(MAX_INLINE_BYTES)}, which nearly every logo is.
-            For anything larger, paste a link to the logo instead.
+          <p className="mt-5 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12.5px] text-amber-200/90 leading-relaxed">
+            Image storage is not connected, so the upload button is off. Paste a link to each
+            logo for now. Once Firebase Storage is enabled, uploads start working here with no
+            further changes.
+          </p>
+        )}
+
+        {inlineCount > 0 && (
+          <p className="mt-4 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12.5px] text-amber-200/90 leading-relaxed">
+            {inlineCount} {inlineCount === 1 ? 'logo is' : 'logos are'} stored inside the database
+            rather than in image storage. Every visitor downloads{' '}
+            {inlineCount === 1 ? 'it' : 'them'} with the page. Re-upload once storage is
+            connected, or replace with a link.
           </p>
         )}
 
@@ -266,13 +267,21 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
                       <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">
                         Logo
                       </label>
-                      <label className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-sm bg-gold/15 border border-gold/30 text-gold text-xs font-semibold cursor-pointer hover:bg-gold/25 transition-colors">
+                      <label
+                        className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-sm border text-xs font-semibold transition-colors ${
+                          canUpload === false
+                            ? 'bg-white/5 border-white/10 text-muted/50 cursor-not-allowed'
+                            : 'bg-gold/15 border-gold/30 text-gold cursor-pointer hover:bg-gold/25'
+                        }`}
+                        title={canUpload === false ? 'Image storage is not connected' : undefined}
+                      >
                         <Upload className="w-3.5 h-3.5" />
                         Upload image
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
                           className="hidden"
+                          disabled={busy || canUpload === false}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) uploadLogo(index, file);
