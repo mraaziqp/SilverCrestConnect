@@ -109,9 +109,34 @@ export async function createApp(options: AppOptions): Promise<Express> {
     (req, res) => handleItn(req, res, store, payfast, mailer),
   );
 
-  // 8mb, not 64kb: the dashboard posts images as data URIs, and base64 adds
-  // about a third on top of the 5mb file limit the uploader enforces.
+  // 8mb, not 64kb: an image is posted as a data URI on its way to storage, and
+  // base64 adds about a third on top of the file itself.
   app.use(express.json({ limit: '8mb' }));
+
+  /**
+   * Refuses a content save that carries images inside it.
+   *
+   * Uploads go to storage and come back as URLs, so these documents should be a
+   * few hundred bytes. A payload in the megabytes means base64 images are being
+   * written into the database — which is slow enough to be killed by the
+   * platform's request limit and reported as a 504, with no clue why. Saying so
+   * is more useful than a gateway timeout.
+   */
+  const rejectHeavyContent = (req: Request, res: Response, next: NextFunction): void => {
+    const bytes = Number(req.get('content-length') ?? 0);
+    if (bytes > 1_500_000) {
+      res.status(413).json({
+        success: false,
+        error:
+          'This save carries images inside it rather than links to them, and is too large to ' +
+          'store. Re-add the images with the upload button so they go to image storage.',
+      });
+      return;
+    }
+    next();
+  };
+
+  app.put(['/api/admin/gallery', '/api/admin/sponsors'], rejectHeavyContent);
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 
   // ------------------------------------------------------------------ public API

@@ -30,6 +30,8 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** How far through a batch upload we are, for the bar below the button. */
+  const [progress, setProgress] = useState<{ done: number; total: number; name: string } | null>(null);
 
   /** Photos held as base64 in the datastore rather than in image storage. */
   const inlineCount = rows.filter((row) => row.url.startsWith('data:')).length;
@@ -73,11 +75,21 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
     }
   };
 
-  const uploadFile = async (file: File) => {
+  /**
+   * Uploads a batch of photos, one at a time, reporting as it goes.
+   *
+   * Sequential rather than parallel on purpose: each image is a separate
+   * request carrying a resized picture, and firing ten at once on a phone
+   * connection makes every one of them slower and the failures harder to
+   * attribute. One at a time also gives an honest progress figure.
+   *
+   * The gallery is saved once, at the end, rather than after each photo. Saving
+   * per photo would rewrite the whole document ten times over.
+   */
+  const uploadFiles = async (files: File[]) => {
     // No silent fallback. An image that cannot go to storage used to be written
     // into the datastore as base64, which put photographs inside the config
-    // payload every visitor downloads. Refusing is the honest answer: it says
-    // what is wrong and offers the route that does work.
+    // payload every visitor downloads.
     if (!canUpload) {
       setError(
         'Image storage is not connected, so uploads are turned off. Paste a link to the ' +
@@ -85,26 +97,57 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
       );
       return;
     }
+    if (files.length === 0) return;
 
     setBusy(true);
     setError(null);
     setStatus(null);
-    try {
-      // Resize before anything else. A phone photo posted at full size is what
-      // made this time out at the gateway.
-      const prepared = await prepareImage(file, { maxDimension: 1600, quality: 0.82 });
+    setProgress({ done: 0, total: files.length, name: files[0]?.name ?? '' });
 
-      const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
-        method: 'POST',
-        token,
-        body: { dataUri: prepared.dataUri, folder: 'gallery' },
-      });
-      await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
-      setStatus(`Photo uploaded (${formatBytes(prepared.bytes)}).`);
+    const added: GalleryRow[] = [];
+    const failures: string[] = [];
+    let uploadedBytes = 0;
+
+    for (const [index, file] of files.entries()) {
+      setProgress({ done: index, total: files.length, name: file.name });
+      try {
+        // Resize before anything else. A phone photo posted at full size is
+        // what made this time out at the gateway.
+        const prepared = await prepareImage(file, { maxDimension: 1600, quality: 0.82 });
+        const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+          method: 'POST',
+          token,
+          body: { dataUri: prepared.dataUri, folder: 'gallery' },
+        });
+        added.push({ key: nextKey(), url: uploaded.url, caption: '' });
+        uploadedBytes += prepared.bytes;
+      } catch (err) {
+        // One bad file should not discard the ones that worked.
+        failures.push(`${file.name}: ${err instanceof ApiRequestError ? err.message : (err as Error).message}`);
+      }
+    }
+
+    setProgress({ done: files.length, total: files.length, name: '' });
+
+    try {
+      if (added.length > 0) await persist([...rows, ...added]);
+      if (added.length > 0) {
+        setStatus(
+          `${added.length} of ${files.length} ${files.length === 1 ? 'photo' : 'photos'} added ` +
+            `(${formatBytes(uploadedBytes)}).`,
+        );
+      }
+      if (failures.length > 0) {
+        setError(
+          `${failures.length} ${failures.length === 1 ? 'photo' : 'photos'} could not be added: ` +
+            failures.join('; '),
+        );
+      }
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : (err as Error).message || 'Upload failed.');
+      setError(err instanceof ApiRequestError ? err.message : 'Photos uploaded, but the gallery could not be saved.');
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -135,20 +178,44 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
             title={canUpload === false ? 'Image storage is not connected' : undefined}
           >
             <ImageIcon className="w-4 h-4" aria-hidden="true" />
-            Upload Photo
+            {busy && progress ? 'Uploading…' : 'Upload photos'}
             <input
               type="file"
+              multiple
               accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
               disabled={busy || canUpload === false}
               onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) uploadFile(file);
+                const files = Array.from(event.target.files ?? []);
+                // Cleared before the upload starts, so picking the same files
+                // again still fires a change event.
                 event.target.value = '';
+                if (files.length) uploadFiles(files);
               }}
             />
           </label>
         </div>
+
+        {progress && (
+          <div className="mt-5" role="status" aria-live="polite">
+            <div className="flex items-center justify-between gap-3 text-[12px] text-muted mb-1.5">
+              <span className="truncate">
+                {progress.done < progress.total
+                  ? `Uploading ${progress.done + 1} of ${progress.total}${progress.name ? ` — ${progress.name}` : ''}`
+                  : 'Saving the gallery…'}
+              </span>
+              <span className="tabular-nums shrink-0">
+                {Math.round((progress.done / progress.total) * 100)}%
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-gold transition-[width] duration-300 ease-out"
+                style={{ width: `${Math.max(4, Math.round((progress.done / progress.total) * 100))}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {canUpload === false && (
           <p className="mt-5 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12.5px] text-amber-200/90 leading-relaxed">

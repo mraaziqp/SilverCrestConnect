@@ -37,6 +37,7 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number; name: string } | null>(null);
 
   /** Logos held as base64 in the datastore rather than in image storage. */
   const inlineCount = rows.filter((row) => row.logoUrl.startsWith('data:')).length;
@@ -89,6 +90,76 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
       setError(err instanceof ApiRequestError ? err.message : 'Could not save the sponsors.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * Adds sponsors by picking logo files.
+   *
+   * The old flow made you press "Add sponsor" to get an empty row, then find
+   * the upload control inside it, then type a name, then choose a placement —
+   * four steps before anything appeared. Picking files creates the rows, named
+   * from the filenames, with the logo already in place. What is left is the
+   * part only a person can decide: where each one goes.
+   */
+  const addFromFiles = async (files: File[]) => {
+    if (canUpload === false) {
+      setError(
+        'Image storage is not connected, so uploads are turned off. Add a sponsor below and ' +
+          'paste a link to the logo instead.',
+      );
+      return;
+    }
+    if (files.length === 0) return;
+
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    setProgress({ done: 0, total: files.length, name: files[0]?.name ?? '' });
+
+    const added: SponsorRow[] = [];
+    const failures: string[] = [];
+
+    for (const [index, file] of files.entries()) {
+      setProgress({ done: index, total: files.length, name: file.name });
+      try {
+        const prepared = await prepareImage(file, { maxDimension: 600 });
+        const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
+          method: 'POST',
+          token,
+          body: { dataUri: prepared.dataUri, folder: 'gallery' },
+        });
+        added.push({
+          key: nextKey(),
+          // A filename is a better first guess at the name than nothing, and it
+          // is easy to correct. "acme-logo.png" becomes "Acme Logo".
+          name: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim(),
+          logoUrl: uploaded.url,
+          websiteUrl: '',
+          placement: 'donate',
+        });
+      } catch (err) {
+        failures.push(`${file.name}: ${err instanceof ApiRequestError ? err.message : (err as Error).message}`);
+      }
+    }
+
+    setProgress({ done: files.length, total: files.length, name: '' });
+
+    try {
+      if (added.length > 0) {
+        const next = [...rows, ...added];
+        await persist(next);
+        setStatus(
+          `${added.length} ${added.length === 1 ? 'logo' : 'logos'} added. Set where each one ` +
+            'appears, then save.',
+        );
+      }
+      if (failures.length > 0) setError(`Could not add: ${failures.join('; ')}`);
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Logos uploaded, but saving failed.');
+    } finally {
+      setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -157,8 +228,9 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
               Sponsors and partners
             </h3>
             <p className="mt-1.5 text-[12.5px] text-muted leading-relaxed max-w-xl">
-              Add a logo and choose where on the page it appears. A placement with no sponsors
-              assigned shows nothing at all, so an empty band never appears on the site.
+              Two steps: upload the logos, then set where each one appears on the site. A
+              placement with no logos assigned shows nothing at all, so an empty band never
+              appears.
             </p>
           </div>
           <Button onClick={() => persist(rows)} disabled={busy}>
@@ -191,6 +263,62 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
           </p>
         )}
 
+        {/* Step one. Picking files creates the rows below, already carrying the
+            logo, so nothing has to be set up before an upload. */}
+        <div className="mt-7 pt-6 border-t border-white/8">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted mb-3 font-semibold">
+            Step 1 — upload logos
+          </p>
+          <label
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-sm text-xs font-semibold transition-colors ${
+              canUpload === false
+                ? 'bg-white/10 text-muted/60 cursor-not-allowed'
+                : 'bg-gold text-black hover:bg-gold/90 cursor-pointer'
+            }`}
+            title={canUpload === false ? 'Image storage is not connected' : undefined}
+          >
+            <Upload className="w-4 h-4" aria-hidden="true" />
+            {busy && progress ? 'Uploading…' : 'Upload sponsor logos'}
+            <input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              disabled={busy || canUpload === false}
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = '';
+                if (files.length) addFromFiles(files);
+              }}
+            />
+          </label>
+          <p className="mt-2 text-[11.5px] text-muted/60">
+            Pick several at once. Transparent PNGs are ideal — they sit on a light plate on the
+            page, so a logo drawn in white will not show.
+          </p>
+
+          {progress && (
+            <div className="mt-4" role="status" aria-live="polite">
+              <div className="flex items-center justify-between gap-3 text-[12px] text-muted mb-1.5">
+                <span className="truncate">
+                  {progress.done < progress.total
+                    ? `Uploading ${progress.done + 1} of ${progress.total}${progress.name ? ` — ${progress.name}` : ''}`
+                    : 'Saving…'}
+                </span>
+                <span className="tabular-nums shrink-0">
+                  {Math.round((progress.done / progress.total) * 100)}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-gold transition-[width] duration-300 ease-out"
+                  style={{ width: `${Math.max(4, Math.round((progress.done / progress.total) * 100))}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mt-7 pt-6 border-t border-white/8">
           <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
             Caption above each sponsor band
@@ -209,9 +337,21 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
           </div>
         </div>
 
-        <div className="mt-7 space-y-5">
+        <div className="mt-7 pt-6 border-t border-white/8">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted mb-1 font-semibold">
+            Step 2 — set where each logo appears
+          </p>
+          <p className="text-[11.5px] text-muted/60 mb-4">
+            Every logo starts at the bottom of the donation section. Change any of them below,
+            then save.
+          </p>
+        </div>
+
+        <div className="space-y-5">
           {rows.length === 0 && (
-            <p className="text-[13px] text-muted/70">No sponsors yet. Add the first one below.</p>
+            <p className="text-[13px] text-muted/70">
+              No sponsors yet. Upload logos above, or add one by hand to paste a link.
+            </p>
           )}
 
           {rows.map((row, index) => (
