@@ -56,10 +56,18 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
       .catch(() => setCanUpload(false));
   }, [token]);
 
-  const persist = async (next: GalleryRow[]) => {
+  /**
+   * Saves the gallery. Resolves to whether it actually saved.
+   *
+   * It used to swallow the failure and resolve regardless, so a batch upload
+   * would report "1 of 1 photo added" directly above "Request failed (504)" —
+   * two contradictory messages, and the reassuring one was wrong. Callers need
+   * to know, so they can say what really happened.
+   */
+  const persist = async (next: GalleryRow[], announce = true): Promise<boolean> => {
     setBusy(true);
     setError(null);
-    setStatus(null);
+    if (announce) setStatus(null);
     try {
       await api('/api/admin/gallery', {
         method: 'PUT',
@@ -67,9 +75,11 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
         body: { items: next.map(({ url, caption }) => ({ url, caption })) },
       });
       setRows(next);
-      setStatus('Gallery saved.');
+      if (announce) setStatus('Gallery saved.');
+      return true;
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Could not save the gallery.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -130,12 +140,19 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
     setProgress({ done: files.length, total: files.length, name: '' });
 
     try {
-      if (added.length > 0) await persist([...rows, ...added]);
       if (added.length > 0) {
-        setStatus(
-          `${added.length} of ${files.length} ${files.length === 1 ? 'photo' : 'photos'} added ` +
-            `(${formatBytes(uploadedBytes)}).`,
-        );
+        const saved = await persist([...rows, ...added], false);
+        if (saved) {
+          setStatus(
+            `${added.length} of ${files.length} ${files.length === 1 ? 'photo' : 'photos'} added ` +
+              `(${formatBytes(uploadedBytes)}).`,
+          );
+        } else {
+          // The images are in storage; only the save failed. Keeping them on
+          // screen means Save Gallery can retry without uploading again.
+          setRows([...rows, ...added]);
+          setStatus(null);
+        }
       }
       if (failures.length > 0) {
         setError(
@@ -143,8 +160,6 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
             failures.join('; '),
         );
       }
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Photos uploaded, but the gallery could not be saved.');
     } finally {
       setBusy(false);
       setProgress(null);

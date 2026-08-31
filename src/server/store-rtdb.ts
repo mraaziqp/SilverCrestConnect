@@ -40,6 +40,9 @@ const PATHS = {
 
 const CONTENT_TTL_MS = 5_000;
 
+/** A write that has not answered by now is not going to. */
+const WRITE_TIMEOUT_MS = 12_000;
+
 export interface RtdbConfig {
   databaseUrl: string;
   projectId?: string;
@@ -96,6 +99,8 @@ export class RtdbStore implements DataStore {
   readonly storageNote = 'Records are stored in Firebase Realtime Database.';
 
   private db: RtdbDatabase;
+  private app: App;
+  private baseUrl: string;
   private ready = false;
   private contentCache = new Map<string, { value: unknown; expiresAt: number }>();
 
@@ -103,7 +108,42 @@ export class RtdbStore implements DataStore {
     if (!config.databaseUrl) {
       throw new Error('FIREBASE_DATABASE_URL is required for the Realtime Database driver.');
     }
-    this.db = getDatabase(initFirebase(config));
+    this.app = initFirebase(config);
+    this.db = getDatabase(this.app);
+    this.baseUrl = config.databaseUrl.replace(/\/+$/, '');
+  }
+
+  /**
+   * Writes a value over the database's REST interface.
+   *
+   * The SDK writes over a long-lived WebSocket, and set() resolves only once
+   * the server acknowledges across it. That is fine in a process that stays
+   * alive; it is a trap on a serverless platform, where a container is frozen
+   * between requests and thawed later holding a socket the SDK still believes
+   * is open. The write is then queued against a connection that can never
+   * acknowledge, the promise never settles, and the request dies at the
+   * platform's limit — surfacing as a 504 with nothing to explain it, which is
+   * exactly what saving a photo to the gallery was doing.
+   *
+   * REST has no such state. Each write is one HTTPS request that either
+   * answers or times out, and a timeout here says so instead of hanging.
+   */
+  private async restPut(path: string, value: unknown): Promise<void> {
+    const { access_token: accessToken } = await this.app.options.credential!.getAccessToken();
+
+    const response = await fetch(`${this.baseUrl}/${path}.json?access_token=${accessToken}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value ?? null),
+      signal: AbortSignal.timeout(WRITE_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(
+        `Database write to ${path} failed (${response.status}). ${detail.slice(0, 200)}`.trim(),
+      );
+    }
   }
 
   async init(): Promise<void> {
@@ -122,7 +162,7 @@ export class RtdbStore implements DataStore {
   private async seed(key: string, value: unknown): Promise<void> {
     const ref = this.db.ref(`${PATHS.content}/${key}`);
     const snap = await ref.get();
-    if (!snap.exists()) await ref.set(stripUndefined(value as object));
+    if (!snap.exists()) await this.restPut(`${PATHS.content}/${key}`, stripUndefined(value as object));
   }
 
   // ------------------------------------------------------------- content cache
@@ -139,7 +179,7 @@ export class RtdbStore implements DataStore {
   }
 
   private async writeContent(key: string, value: unknown): Promise<void> {
-    await this.db.ref(`${PATHS.content}/${key}`).set(stripUndefined(value as object));
+    await this.restPut(`${PATHS.content}/${key}`, stripUndefined(value as object));
     this.contentCache.delete(key);
   }
 
@@ -207,7 +247,7 @@ export class RtdbStore implements DataStore {
 
   async addApplication(app: Application): Promise<Application> {
     const record = stripUndefined({ ...app, email: app.email.trim().toLowerCase() });
-    await this.db.ref(`${PATHS.applications}/${record.id}`).set(record);
+    await this.restPut(`${PATHS.applications}/${record.id}`, record);
     return record;
   }
 
@@ -223,7 +263,7 @@ export class RtdbStore implements DataStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     });
-    await this.db.ref(`${PATHS.applications}/${existing.id}`).set(updated);
+    await this.restPut(`${PATHS.applications}/${existing.id}`, updated);
     return updated;
   }
 
@@ -263,7 +303,7 @@ export class RtdbStore implements DataStore {
 
   async addPayment(payment: Payment): Promise<Payment> {
     const record = stripUndefined(payment);
-    await this.db.ref(`${PATHS.payments}/${record.id}`).set(record);
+    await this.restPut(`${PATHS.payments}/${record.id}`, record);
     return record;
   }
 
@@ -276,7 +316,7 @@ export class RtdbStore implements DataStore {
       ...patch,
       updatedAt: new Date().toISOString(),
     });
-    await this.db.ref(`${PATHS.payments}/${existing.id}`).set(updated);
+    await this.restPut(`${PATHS.payments}/${existing.id}`, updated);
     return updated;
   }
 
