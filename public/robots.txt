@@ -1,0 +1,17 @@
+# Silver Crest Connect
+#
+# The event site is meant to be found. The dashboard is not, and neither are
+# applicant status pages: /pay/<reference> shows a named business and where its
+# application stands, so it should never turn up in a search result.
+#
+# This is a request, not a control. Both are also marked noindex at runtime, and
+# neither is readable without the reference or the admin token.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /pay/
+Disallow: /payment/
+Disallow: /api/
+
+Sitemap: https://scconnect.co.za/sitemap.xml

@@ -19,6 +19,30 @@ function isAdminRoute(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
+/**
+ * Keeps the dashboard and applicant pages out of search results.
+ *
+ * robots.txt asks crawlers not to fetch them; this tells any that do anyway not
+ * to index what they found. /pay/<reference> names a business and says where
+ * its application stands, which has no business appearing in a search result.
+ */
+function applyRobots(pathname: string): void {
+  const shouldHide =
+    isAdminRoute(pathname) || pathname.startsWith('/pay/') || pathname.startsWith('/payment/');
+
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+  if (!shouldHide) {
+    meta?.remove();
+    return;
+  }
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'robots';
+    document.head.appendChild(meta);
+  }
+  meta.content = 'noindex, nofollow';
+}
+
 /** Points the document at the manifest that matches where we are. */
 export function applyManifest(pathname: string = window.location.pathname): void {
   const href = isAdminRoute(pathname) ? ADMIN_MANIFEST : PUBLIC_MANIFEST;
@@ -35,6 +59,8 @@ export function applyManifest(pathname: string = window.location.pathname): void
   // recognisably not the public site.
   const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (theme) theme.content = isAdminRoute(pathname) ? '#C5A059' : '#0A0A0A';
+
+  applyRobots(pathname);
 }
 
 /**

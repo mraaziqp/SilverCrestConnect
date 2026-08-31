@@ -135,6 +135,32 @@ async function main(): Promise<void> {
 
   if (Object.keys(patch).length && apply) await store.updateSettings(patch);
 
+  // ---- gallery -----------------------------------------------------------
+  // The bundled drive photos ship as WebP as well as JPEG, about a third
+  // lighter for the same picture. Stored galleries still point at the JPEGs,
+  // and a deploy cannot move them, so the paths are rewritten here. Only the
+  // bundled ones: an uploaded or pasted URL is left exactly as it is.
+  const gallery = await store.getGallery();
+  const galleryFixed = gallery.map((item) => ({
+    ...item,
+    url: /^\/outreach\/drive-pack-\d\.jpg$/.test(item.url)
+      ? item.url.replace(/\.jpg$/, '.webp')
+      : item.url,
+  }));
+
+  if (JSON.stringify(galleryFixed) !== JSON.stringify(gallery)) {
+    for (let i = 0; i < gallery.length; i += 1) {
+      if (gallery[i].url !== galleryFixed[i].url) {
+        console.log(`
+  gallery[${i}]`);
+        console.log(`    before  ${gallery[i].url}`);
+        console.log(`    after   ${galleryFixed[i].url}`);
+        changes += 1;
+      }
+    }
+    if (apply) await store.updateGallery(galleryFixed);
+  }
+
   // ---- welcome pack ------------------------------------------------------
   const pack = await store.getWelcomePack();
   const kept = pack.filter((item) => !isLanyardItem(item));

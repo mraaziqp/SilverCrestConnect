@@ -173,22 +173,22 @@ export const DEFAULT_SPONSORS: Sponsor[] = [];
 export const DEFAULT_GALLERY = [
   {
     id: 'photo-1',
-    url: '/outreach/drive-pack-1.jpg',
+    url: '/outreach/drive-pack-1.webp',
     caption: 'Personal care and hygiene kits prepared for community distribution.',
   },
   {
     id: 'photo-2',
-    url: '/outreach/drive-pack-2.jpg',
+    url: '/outreach/drive-pack-2.webp',
     caption: 'Winter warmth packages, knitted beanies, and daily toiletries.',
   },
   {
     id: 'photo-3',
-    url: '/outreach/drive-pack-3.jpg',
+    url: '/outreach/drive-pack-3.webp',
     caption: 'Pantry staples, soup mixes, canned foods, and nutrition parcels.',
   },
   {
     id: 'photo-4',
-    url: '/outreach/drive-pack-4.jpg',
+    url: '/outreach/drive-pack-4.webp',
     caption: 'Complete outreach care parcel with blankets, food supplies, and toiletries.',
   },
 ];
