@@ -177,19 +177,39 @@ export class ImageStorage {
       const name = `${folder}/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${decoded.extension}`;
       const file = bucket.file(name);
 
+      /**
+       * A download token, rather than making the object public.
+       *
+       * Buckets created now have uniform bucket-level access switched on by
+       * default, and that disables per-object ACLs outright — so makePublic()
+       * throws, and the upload fails at the last step having already stored the
+       * file. Firebase's own token URL does not depend on ACLs, works whether
+       * uniform access is on or off, and leaves the bucket private: only files
+       * carrying a token are reachable, rather than everything in it.
+       */
+      const downloadToken = crypto.randomUUID();
+
       await withTimeout(
         file.save(decoded.buffer, {
           contentType: decoded.contentType,
-          // Content is immutable — every upload gets a fresh name — so it can be
-          // cached hard.
-          metadata: { cacheControl: 'public, max-age=31536000, immutable' },
+          metadata: {
+            // Content is immutable — every upload gets a fresh name — so it can
+            // be cached hard.
+            cacheControl: 'public, max-age=31536000, immutable',
+            metadata: { firebaseStorageDownloadTokens: downloadToken },
+          },
         }),
         UPLOAD_MS,
         'The upload to storage timed out.',
       );
-      await withTimeout(file.makePublic(), BUCKET_CHECK_MS, 'Publishing the image timed out.');
 
-      return { ok: true, url: `https://storage.googleapis.com/${this.config.bucket}/${name}` };
+      const encodedPath = encodeURIComponent(name);
+      return {
+        ok: true,
+        url:
+          `https://firebasestorage.googleapis.com/v0/b/${this.config.bucket}` +
+          `/o/${encodedPath}?alt=media&token=${downloadToken}`,
+      };
     } catch (err) {
       return { ok: false, error: (err as Error).message };
     }
