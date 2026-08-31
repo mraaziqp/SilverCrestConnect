@@ -10,7 +10,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import path from 'path';
 import crypto from 'crypto';
 
-import { EVENT, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event.js';
+import { EVENT, DONATION_MIN_ZAR, DONATION_MAX_ZAR, SPONSOR_PLACEMENTS } from '../config/event.js';
 import type {
   Application,
   ApplicationStatus,
@@ -19,6 +19,7 @@ import type {
   Payment,
   ProgrammeItem,
   WelcomePackItem,
+  Sponsor,
 } from '../types.js';
 import { makeId, makeReference } from './store.js';
 import { seatsFor, type DataStore } from './store-types.js';
@@ -50,6 +51,7 @@ import {
 } from './email/mailer.js';
 import {
   applicationApproved,
+  applicationNotice,
   applicationReceived,
   donationReceipt,
   ticketConfirmed,
@@ -137,6 +139,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
       welcomePack: await store.getWelcomePack(),
       impactItems: await store.getImpactItems(),
       gallery: await store.getGallery(),
+      sponsors: await store.getSponsors(),
+      funnelSteps: await store.getFunnelSteps(),
       seatsRemaining: stats.seatsRemaining,
       totalRaisedZAR: stats.totalRaisedZAR,
       supporters: stats.donationsCount,
@@ -237,6 +241,41 @@ export async function createApp(options: AppOptions): Promise<Express> {
       }),
       'application-received',
     );
+
+    // And tell the team, because nobody watches a dashboard all day and the
+    // applicant cannot pay until someone reviews this. Falls back through the
+    // addresses already configured, so it works without another setting.
+    const notifyTo = (
+      process.env.ADMIN_NOTIFY_TO ||
+      mailerConfig.replyTo ||
+      settings.contactEmail ||
+      ''
+    ).trim();
+
+    if (notifyTo) {
+      sendInBackground(
+        mailer,
+        notifyTo,
+        applicationNotice({
+          businessName: application.businessName,
+          contactName: application.contactName,
+          applicantRole: application.applicantRole,
+          email: application.email,
+          phone: application.phone,
+          industry: application.industry,
+          reference: application.reference,
+          attendeeCount: application.attendeeCount,
+          totalPriceZAR: application.totalPriceZAR,
+          about: application.about,
+          productsServices: application.productsServices,
+          communityContribution: application.communityContribution,
+          rep2Name: application.rep2Name,
+          rep2Role: application.rep2Role,
+          adminUrl: `${payfast.appUrl}/admin`,
+        }),
+        'application-notice',
+      );
+    }
 
     return res.status(201).json({
       success: true,
@@ -654,6 +693,8 @@ export async function createApp(options: AppOptions): Promise<Express> {
       welcomePack: await store.getWelcomePack(),
       impactItems: await store.getImpactItems(),
       gallery: await store.getGallery(),
+      sponsors: await store.getSponsors(),
+      funnelSteps: await store.getFunnelSteps(),
     });
   });
 
@@ -772,6 +813,73 @@ export async function createApp(options: AppOptions): Promise<Express> {
   });
 
   /** Reports whether direct upload is possible, so the UI can adapt. */
+  app.put('/api/admin/funnel-steps', async (req: Request, res: Response) => {
+    const { items, error } = validateItems<{ title: string; body: string }>(
+      req.body?.items,
+      { title: 120, body: 600 },
+      8,
+    );
+    if (error) return res.status(400).json({ success: false, error });
+
+    const cleaned = items
+      .filter((item) => item.title.trim() || item.body.trim())
+      .map((item, i) => ({ id: `step-${i + 1}`, title: item.title.trim(), body: item.body.trim() }));
+
+    if (cleaned.some((item) => !item.title || !item.body)) {
+      return res.status(400).json({ success: false, error: 'Every step needs both a title and a description.' });
+    }
+
+    const updated = await store.updateFunnelSteps(cleaned);
+    return res.json({ success: true, funnelSteps: updated });
+  });
+
+  app.put('/api/admin/sponsors', async (req: Request, res: Response) => {
+    const { items, error } = validateItems<{ name: string; logoUrl: string; websiteUrl: string; placement: string }>(
+      req.body?.items,
+      { name: 80, logoUrl: 400_000, websiteUrl: 300, placement: 40 },
+      60,
+    );
+    if (error) return res.status(400).json({ success: false, error });
+
+    const allowed = new Set(SPONSOR_PLACEMENTS.map((p) => p.value as string));
+    const cleaned: Sponsor[] = [];
+
+    for (const item of items) {
+      const logoUrl = item.logoUrl.trim();
+      const name = item.name.trim();
+      if (!logoUrl && !name) continue;
+
+      if (!name) {
+        return res.status(400).json({ success: false, error: 'Every sponsor needs a name — it becomes the logo alt text.' });
+      }
+      // Same rule as the gallery: nothing reaches a page unless it is an image.
+      if (!/^https?:\/\//i.test(logoUrl) && !logoUrl.startsWith('data:image/')) {
+        return res.status(400).json({
+          success: false,
+          error: `"${name}" has no usable logo. Upload one, or paste a link starting with https://.`,
+        });
+      }
+      const website = item.websiteUrl.trim();
+      if (website && !/^https?:\/\//i.test(website)) {
+        return res.status(400).json({ success: false, error: `"${name}" has a website link that must start with https://.` });
+      }
+      if (!allowed.has(item.placement)) {
+        return res.status(400).json({ success: false, error: `"${name}" has an unknown placement.` });
+      }
+
+      cleaned.push({
+        id: makeId('spo'),
+        name,
+        logoUrl,
+        websiteUrl: website || undefined,
+        placement: item.placement as Sponsor['placement'],
+      });
+    }
+
+    const updated = await store.updateSponsors(cleaned);
+    return res.json({ success: true, sponsors: updated });
+  });
+
   app.get('/api/admin/storage-status', async (_req: Request, res: Response) => {
     const available = await imageStorage.isAvailable();
     return res.json({

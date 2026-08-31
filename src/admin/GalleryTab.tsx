@@ -13,6 +13,7 @@ import { Image as ImageIcon, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { Button, Card } from '../components/Brand';
 import { api, ApiRequestError } from '../lib/api';
 import type { GalleryItem } from '../types';
+import { prepareImage, formatBytes } from '../lib/image';
 
 interface GalleryRow {
   key: string;
@@ -69,39 +70,55 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
     }
   };
 
+  /** Above this a data URI is too heavy to keep in the datastore. */
+  const MAX_INLINE_BYTES = 700 * 1024;
+
   const uploadFile = async (file: File) => {
-    if (file.size > 8 * 1024 * 1024) {
-      setError('Photo must be smaller than 8MB.');
-      return;
-    }
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
-      const dataUri = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Could not read that file.'));
-        reader.readAsDataURL(file);
-      });
+      // Resize before anything else. A phone photo posted at full size is what
+      // made this time out at the gateway, and what left megabyte-sized strings
+      // in the datastore for every visitor to download afterwards.
+      const prepared = await prepareImage(file, { maxDimension: 1600, quality: 0.82 });
 
       if (canUpload) {
         try {
           const uploaded = await api<{ url: string }>('/api/admin/upload-image', {
             method: 'POST',
             token,
-            body: { dataUri, folder: 'gallery' },
+            body: { dataUri: prepared.dataUri, folder: 'gallery' },
           });
           await persist([...rows, { key: nextKey(), url: uploaded.url, caption: '' }]);
+          setStatus(`Photo uploaded (${formatBytes(prepared.bytes)}).`);
           return;
-        } catch {
-          // Fall back to storing dataUri directly
+        } catch (err) {
+          // Cloud storage refused. Falling back is fine for a small image and
+          // wrong for a large one, so the size decides rather than hope.
+          if (prepared.bytes > MAX_INLINE_BYTES) {
+            setError(
+              `${err instanceof ApiRequestError ? err.message : 'Upload failed.'} ` +
+                `This photo is ${formatBytes(prepared.bytes)}, too large to store without cloud storage. ` +
+                'Paste an image URL instead.',
+            );
+            return;
+          }
         }
       }
-      // Save data URI directly if cloud storage is not active
-      await persist([...rows, { key: nextKey(), url: dataUri, caption: '' }]);
+
+      if (prepared.bytes > MAX_INLINE_BYTES) {
+        setError(
+          `That photo is ${formatBytes(prepared.bytes)} after resizing, and cloud storage is not ` +
+            'available to hold it. Paste an image URL instead.',
+        );
+        return;
+      }
+
+      await persist([...rows, { key: nextKey(), url: prepared.dataUri, caption: '' }]);
+      setStatus(`Photo saved (${formatBytes(prepared.bytes)}).`);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Upload failed.');
+      setError(err instanceof ApiRequestError ? err.message : (err as Error).message || 'Upload failed.');
     } finally {
       setBusy(false);
     }

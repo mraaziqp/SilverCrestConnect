@@ -268,6 +268,93 @@ ${textFooter()}`,
   };
 }
 
+/**
+ * Tells the team an application has arrived.
+ *
+ * Applications land in /admin, but nobody watches a dashboard all day, and a
+ * curated funnel only works if someone reviews in good time — the applicant is
+ * waiting on that review before they can pay. This carries enough detail to
+ * make the call without opening anything.
+ */
+export function applicationNotice(input: {
+  businessName: string;
+  contactName: string;
+  applicantRole?: string;
+  email: string;
+  phone: string;
+  industry: string;
+  reference: string;
+  attendeeCount?: 1 | 2;
+  totalPriceZAR?: number;
+  about?: string;
+  productsServices?: string;
+  communityContribution?: string;
+  rep2Name?: string;
+  rep2Role?: string;
+  adminUrl?: string;
+}): RenderedEmail {
+  const {
+    businessName, contactName, applicantRole, email, phone, industry, reference,
+    attendeeCount = 1, totalPriceZAR, about, productsServices, communityContribution,
+    rep2Name, rep2Role, adminUrl,
+  } = input;
+
+  const row = (label: string, value?: string) =>
+    value ? `<p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>${esc(label)}:</strong> ${esc(value)}</p>` : '';
+
+  const para = (label: string, value?: string) =>
+    value ? `<p style="margin:0 0 14px;"><strong style="color:${BONE};">${esc(label)}</strong><br/>${esc(value)}</p>` : '';
+
+  return {
+    subject: `New application: ${businessName} (${industry})`,
+    html: shell({
+      preheader: `${businessName} applied for ${attendeeCount} ${attendeeCount === 1 ? 'seat' : 'seats'}. Reference ${reference}.`,
+      heading: 'New Application',
+      body: `<p style="margin:0 0 16px;"><strong style="color:${BONE};">${esc(businessName)}</strong> has applied to attend.</p>
+<div style="padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);margin:0 0 18px;">
+  ${row('Contact', applicantRole ? `${contactName} (${applicantRole})` : contactName)}
+  ${row('Email', email)}
+  ${row('Phone', phone)}
+  ${row('Sector', industry)}
+  ${row('Attendees', String(attendeeCount))}
+  ${rep2Name ? row('Second representative', rep2Role ? `${rep2Name} (${rep2Role})` : rep2Name) : ''}
+  ${totalPriceZAR ? row('Fee if approved', money(totalPriceZAR)) : ''}
+</div>
+${para('About the business', about)}
+${para('Products and services', productsServices)}
+${para('Community contribution', communityContribution)}
+<p style="margin:0;">They are waiting on a review before they can pay.</p>`,
+      cta: adminUrl ? { label: 'Open the dashboard', url: adminUrl } : undefined,
+      panel: { label: 'Reference', value: reference },
+    }),
+    text: `${businessName} has applied to attend.
+
+Contact:   ${applicantRole ? `${contactName} (${applicantRole})` : contactName}
+Email:     ${email}
+Phone:     ${phone}
+Sector:    ${industry}
+Attendees: ${attendeeCount}${rep2Name ? `
+Second:    ${rep2Role ? `${rep2Name} (${rep2Role})` : rep2Name}` : ''}${totalPriceZAR ? `
+Fee:       ${money(totalPriceZAR)}` : ''}
+
+${about ? `ABOUT THE BUSINESS:
+${about}
+
+` : ''}${productsServices ? `PRODUCTS AND SERVICES:
+${productsServices}
+
+` : ''}${communityContribution ? `COMMUNITY CONTRIBUTION:
+${communityContribution}
+
+` : ''}REFERENCE: ${reference}
+${adminUrl ? `
+Review: ${adminUrl}
+` : ''}
+They are waiting on a review before they can pay.
+${textFooter()}`,
+  };
+}
+
 /** Sent when a ticket payment clears. This is the actual ticket. */
 export function ticketConfirmed(input: {
   contactName: string;

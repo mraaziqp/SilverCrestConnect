@@ -6,6 +6,8 @@
  * Source: "Silvercrest_Connect_Proposal_v4.pdf" (Event Proposal & Concept Note).
  */
 
+import type { Sponsor, SponsorPlacement } from '../types';
+
 export const EVENT = {
   name: 'Silver Crest Connect',
   edition: "'26",
@@ -105,33 +107,33 @@ export const PROGRAMME = [
   { id: 'prog-9', time: '12:45 – 13:00', duration: '15 mins', title: 'Closing Remarks', detail: `${EVENT.causeShort} official announcement.`, kind: 'session' as const },
 ];
 
-/** The three-step vetting funnel (proposal, section 04). */
 /**
- * The public join funnel.
+ * The public join funnel — the numbered steps to a seat.
  *
- * `body` is a function of the ticket price rather than a fixed string: the
- * price is editable in the dashboard, and a hardcoded amount here would keep
- * advertising the old one. Numbering is derived from position so a step can be
- * added or removed without leaving the sequence wrong.
+ * These seed an empty store; from then on they are edited in /admin like any
+ * other content, so the wording here is a starting point rather than the truth.
+ * Numbering is derived from position, so a step can be added or removed without
+ * leaving the sequence wrong.
+ *
+ * Deliberately no price in step three. It used to interpolate the ticket fee,
+ * which meant an editor could not change that sentence without the amount
+ * reappearing, and the amount is already stated plainly on the ticket card.
  */
-export const FUNNEL_STEPS: ReadonlyArray<{
-  title: string;
-  body: (priceZAR: number) => string;
-}> = [
+export const FUNNEL_STEPS: ReadonlyArray<{ id: string; title: string; body: string }> = [
   {
+    id: 'step-1',
     title: 'Application & Sector Submission',
-    body: () =>
-      'Submit your business details and industry category. Attendance is strictly limited to 1 to 2 businesses per category to prevent oversaturation.',
+    body: 'Submit your business details and industry category. Attendance is strictly limited to 1 to 2 businesses per category to prevent oversaturation.',
   },
   {
+    id: 'step-2',
     title: 'Review & Category Approval',
-    body: () =>
-      'The Silver Crest team reviews your application to ensure industry fit and slot availability for your sector.',
+    body: 'The Silver Crest team reviews your application to ensure industry fit and slot availability for your sector.',
   },
   {
+    id: 'step-3',
     title: 'Payment Link & Spot Confirmation',
-    body: (priceZAR) =>
-      `Approved businesses receive an exclusive payment link to complete the R${priceZAR} fee and lock in their official event ticket.`,
+    body: 'Approved businesses receive an exclusive payment link to complete the attendance fee and lock in their official event ticket.',
   },
 ];
 
@@ -146,6 +148,26 @@ export const IMPACT_ITEMS = [
 export const WELCOME_PACK = [
   { id: 'wp-2', title: 'Executive Branded Pen', body: 'Sleek metallic executive pen custom-engraved with the Silver Crest Connect branding.' },
 ];
+
+/**
+ * The sponsor rails, in page order.
+ *
+ * Every entry here has a matching <SponsorRail> in the layout. Adding a value
+ * without adding the rail would offer a placement in the dashboard that
+ * silently shows nothing, so the two are meant to be changed together.
+ */
+export const SPONSOR_PLACEMENTS: ReadonlyArray<{ value: SponsorPlacement; label: string; hint: string }> = [
+  { value: 'hero', label: 'Under the hero', hint: 'First thing visitors see, directly below the headline.' },
+  { value: 'about', label: 'After the about section', hint: 'Following the event description.' },
+  { value: 'how-to-join', label: 'After the join steps', hint: 'Below the numbered steps to a seat.' },
+  { value: 'tickets', label: 'After attendance', hint: 'Below the ticket card and FAQs.' },
+  { value: 'donate', label: 'Bottom of the donation section', hint: 'Under the donation form and drive photos.' },
+  { value: 'impact', label: 'After the impact stand', hint: 'Below the on-the-day activation.' },
+  { value: 'footer', label: 'Above the footer', hint: 'Last band before the footer.' },
+];
+
+/** No sponsors until some are added in the dashboard. */
+export const DEFAULT_SPONSORS: Sponsor[] = [];
 
 /** Default photos from the previous outreach drive shown beside the donation form. */
 export const DEFAULT_GALLERY = [

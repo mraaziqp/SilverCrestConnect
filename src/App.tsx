@@ -39,7 +39,8 @@ const AdminDashboard = lazy(() =>
 );
 import { api } from './lib/api';
 import type { GalleryItem } from './types';
-import type { EventSettings, WelcomePackItem, ImpactItem } from './types';
+import type { EventSettings, WelcomePackItem, ImpactItem, Sponsor, FunnelStepItem } from './types';
+import { SponsorRail } from './components/SponsorRail';
 
 interface EventSummary {
   gallery?: GalleryItem[];
@@ -49,6 +50,8 @@ interface EventSummary {
   event?: EventSettings;
   welcomePack?: WelcomePackItem[];
   impactItems?: ImpactItem[];
+  sponsors?: Sponsor[];
+  funnelSteps?: FunnelStepItem[];
   paymentsOpen?: boolean;
 }
 
@@ -77,6 +80,7 @@ export default function App() {
 
 function LandingPage() {
   const [summary, setSummary] = useState<EventSummary | null>(null);
+  const sponsorHeading = summary?.event?.sponsorsHeading ?? 'In partnership with';
 
   const loadSummary = useCallback(async () => {
     try {
@@ -101,15 +105,16 @@ function LandingPage() {
           seatsRemaining={summary?.seatsRemaining ?? null}
           event={summary?.event}
         />
+        <SponsorRail sponsors={summary?.sponsors} placement="hero" heading={sponsorHeading} />
         <About event={summary?.event} />
-        <Programme
-          welcomePack={summary?.welcomePack}
-          ticketPriceZAR={summary?.event?.ticketPriceZAR}
-        />
+        <SponsorRail sponsors={summary?.sponsors} placement="about" heading={sponsorHeading} />
+        <Programme welcomePack={summary?.welcomePack} funnelSteps={summary?.funnelSteps} />
+        <SponsorRail sponsors={summary?.sponsors} placement="how-to-join" heading={sponsorHeading} />
         <Tickets
           seatsRemaining={summary?.seatsRemaining ?? null}
           event={summary?.event}
         />
+        <SponsorRail sponsors={summary?.sponsors} placement="tickets" heading={sponsorHeading} />
         <Donate
           totalRaisedZAR={summary?.totalRaisedZAR ?? null}
           supporters={summary?.supporters ?? null}
@@ -119,11 +124,14 @@ function LandingPage() {
           paymentsOpen={summary?.paymentsOpen !== false}
           event={summary?.event}
         />
+        <SponsorRail sponsors={summary?.sponsors} placement="donate" heading={sponsorHeading} />
         <Supporters />
         <ImpactStand
           impactItems={summary?.impactItems}
           event={summary?.event}
         />
+        <SponsorRail sponsors={summary?.sponsors} placement="impact" heading={sponsorHeading} />
+        <SponsorRail sponsors={summary?.sponsors} placement="footer" heading={sponsorHeading} />
       </main>
       <Footer event={summary?.event} />
     </>

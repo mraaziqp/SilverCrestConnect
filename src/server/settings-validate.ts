@@ -38,6 +38,7 @@ const TEXT_FIELDS: Record<string, number> = {
   cause: 200,
   causeShort: 120,
   galleryHeading: 120,
+  sponsorsHeading: 120,
   galleryBody: 600,
   footerNote: 600,
   copyrightText: 200,

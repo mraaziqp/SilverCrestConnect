@@ -21,6 +21,29 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/svg+xml': 'svg',
 };
 
+/**
+ * Storage calls are given a deadline.
+ *
+ * The Firebase SDK retries internally and will sit on a request for a long
+ * time when the bucket is missing or unreachable — longer than the gateway in
+ * front of this app is willing to wait. The request then dies as a 504 with no
+ * explanation, which is what someone uploading a photo actually saw. A refusal
+ * that says why is far more useful than a hang.
+ */
+const BUCKET_CHECK_MS = 8_000;
+const UPLOAD_MS = 20_000;
+
+function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => reject(new Error(`${message} Paste an image URL instead, or try a smaller file.`)), ms);
+      // Do not hold the process open for a timer that may never be needed.
+      if (typeof timer === 'object' && 'unref' in timer) (timer as { unref(): void }).unref();
+    }),
+  ]);
+}
+
 /** 5 MB. Large enough for a photo, small enough to keep the page quick. */
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -139,7 +162,11 @@ export class ImageStorage {
       ensureApp(this.config);
       const bucket = getStorage().bucket(this.config.bucket);
 
-      const [exists] = await bucket.exists();
+      const [exists] = await withTimeout(
+        bucket.exists(),
+        BUCKET_CHECK_MS,
+        'Checking the storage bucket timed out.',
+      );
       if (!exists) {
         return {
           ok: false,
@@ -150,13 +177,17 @@ export class ImageStorage {
       const name = `${folder}/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${decoded.extension}`;
       const file = bucket.file(name);
 
-      await file.save(decoded.buffer, {
-        contentType: decoded.contentType,
-        // Content is immutable — every upload gets a fresh name — so it can be
-        // cached hard.
-        metadata: { cacheControl: 'public, max-age=31536000, immutable' },
-      });
-      await file.makePublic();
+      await withTimeout(
+        file.save(decoded.buffer, {
+          contentType: decoded.contentType,
+          // Content is immutable — every upload gets a fresh name — so it can be
+          // cached hard.
+          metadata: { cacheControl: 'public, max-age=31536000, immutable' },
+        }),
+        UPLOAD_MS,
+        'The upload to storage timed out.',
+      );
+      await withTimeout(file.makePublic(), BUCKET_CHECK_MS, 'Publishing the image timed out.');
 
       return { ok: true, url: `https://storage.googleapis.com/${this.config.bucket}/${name}` };
     } catch (err) {

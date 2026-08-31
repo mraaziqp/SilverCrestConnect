@@ -7,23 +7,26 @@
 
 import React from 'react';
 import { Section, SectionHeading, Card } from './Brand';
-import { EVENT, FUNNEL_STEPS, WELCOME_PACK as DEFAULT_WELCOME_PACK } from '../config/event';
-import type { WelcomePackItem } from '../types';
+import { FUNNEL_STEPS, WELCOME_PACK as DEFAULT_WELCOME_PACK } from '../config/event';
+import type { FunnelStepItem, WelcomePackItem } from '../types';
 
 const STEP_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five'] as const;
 
 interface ProgrammeProps {
   welcomePack?: WelcomePackItem[];
-  /** Live ticket price, so the copy follows what the dashboard is set to. */
-  ticketPriceZAR?: number;
+  /** The join steps, as edited in the dashboard. */
+  funnelSteps?: FunnelStepItem[];
 }
 
 export const Programme: React.FC<ProgrammeProps> = ({
   welcomePack = DEFAULT_WELCOME_PACK,
-  ticketPriceZAR = EVENT.ticketPriceZAR,
+  funnelSteps,
 }) => {
   const packItems = welcomePack && welcomePack.length > 0 ? welcomePack : DEFAULT_WELCOME_PACK;
-  const stepWord = STEP_WORDS[FUNNEL_STEPS.length] ?? String(FUNNEL_STEPS.length);
+  // Falling back to the defaults keeps the section from vanishing if the API
+  // is unreachable, or if every step is deleted in the dashboard by accident.
+  const steps = funnelSteps && funnelSteps.length > 0 ? funnelSteps : FUNNEL_STEPS;
+  const stepWord = STEP_WORDS[steps.length] ?? String(steps.length);
 
   return (
     <Section id="how-to-join" className="border-t border-white/5">
@@ -42,15 +45,15 @@ export const Programme: React.FC<ProgrammeProps> = ({
         {/* Two cards would stretch oddly across the full width, so the list is
             capped and centred. */}
         <ol className="mt-12 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-          {FUNNEL_STEPS.map((step, index) => (
-            <li key={step.title}>
+          {steps.map((step, index) => (
+            <li key={step.id ?? step.title}>
               <Card className="h-full p-7">
                 <span className="font-display text-3xl font-bold text-gold/35 leading-none">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3 className="mt-5 text-base font-semibold text-bone">{step.title}</h3>
                 <p className="mt-3 text-[13.5px] text-muted leading-relaxed">
-                  {step.body(ticketPriceZAR)}
+                  {step.body}
                 </p>
               </Card>
             </li>

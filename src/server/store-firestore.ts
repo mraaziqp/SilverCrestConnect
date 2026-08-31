@@ -28,6 +28,8 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
   GalleryItem,
+  Sponsor,
+  FunnelStepItem,
 } from '../types.js';
 import type { DataStore } from './store-types.js';
 import { DEFAULT_SETTINGS, DEFAULT_CONTENT } from './store.js';
@@ -45,6 +47,8 @@ const CONTENT_DOCS = {
   welcomePack: 'welcomePack',
   impactItems: 'impactItems',
   gallery: 'gallery',
+  sponsors: 'sponsors',
+  funnelSteps: 'funnelSteps',
 } as const;
 
 /** How long editable content may be served from memory before re-reading. */
@@ -352,6 +356,28 @@ export class FirestoreStore implements DataStore {
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
     await this.writeContent(CONTENT_DOCS.gallery, { items });
+    return items;
+  }
+
+  async getFunnelSteps(): Promise<FunnelStepItem[]> {
+    const doc = await this.readContent<{ items: FunnelStepItem[] }>(CONTENT_DOCS.funnelSteps, {
+      items: DEFAULT_CONTENT.funnelSteps,
+    });
+    return doc.items ?? [];
+  }
+
+  async updateFunnelSteps(items: FunnelStepItem[]): Promise<FunnelStepItem[]> {
+    await this.writeContent(CONTENT_DOCS.funnelSteps, { items });
+    return items;
+  }
+
+  async getSponsors(): Promise<Sponsor[]> {
+    const doc = await this.readContent<{ items: Sponsor[] }>(CONTENT_DOCS.sponsors, { items: [] });
+    return doc.items ?? [];
+  }
+
+  async updateSponsors(items: Sponsor[]): Promise<Sponsor[]> {
+    await this.writeContent(CONTENT_DOCS.sponsors, { items });
     return items;
   }
 }

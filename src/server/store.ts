@@ -27,6 +27,8 @@ import type {
   WelcomePackItem,
   ImpactItem,
   GalleryItem,
+  Sponsor,
+  FunnelStepItem,
 } from '../types.js';
 import {
   EVENT,
@@ -34,6 +36,7 @@ import {
   WELCOME_PACK as DEFAULT_WELCOME_PACK,
   IMPACT_ITEMS as DEFAULT_IMPACT_ITEMS,
   DEFAULT_GALLERY,
+  FUNNEL_STEPS as DEFAULT_FUNNEL_STEPS,
 } from '../config/event.js';
 
 export const DEFAULT_SETTINGS: EventSettings = {
@@ -71,6 +74,7 @@ export const DEFAULT_SETTINGS: EventSettings = {
   footerNote: EVENT.footerNote,
   copyrightText: EVENT.copyrightText,
   galleryHeading: 'Our last outreach drive',
+  sponsorsHeading: 'In partnership with',
   galleryBody:
     'A portion of what is raised here goes towards supplies for the next drive. These are photographs from the last one.',
 };
@@ -83,6 +87,9 @@ interface Database {
   welcomePack: WelcomePackItem[];
   impactItems: ImpactItem[];
   gallery: GalleryItem[];
+  /** Optional: absent in files written before these existed. */
+  sponsors?: Sponsor[];
+  funnelSteps?: FunnelStepItem[];
 }
 
 /**
@@ -111,6 +118,7 @@ export const DEFAULT_CONTENT = {
   programme: DEFAULT_PROGRAMME as unknown as ProgrammeItem[],
   welcomePack: DEFAULT_WELCOME_PACK as unknown as WelcomePackItem[],
   impactItems: DEFAULT_IMPACT_ITEMS as unknown as ImpactItem[],
+  funnelSteps: DEFAULT_FUNNEL_STEPS as unknown as FunnelStepItem[],
 };
 
 function emptyDatabase(): Database {
@@ -122,6 +130,8 @@ function emptyDatabase(): Database {
     welcomePack: DEFAULT_WELCOME_PACK.map((item) => ({ ...item })),
     impactItems: DEFAULT_IMPACT_ITEMS.map((item) => ({ ...item })),
     gallery: DEFAULT_GALLERY.map((item) => ({ ...item })),
+    sponsors: [],
+    funnelSteps: DEFAULT_FUNNEL_STEPS.map((item) => ({ ...item })),
   };
 }
 
@@ -173,6 +183,8 @@ export class JsonStore implements DataStore {
         welcomePack: parsed.welcomePack ?? base.welcomePack,
         impactItems: parsed.impactItems ?? base.impactItems,
         gallery: parsed.gallery ?? base.gallery,
+        sponsors: parsed.sponsors ?? base.sponsors ?? [],
+        funnelSteps: parsed.funnelSteps ?? base.funnelSteps ?? [],
       };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -373,6 +385,26 @@ export class JsonStore implements DataStore {
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
     this.db.gallery = items;
+    await this.save();
+    return items;
+  }
+
+  async getFunnelSteps(): Promise<FunnelStepItem[]> {
+    return [...(this.db.funnelSteps ?? DEFAULT_FUNNEL_STEPS)];
+  }
+
+  async updateFunnelSteps(items: FunnelStepItem[]): Promise<FunnelStepItem[]> {
+    this.db.funnelSteps = items;
+    await this.save();
+    return items;
+  }
+
+  async getSponsors(): Promise<Sponsor[]> {
+    return [...(this.db.sponsors ?? [])];
+  }
+
+  async updateSponsors(items: Sponsor[]): Promise<Sponsor[]> {
+    this.db.sponsors = items;
     await this.save();
     return items;
   }

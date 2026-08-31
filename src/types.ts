@@ -179,6 +179,8 @@ export interface EventSettings {
   /** Heading above the previous-drive gallery on the donate section. */
   galleryHeading: string;
   galleryBody: string;
+  /** Caption shown above every sponsor rail. */
+  sponsorsHeading: string;
   footerNote: string;
   copyrightText: string;
 }
@@ -207,8 +209,42 @@ export interface PayFastConfigStatus {
  * data URI — whichever the team has to hand. Nothing here assumes a
  * particular host, so the gallery works before Storage is set up.
  */
+/** One numbered step in the public join funnel. Editable in /admin. */
+export interface FunnelStepItem {
+  id: string;
+  title: string;
+  body: string;
+}
+
 export interface GalleryItem {
   id: string;
   url: string;
   caption?: string;
+}
+
+/**
+ * Where a sponsor logo appears on the page.
+ *
+ * A fixed list rather than free text: each value corresponds to a rail that
+ * actually exists in the layout, so the dashboard can only place a logo
+ * somewhere it will really show up.
+ */
+export type SponsorPlacement =
+  | 'hero'
+  | 'about'
+  | 'how-to-join'
+  | 'tickets'
+  | 'donate'
+  | 'impact'
+  | 'footer';
+
+export interface Sponsor {
+  id: string;
+  /** Shown as the image's alt text, so it is required even with a logo. */
+  name: string;
+  /** An uploaded image, a pasted URL, or an inline data URI. */
+  logoUrl: string;
+  /** Optional: makes the logo a link. */
+  websiteUrl?: string;
+  placement: SponsorPlacement;
 }

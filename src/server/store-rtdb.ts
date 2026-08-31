@@ -26,6 +26,8 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
   GalleryItem,
+  Sponsor,
+  FunnelStepItem,
 } from '../types.js';
 import type { DataStore } from './store-types.js';
 import { DEFAULT_SETTINGS, DEFAULT_CONTENT } from './store.js';
@@ -338,6 +340,28 @@ export class RtdbStore implements DataStore {
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
     await this.writeContent('gallery', { items });
+    return items;
+  }
+
+  async getFunnelSteps(): Promise<FunnelStepItem[]> {
+    const doc = await this.readContent<{ items: FunnelStepItem[] }>('funnelSteps', {
+      items: DEFAULT_CONTENT.funnelSteps,
+    });
+    return doc.items ?? [];
+  }
+
+  async updateFunnelSteps(items: FunnelStepItem[]): Promise<FunnelStepItem[]> {
+    await this.writeContent('funnelSteps', { items });
+    return items;
+  }
+
+  async getSponsors(): Promise<Sponsor[]> {
+    const doc = await this.readContent<{ items: Sponsor[] }>('sponsors', { items: [] });
+    return doc.items ?? [];
+  }
+
+  async updateSponsors(items: Sponsor[]): Promise<Sponsor[]> {
+    await this.writeContent('sponsors', { items });
     return items;
   }
 }

@@ -19,6 +19,8 @@ import type {
   ProgrammeItem,
   WelcomePackItem,
   GalleryItem,
+  Sponsor,
+  FunnelStepItem,
 } from '../types.js';
 
 export interface DataStore {
@@ -59,6 +61,10 @@ export interface DataStore {
   updateImpactItems(items: ImpactItem[]): Promise<ImpactItem[]>;
   getGallery(): Promise<GalleryItem[]>;
   updateGallery(items: GalleryItem[]): Promise<GalleryItem[]>;
+  getFunnelSteps(): Promise<FunnelStepItem[]>;
+  updateFunnelSteps(items: FunnelStepItem[]): Promise<FunnelStepItem[]>;
+  getSponsors(): Promise<Sponsor[]>;
+  updateSponsors(items: Sponsor[]): Promise<Sponsor[]>;
 }
 
 /**

@@ -39,6 +39,7 @@ import { Monogram, Button, Card } from '../components/Brand';
 import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import { copyToClipboard } from '../lib/clipboard';
+import { SponsorsTab } from './SponsorsTab';
 import type {
   Application,
   ApplicationStatus,
@@ -48,8 +49,7 @@ import type {
   Payment,
   PayFastConfigStatus,
   ProgrammeItem,
-  WelcomePackItem,
-} from '../types';
+  WelcomePackItem, FunnelStepItem } from '../types';
 
 const TOKEN_KEY = 'scc_admin_token';
 
@@ -143,7 +143,7 @@ const SignIn: React.FC<{ onSignedIn: (token: string) => void }> = ({ onSignedIn 
 
 // ------------------------------------------------------------------- dashboard
 
-type Tab = 'overview' | 'applications' | 'payments' | 'settings' | 'programme' | 'gallery';
+type Tab = 'overview' | 'applications' | 'payments' | 'settings' | 'programme' | 'gallery' | 'sponsors';
 
 const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, onSignOut }) => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -260,6 +260,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
               ['settings', 'Settings & Branding'],
               ['programme', 'Programme & Broadcast'],
               ['gallery', 'Photo Gallery'],
+              ['sponsors', 'Sponsors'],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -298,6 +299,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
             {tab === 'payments' && <PaymentsTab payments={payments} onExport={downloadCsv} />}
             {tab === 'settings' && <SettingsTab token={token} onSaved={load} />}
             {tab === 'gallery' && <GalleryTab token={token} />}
+            {tab === 'sponsors' && <SponsorsTab token={token} />}
             {tab === 'programme' && (
               <ProgrammeTab
                 token={token}
@@ -1041,6 +1043,7 @@ const Empty: React.FC<{ message: string }> = ({ message }) => (
 const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, onSaved }) => {
   const [settings, setSettings] = useState<EventSettings | null>(null);
   const [welcomePack, setWelcomePack] = useState<WelcomePackItem[]>([]);
+  const [funnelSteps, setFunnelSteps] = useState<FunnelStepItem[]>([]);
   const [impactItems, setImpactItems] = useState<ImpactItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1052,11 +1055,13 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
     api<{
       settings: EventSettings;
       welcomePack: WelcomePackItem[];
+      funnelSteps: FunnelStepItem[];
       impactItems: ImpactItem[];
     }>('/api/admin/settings', { token })
       .then((res) => {
         setSettings(res.settings);
         setWelcomePack(res.welcomePack ?? []);
+        setFunnelSteps(res.funnelSteps ?? []);
         setImpactItems(res.impactItems ?? []);
       })
       .catch((err) => {
@@ -1092,6 +1097,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
         api('/api/admin/settings', { method: 'PUT', body: settings, token }),
         api('/api/admin/welcome-pack', { method: 'PUT', body: { items: welcomePack }, token }),
         api('/api/admin/impact-items', { method: 'PUT', body: { items: impactItems }, token }),
+        api('/api/admin/funnel-steps', { method: 'PUT', body: { items: funnelSteps }, token }),
       ]);
       setSuccess('Event settings, welcome pack, and branding updated successfully!');
       onSaved();
@@ -1557,6 +1563,74 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
           </div>
+        </div>
+      </Card>
+
+      {/* The numbered steps on the public page. */}
+      <Card className="p-7 sm:p-9">
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3">
+            <Package className="w-5 h-5 text-gold" />
+            <h3 className="font-display text-lg font-bold text-bone">Steps To A Seat</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setFunnelSteps([
+                ...funnelSteps,
+                { id: `step-${funnelSteps.length + 1}`, title: 'New step', body: 'What happens at this step.' },
+              ])
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-gold/40 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Step
+          </button>
+        </div>
+        <p className="text-[12px] text-muted/70 mb-6">
+          Shown under &ldquo;How to Join&rdquo;. Numbering follows the order here, and the heading
+          counts them, so adding or removing one cannot leave the wording wrong.
+        </p>
+
+        <div className="space-y-4">
+          {funnelSteps.map((item, idx) => (
+            <div key={idx} className="p-4 rounded border border-white/10 bg-black/30 flex items-start gap-4">
+              <span className="font-display text-2xl font-bold text-gold/35 leading-none pt-1 shrink-0">
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              <div className="flex-1 min-w-0 space-y-3">
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => {
+                    const copy = [...funnelSteps];
+                    copy[idx] = { ...copy[idx], title: e.target.value };
+                    setFunnelSteps(copy);
+                  }}
+                  placeholder="Step title"
+                  className="w-full rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none"
+                />
+                <textarea
+                  rows={2}
+                  value={item.body}
+                  onChange={(e) => {
+                    const copy = [...funnelSteps];
+                    copy[idx] = { ...copy[idx], body: e.target.value };
+                    setFunnelSteps(copy);
+                  }}
+                  placeholder="What happens at this step"
+                  className="w-full rounded-sm bg-black/60 border border-white/15 px-3 py-2 text-sm text-bone focus:border-gold focus:outline-none resize-y"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setFunnelSteps(funnelSteps.filter((_, i) => i !== idx))}
+                className="p-2 text-red-400 hover:text-red-300"
+                title="Delete step"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
         </div>
       </Card>
 
