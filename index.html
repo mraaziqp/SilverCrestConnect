@@ -32,6 +32,15 @@
     />
 
     <link rel="icon" type="image/svg+xml" href="/logo-gold.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <!-- The manifest is set from the route in src/lib/pwa.ts, so that
+         installing from /admin gives the dashboard app rather than this one.
+         Linked here too, so a crawler or a browser that never runs the script
+         still finds the public one. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SC Connect" />
   </head>
   <body>
     <div id="root"></div>

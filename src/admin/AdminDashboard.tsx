@@ -40,6 +40,7 @@ import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import { copyToClipboard } from '../lib/clipboard';
 import { SponsorsTab } from './SponsorsTab';
+import { InstallButton } from '../components/InstallButton';
 import type {
   Application,
   ApplicationStatus,
@@ -233,6 +234,9 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Renders nothing once installed, or where installing is not
+                offered, so it never becomes permanent furniture. */}
+            <InstallButton label="Install" className="hidden sm:inline-flex" />
             <button
               onClick={load}
               disabled={loading}
