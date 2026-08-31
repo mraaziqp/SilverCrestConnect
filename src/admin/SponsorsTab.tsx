@@ -11,11 +11,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Building2, Loader2, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { Building2, Loader2, Plus, Save, Upload } from 'lucide-react';
 
 import { Button, Card } from '../components/Brand';
 import { api, ApiRequestError } from '../lib/api';
 import { SPONSOR_PLACEMENTS } from '../config/event';
+import { MediaCard } from './MediaCard';
 import { prepareImage, formatBytes } from '../lib/image';
 import type { Sponsor, SponsorPlacement } from '../types';
 
@@ -219,7 +220,7 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       <Card className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -347,131 +348,80 @@ export const SponsorsTab: React.FC<{ token: string }> = ({ token }) => {
           </p>
         </div>
 
-        <div className="space-y-5">
-          {rows.length === 0 && (
-            <p className="text-[13px] text-muted/70">
-              No sponsors yet. Upload logos above, or add one by hand to paste a link.
-            </p>
-          )}
+        {/* A grid of logo cards rather than stacked rows: the logo is what
+            identifies a sponsor, so it should be the biggest thing on screen.
+            Contained, not cropped — a cropped logo is a broken logo. */}
+        {rows.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/12 px-6 py-10 text-center text-[13px] text-muted/60">
+            No sponsors yet. Upload logos above, or add one by hand to paste a link.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((row, index) => (
+              <MediaCard
+                key={row.key}
+                url={row.logoUrl}
+                label={row.name || `Sponsor ${index + 1}`}
+                fit="contain"
+                badge={SPONSOR_PLACEMENTS.find((p) => p.value === row.placement)?.label}
+                onUrlChange={(logoUrl) => update(index, { logoUrl })}
+                onRemove={() => setRows(rows.filter((_, i) => i !== index))}
+                onMoveLeft={index > 0 ? () => move(index, -1) : undefined}
+                onMoveRight={index < rows.length - 1 ? () => move(index, 1) : undefined}
+                disabled={busy}
+              >
+                <input
+                  value={row.name}
+                  onChange={(e) => update(index, { name: e.target.value })}
+                  placeholder="Sponsor name"
+                  aria-label={`Sponsor ${index + 1} name`}
+                  className="w-full rounded-sm bg-black/50 border border-white/12 px-2.5 py-1.5 text-[12px] text-bone placeholder:text-muted/40 focus:border-gold focus:outline-none transition-colors"
+                />
 
-          {rows.map((row, index) => (
-            <div key={row.key} className="rounded-lg border border-white/10 bg-black/30 p-4 sm:p-5">
-              <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
-                {/* Previewed on a light plate, exactly as the page shows it. */}
-                <div className="flex items-center justify-center h-20 w-32 shrink-0 rounded-md bg-white/90 px-3 py-2">
-                  {row.logoUrl ? (
-                    <img src={row.logoUrl} alt="" className="max-h-full max-w-full object-contain" />
-                  ) : (
-                    <span className="text-[10px] uppercase tracking-wider text-black/40">No logo</span>
-                  )}
-                </div>
+                <select
+                  value={row.placement}
+                  onChange={(e) => update(index, { placement: e.target.value as SponsorPlacement })}
+                  aria-label={`Where sponsor ${index + 1} appears`}
+                  className="w-full rounded-sm bg-black/50 border border-white/12 px-2.5 py-1.5 text-[12px] text-bone focus:border-gold focus:outline-none transition-colors"
+                >
+                  {SPONSOR_PLACEMENTS.map((p) => (
+                    <option key={p.value} value={p.value} className="bg-ink-raised">
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
 
-                <div className="flex-1 min-w-0 space-y-3">
-                  <input
-                    type="text"
-                    value={row.name}
-                    onChange={(e) => update(index, { name: e.target.value })}
-                    placeholder="Sponsor name"
-                    className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={row.websiteUrl}
-                    onChange={(e) => update(index, { websiteUrl: e.target.value })}
-                    placeholder="https://sponsor.co.za  (optional, makes the logo a link)"
-                    className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
-                  />
+                <input
+                  value={row.websiteUrl}
+                  onChange={(e) => update(index, { websiteUrl: e.target.value })}
+                  placeholder="Website (optional)"
+                  aria-label={`Sponsor ${index + 1} website`}
+                  spellCheck={false}
+                  className="w-full rounded-sm bg-black/50 border border-white/12 px-2.5 py-1.5 text-[12px] text-bone placeholder:text-muted/40 focus:border-gold focus:outline-none transition-colors"
+                />
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">
-                        Where it appears
-                      </label>
-                      <select
-                        value={row.placement}
-                        onChange={(e) => update(index, { placement: e.target.value as SponsorPlacement })}
-                        className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
-                      >
-                        {SPONSOR_PLACEMENTS.map((p) => (
-                          <option key={p.value} value={p.value} className="bg-ink text-bone">
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[11px] text-muted/60">
-                        {SPONSOR_PLACEMENTS.find((p) => p.value === row.placement)?.hint}
-                      </p>
-                    </div>
+                {canUpload !== false && (
+                  <label className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-muted/70 hover:text-gold cursor-pointer transition-colors">
+                    <Upload className="w-3 h-3" />
+                    Replace logo
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="hidden"
+                      disabled={busy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (file) uploadLogo(index, file);
+                      }}
+                    />
+                  </label>
+                )}
+              </MediaCard>
+            ))}
+          </div>
+        )}
 
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">
-                        Logo
-                      </label>
-                      <label
-                        className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-sm border text-xs font-semibold transition-colors ${
-                          canUpload === false
-                            ? 'bg-white/5 border-white/10 text-muted/50 cursor-not-allowed'
-                            : 'bg-gold/15 border-gold/30 text-gold cursor-pointer hover:bg-gold/25'
-                        }`}
-                        title={canUpload === false ? 'Image storage is not connected' : undefined}
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        Upload image
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                          className="hidden"
-                          disabled={busy || canUpload === false}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) uploadLogo(index, file);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                      <input
-                        type="text"
-                        value={row.logoUrl.startsWith('data:') ? '' : row.logoUrl}
-                        onChange={(e) => update(index, { logoUrl: e.target.value })}
-                        placeholder={row.logoUrl.startsWith('data:') ? 'Uploaded image' : 'or paste a logo URL'}
-                        className="mt-2 w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2 text-xs text-bone focus:border-gold focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex sm:flex-col gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    className="px-2.5 py-1.5 rounded border border-white/12 text-muted text-xs hover:border-gold/40 hover:text-gold disabled:opacity-30 transition-colors"
-                    aria-label="Move earlier"
-                  >
-                    &uarr;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(index, 1)}
-                    disabled={index === rows.length - 1}
-                    className="px-2.5 py-1.5 rounded border border-white/12 text-muted text-xs hover:border-gold/40 hover:text-gold disabled:opacity-30 transition-colors"
-                    aria-label="Move later"
-                  >
-                    &darr;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRows(rows.filter((_, i) => i !== index))}
-                    className="px-2.5 py-1.5 rounded border border-red-500/30 text-red-400 text-xs hover:bg-red-500/10 transition-colors"
-                    aria-label="Remove sponsor"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
 
         <Button
           variant="outline"

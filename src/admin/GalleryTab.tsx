@@ -8,12 +8,13 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Image as ImageIcon, Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Plus, Save } from 'lucide-react';
 
 import { Button, Card } from '../components/Brand';
 import { api, ApiRequestError } from '../lib/api';
 import type { GalleryItem } from '../types';
 import { prepareImage, formatBytes } from '../lib/image';
+import { MediaCard, moveItem } from './MediaCard';
 
 interface GalleryRow {
   key: string;
@@ -173,7 +174,7 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       <Card className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -249,47 +250,49 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
           </p>
         )}
 
-        <div className="mt-8 space-y-4">
-          {rows.length === 0 && (
-            <p className="text-[13px] text-muted/60">No photos yet.</p>
+        {/* The picture is the card: previews large enough to tell apart, with
+            the actions on the image and the link tucked away. */}
+        <div className="mt-8">
+          {rows.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-white/12 px-6 py-10 text-center text-[13px] text-muted/60">
+              No photos yet. Upload a few, or add one by link.
+            </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {rows.map((row, index) => (
+                <MediaCard
+                  key={row.key}
+                  url={row.url}
+                  label={`Photo ${index + 1}`}
+                  // The first photo is the one shown large next to the donate
+                  // form, so it is worth saying which that is.
+                  badge={index === 0 ? 'Featured' : undefined}
+                  onUrlChange={(url) => update(index, { url })}
+                  onRemove={() => persist(rows.filter((_, i) => i !== index))}
+                  onMoveLeft={index > 0 ? () => setRows(moveItem(rows, index, index - 1)) : undefined}
+                  onMoveRight={
+                    index < rows.length - 1 ? () => setRows(moveItem(rows, index, index + 1)) : undefined
+                  }
+                  disabled={busy}
+                >
+                  <input
+                    value={row.caption}
+                    onChange={(e) => update(index, { caption: e.target.value })}
+                    placeholder="Caption (optional)"
+                    aria-label={`Photo ${index + 1} caption`}
+                    className="w-full rounded-sm bg-black/50 border border-white/12 px-2.5 py-1.5 text-[12px] text-bone placeholder:text-muted/40 focus:border-gold focus:outline-none transition-colors"
+                  />
+                </MediaCard>
+              ))}
+            </div>
           )}
 
-          {rows.map((row, index) => (
-            <div key={row.key} className="flex gap-3 items-start">
-              <div className="w-16 h-16 shrink-0 rounded-sm overflow-hidden border border-white/10 bg-black/40">
-                {row.url ? (
-                  <img src={row.url} alt="" className="w-full h-full object-cover" />
-                ) : null}
-              </div>
-
-              <div className="flex-1 min-w-0 space-y-2">
-                <input
-                  value={row.url}
-                  onChange={(e) => update(index, { url: e.target.value })}
-                  placeholder="https://… image URL"
-                  aria-label={`Photo ${index + 1} URL`}
-                  className="w-full rounded-sm bg-black/50 border border-white/12 px-3 py-2 text-[12px] text-bone placeholder:text-muted/40 focus:border-gold focus:outline-none transition-colors"
-                />
-                <input
-                  value={row.caption}
-                  onChange={(e) => update(index, { caption: e.target.value })}
-                  placeholder="Caption (optional)"
-                  aria-label={`Photo ${index + 1} caption`}
-                  className="w-full rounded-sm bg-black/50 border border-white/12 px-3 py-2 text-[12px] text-bone placeholder:text-muted/40 focus:border-gold focus:outline-none transition-colors"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => persist(rows.filter((_, i) => i !== index))}
-                disabled={busy}
-                className="p-2 text-muted hover:text-red-400 transition-colors disabled:opacity-40"
-                aria-label={`Remove photo ${index + 1}`}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+          {rows.length > 1 && (
+            <p className="mt-3 text-[11px] text-muted/50">
+              Order matters — the first photo is shown large beside the donation form. Use the
+              arrows on a photo to reorder, then save.
+            </p>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
