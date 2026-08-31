@@ -41,6 +41,7 @@ import { api } from './lib/api';
 import type { GalleryItem } from './types';
 import type { EventSettings, WelcomePackItem, ImpactItem, Sponsor, FunnelStepItem } from './types';
 import { SponsorRail } from './components/SponsorRail';
+import { Monogram } from './components/Brand';
 
 interface EventSummary {
   gallery?: GalleryItem[];
@@ -80,6 +81,18 @@ export default function App() {
 
 function LandingPage() {
   const [summary, setSummary] = useState<EventSummary | null>(null);
+  /**
+   * Whether the first load has finished, one way or another.
+   *
+   * Almost every string on this page has a code default and a stored value that
+   * the client edits in /admin. Rendering before the fetch returns shows the
+   * default, and the stored value then replaces it a moment later — the page
+   * visibly changes its own wording seconds after loading, which reads as a
+   * fault rather than as loading. Holding the first paint until the answer is
+   * in removes the swap everywhere at once, instead of a placeholder per field.
+   */
+  const [settled, setSettled] = useState(false);
+
   const sponsorHeading = summary?.event?.sponsorsHeading ?? 'In partnership with';
 
   const loadSummary = useCallback(async () => {
@@ -90,12 +103,33 @@ function LandingPage() {
       // Live figures are a nice-to-have. If the API is unreachable the page
       // still renders — default config takes over.
       setSummary(null);
+    } finally {
+      setSettled(true);
     }
   }, []);
 
   useEffect(() => {
     loadSummary();
+
+    // A safety net, not the normal path: the request is same-origin and
+    // answers in milliseconds. If the API is slow or dead the page must still
+    // appear, on the defaults, rather than hold on a blank screen.
+    const failsafe = window.setTimeout(() => setSettled(true), 2500);
+    return () => window.clearTimeout(failsafe);
   }, [loadSummary]);
+
+  if (!settled) {
+    return (
+      <div
+        className="min-h-screen bg-ink flex items-center justify-center"
+        role="status"
+        aria-label="Loading"
+      >
+        <span className="sr-only">Loading</span>
+        <Monogram size={54} />
+      </div>
+    );
+  }
 
   return (
     <>
