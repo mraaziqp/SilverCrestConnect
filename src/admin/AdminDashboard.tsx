@@ -718,6 +718,37 @@ const ApplicationsTab: React.FC<{
                         <p className="mt-0.5 text-[12.5px] text-muted/80 leading-relaxed">{app.lookingFor}</p>
                       </div>
                     )}
+
+                    {app.images && app.images.length > 0 && (
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">
+                          Photos ({app.images.length}):
+                        </span>
+                        {/* Thumbnails that open full size in a new tab. Deciding
+                            who is in the room is a visual judgement, so the
+                            photos need to be looked at properly, not squinted
+                            at in a list. */}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {app.images.map((url, i) => (
+                            <a
+                              key={url}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Open full size"
+                              className="relative w-24 h-24 rounded-sm overflow-hidden border border-white/12 bg-black/40 hover:border-gold/60 transition-colors"
+                            >
+                              <img
+                                src={url}
+                                alt={`${app.businessName} photo ${i + 1}`}
+                                loading="lazy"
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {app.ticketCode && (

@@ -36,6 +36,12 @@ export interface Application {
   communityContribution?: string;
   /** What the applicant hopes to get out of the event. */
   lookingFor?: string;
+  /**
+   * Photos the applicant attached — product shots, storefront, a logo.
+   * Always URLs in our own image storage, never arbitrary links: the upload
+   * endpoint is what puts them there, and the server refuses anything else.
+   */
+  images?: string[];
   /** Number of representatives applying (1 or 2). */
   attendeeCount: 1 | 2;
   /** Total in ZAR, fixed at application time: base fee, plus the additional-representative fee for a second attendee. */

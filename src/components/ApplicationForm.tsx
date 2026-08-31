@@ -14,6 +14,7 @@ import { EVENT, INDUSTRY_CATEGORIES } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import type { EventSettings } from '../types';
 import { copyToClipboard } from '../lib/clipboard';
+import { ApplicationPhotos } from './ApplicationPhotos';
 
 interface ApplicationFormProps {
   open: boolean;
@@ -77,6 +78,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Uploaded photo URLs, kept apart from the text fields. */
+  const [images, setImages] = useState<string[]>([]);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
 
@@ -107,6 +110,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
     if (open) return;
     const id = window.setTimeout(() => {
       setValues(EMPTY);
+      setImages([]);
       setFieldErrors({});
       setFormError(null);
       setResult(null);
@@ -144,6 +148,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
     const payload = {
       ...values,
       industry: finalIndustry,
+      // Already uploaded; these are URLs, not file data.
+      images,
     };
 
     try {
@@ -451,6 +457,10 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
                 hint="Optional — helps us introduce you to relevant founders in the room."
                 rows={2}
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <ApplicationPhotos images={images} onChange={setImages} disabled={busy} />
             </div>
 
             {/* Second Representative Details (if 2 selected) */}

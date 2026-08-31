@@ -84,6 +84,34 @@ function ensureApp(config: StorageConfig): void {
   });
 }
 
+/**
+ * True when a URL points at our own storage bucket.
+ *
+ * Applicants send back the URLs the upload endpoint gave them, and an
+ * application is reviewed in the dashboard with those rendered as images.
+ * Accepting any URL would let a stranger place an arbitrary remote image —
+ * and the request for it, carrying the reviewer's IP and referrer — inside the
+ * admin page. Only what we stored ourselves is allowed.
+ */
+export function isOwnStorageUrl(url: string, bucket: string): boolean {
+  if (!bucket) return false;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+
+    // The Firebase download URL, and the plain Cloud Storage URL.
+    if (parsed.hostname === 'firebasestorage.googleapis.com') {
+      return parsed.pathname.startsWith(`/v0/b/${bucket}/o/`);
+    }
+    if (parsed.hostname === 'storage.googleapis.com') {
+      return parsed.pathname.startsWith(`/${bucket}/`);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export interface UploadResult {
   ok: boolean;
   url?: string;

@@ -32,7 +32,7 @@ import {
   type PayFastConfig,
 } from './payfast.js';
 import { validateSettings, validateItems } from './settings-validate.js';
-import { ImageStorage, loadStorageConfig } from './storage.js';
+import { ImageStorage, loadStorageConfig, isOwnStorageUrl } from './storage.js';
 import {
   FieldErrors,
   email as validEmail,
@@ -188,6 +188,48 @@ export async function createApp(options: AppOptions): Promise<Express> {
     });
   });
 
+  /** How many photos one application may carry. */
+  const MAX_APPLICATION_IMAGES = 4;
+
+  /**
+   * Applicant photo upload.
+   *
+   * Unlike the dashboard's uploader this is open to the internet, so it is
+   * rate limited far harder — a public endpoint that writes to paid storage is
+   * worth abusing. Everything else it relies on is already enforced inside
+   * ImageStorage: type allowlist, 5 MB ceiling, and a generated filename, so a
+   * caller never chooses where their bytes land.
+   */
+  app.post(
+    '/api/applications/upload',
+    rateLimit(12, 10 * 60_000),
+    async (req: Request, res: Response) => {
+      if (!(await imageStorage.isAvailable())) {
+        return res.status(503).json({
+          success: false,
+          error: 'Photo uploads are unavailable at the moment. You can submit without photos and send them by email later.',
+        });
+      }
+
+      const dataUri = typeof req.body?.dataUri === 'string' ? req.body.dataUri : '';
+      if (!dataUri) return res.status(400).json({ success: false, error: 'No image supplied.' });
+
+      const result = await imageStorage.upload(dataUri, 'applications');
+      if (!result.ok) return res.status(400).json({ success: false, error: result.error });
+
+      return res.json({ success: true, url: result.url });
+    },
+  );
+
+  /** Whether the application form should offer photo uploads at all. */
+  app.get('/api/applications/upload-status', async (_req: Request, res: Response) => {
+    return res.json({
+      success: true,
+      available: await imageStorage.isAvailable(),
+      maxImages: MAX_APPLICATION_IMAGES,
+    });
+  });
+
   /**
    * SME application (funnel step 01).
    * Applying is free — no payment is taken until the team approves.
@@ -239,6 +281,18 @@ export async function createApp(options: AppOptions): Promise<Express> {
     const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
     const totalPriceZAR = attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR;
 
+    // Photos must be ones our own upload endpoint produced. Accepting any URL
+    // would let a stranger place a remote image — and the request for it,
+    // carrying the reviewer's IP — inside the admin page.
+    const bucket = loadStorageConfig().bucket;
+    const submittedImages = Array.isArray(body.images) ? body.images : [];
+    const images: string[] = [];
+    for (const candidate of submittedImages.slice(0, MAX_APPLICATION_IMAGES)) {
+      if (typeof candidate === 'string' && isOwnStorageUrl(candidate, bucket)) {
+        images.push(candidate);
+      }
+    }
+
     const now = new Date().toISOString();
     const application: Application = {
       id: makeId('app'),
@@ -262,6 +316,7 @@ export async function createApp(options: AppOptions): Promise<Express> {
       rep2Email,
       rep2Phone,
       status: 'PENDING_REVIEW',
+      images: images.length > 0 ? images : undefined,
       createdAt: now,
       updatedAt: now,
     };
