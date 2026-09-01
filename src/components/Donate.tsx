@@ -7,7 +7,7 @@
 import React, { useMemo, useState } from 'react';
 import { Heart, Loader2, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
-import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR } from '../config/event';
+import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR, DEFAULT_GALLERY } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
 import type { CheckoutResponse, EventSettings, GalleryItem } from '../types';
@@ -33,6 +33,7 @@ export const Donate: React.FC<DonateProps> = ({
   paymentsOpen = true,
   event,
 }) => {
+  const displayGallery = gallery && gallery.length > 0 ? gallery : DEFAULT_GALLERY;
   const [preset, setPreset] = useState<number | null>(DONATION_PRESETS[1]);
   const [custom, setCustom] = useState('');
   const [name, setName] = useState('');
@@ -285,7 +286,7 @@ export const Donate: React.FC<DonateProps> = ({
           </form>
         </Card>
 
-        <PreviousDrive heading={galleryHeading} body={galleryBody} items={gallery} />
+        <PreviousDrive heading={galleryHeading} body={galleryBody} items={displayGallery} />
       </div>
     </Section>
   );

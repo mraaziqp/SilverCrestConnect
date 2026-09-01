@@ -892,10 +892,10 @@ export async function createApp(options: AppOptions): Promise<Express> {
     for (const item of items) {
       const url = item.url.trim();
       if (!url) continue;
-      if (!/^https?:\/\//i.test(url) && !url.startsWith('data:image/')) {
+      if (!/^https?:\/\//i.test(url) && !url.startsWith('data:image/') && !url.startsWith('/')) {
         return res.status(400).json({
           success: false,
-          error: `"${url.slice(0, 40)}" is not an image URL. Use an https link or upload a file.`,
+          error: `"${url.slice(0, 40)}" is not an image URL. Use an https link, relative path, or upload a file.`,
         });
       }
       cleaned.push({ id: makeId('img'), url, caption: item.caption || undefined });

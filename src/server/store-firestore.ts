@@ -349,9 +349,10 @@ export class FirestoreStore implements DataStore {
 
   async getGallery(): Promise<GalleryItem[]> {
     const doc = await this.readContent<{ items: GalleryItem[] }>(CONTENT_DOCS.gallery, {
-      items: [],
+      items: DEFAULT_CONTENT.gallery,
     });
-    return doc.items ?? [];
+    const items = doc.items;
+    return items && items.length > 0 ? items : [...DEFAULT_CONTENT.gallery];
   }
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {

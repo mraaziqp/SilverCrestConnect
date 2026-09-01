@@ -374,8 +374,11 @@ export class RtdbStore implements DataStore {
   }
 
   async getGallery(): Promise<GalleryItem[]> {
-    const doc = await this.readContent<{ items: GalleryItem[] }>('gallery', { items: [] });
-    return doc.items ?? [];
+    const doc = await this.readContent<{ items: GalleryItem[] }>('gallery', {
+      items: DEFAULT_CONTENT.gallery,
+    });
+    const items = doc.items;
+    return items && items.length > 0 ? items : [...DEFAULT_CONTENT.gallery];
   }
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {

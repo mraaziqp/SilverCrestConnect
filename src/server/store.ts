@@ -119,6 +119,7 @@ export const DEFAULT_CONTENT = {
   welcomePack: DEFAULT_WELCOME_PACK as unknown as WelcomePackItem[],
   impactItems: DEFAULT_IMPACT_ITEMS as unknown as ImpactItem[],
   funnelSteps: DEFAULT_FUNNEL_STEPS as unknown as FunnelStepItem[],
+  gallery: DEFAULT_GALLERY as unknown as GalleryItem[],
 };
 
 function emptyDatabase(): Database {
@@ -380,7 +381,8 @@ export class JsonStore implements DataStore {
   }
 
   async getGallery(): Promise<GalleryItem[]> {
-    return [...this.db.gallery];
+    const items = this.db.gallery;
+    return items && items.length > 0 ? [...items] : DEFAULT_GALLERY.map((item) => ({ ...item }));
   }
 
   async updateGallery(items: GalleryItem[]): Promise<GalleryItem[]> {
