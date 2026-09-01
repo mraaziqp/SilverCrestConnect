@@ -30,27 +30,30 @@ export const SavedApplicationBanner: React.FC = () => {
   if (saved.length === 0) return null;
 
   return (
-    <div className="border-b border-gold/20 bg-gold/[0.07]">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="text-[12.5px] text-bone/90">
-          {saved.length === 1 ? (
-            <>
-              You have an application in progress
-              {saved[0].businessName ? ` for ${saved[0].businessName}` : ''}.
-            </>
-          ) : (
-            <>You have {saved.length} applications in progress.</>
-          )}
-        </p>
+    <div className="border-b border-gold/30 bg-gold/[0.12] backdrop-blur-md text-bone">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-gold animate-pulse shrink-0" />
+          <p className="text-[12px] sm:text-[13px] text-bone font-medium">
+            {saved.length === 1 ? (
+              <>
+                You have an application in progress
+                {saved[0].businessName ? ` for ${saved[0].businessName}` : ''}.
+              </>
+            ) : (
+              <>You have {saved.length} applications in progress.</>
+            )}
+          </p>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2">
           {saved.slice(0, 3).map((item) => (
             <a
               key={item.reference}
               href={`/pay/${encodeURIComponent(item.reference)}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-sm border border-gold/40 text-[11px] font-mono tracking-wider text-gold hover:bg-gold/10 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-gold/40 text-[11px] font-mono font-semibold tracking-wider text-gold hover:bg-gold/20 hover:border-gold transition-colors"
             >
-              {item.reference}
+              <span>{item.reference}</span>
               <ArrowRight className="w-3 h-3" aria-hidden="true" />
             </a>
           ))}
@@ -61,9 +64,9 @@ export const SavedApplicationBanner: React.FC = () => {
               saved.forEach((item) => forgetApplication(item.reference));
               setSaved([]);
             }}
-            aria-label="Stop showing this on this device"
-            title="Stop showing this on this device"
-            className="p-1 text-muted/70 hover:text-bone transition-colors"
+            aria-label="Dismiss saved application notice"
+            title="Dismiss notice on this device"
+            className="p-1 text-muted hover:text-bone transition-colors ml-1"
           >
             <X className="w-3.5 h-3.5" />
           </button>

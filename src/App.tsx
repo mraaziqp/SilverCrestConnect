@@ -14,7 +14,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 
 import { Nav } from './components/Nav';
-import { SavedApplicationBanner } from './components/SavedApplicationBanner';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
 import { Programme } from './components/Programme';
@@ -135,7 +134,6 @@ function LandingPage() {
   return (
     <>
       <Nav event={summary?.event} />
-      <SavedApplicationBanner />
       <main>
         <Hero
           seatsRemaining={summary?.seatsRemaining ?? null}
