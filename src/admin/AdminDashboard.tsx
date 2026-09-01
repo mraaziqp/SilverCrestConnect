@@ -13,8 +13,13 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Download,
+  ExternalLink,
+  Eye,
+  FileSpreadsheet,
   FileText,
   HandCoins,
   Image,
@@ -22,6 +27,7 @@ import {
   Loader2,
   LogOut,
   Mail,
+  Maximize2,
   MessageCircle,
   Package,
   Phone,
@@ -33,7 +39,10 @@ import {
   Sliders,
   Ticket,
   Trash2,
-  Users, Image as ImageIcon } from 'lucide-react';
+  Users,
+  X,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { Monogram, Button, Card } from '../components/Brand';
 import { GalleryTab } from './GalleryTab';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
@@ -298,7 +307,7 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
           <>
             {tab === 'overview' && overview && <OverviewTab overview={overview} />}
             {tab === 'applications' && (
-              <ApplicationsTab applications={applications} onUpdate={updateStatus} />
+              <ApplicationsTab applications={applications} onUpdate={updateStatus} token={token} />
             )}
             {tab === 'payments' && <PaymentsTab payments={payments} onExport={downloadCsv} />}
             {tab === 'settings' && <SettingsTab token={token} onSaved={load} />}
@@ -444,15 +453,45 @@ const OverviewTab: React.FC<{ overview: Overview }> = ({ overview }) => {
 const ApplicationsTab: React.FC<{
   applications: Application[];
   onUpdate: (id: string, status: ApplicationStatus) => void;
-}> = ({ applications, onUpdate }) => {
+  token?: string;
+}> = ({ applications, onUpdate, token }) => {
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activePhoto, setActivePhoto] = useState<{
+    url: string;
+    businessName: string;
+    index: number;
+    images: string[];
+  } | null>(null);
 
-  // The curation rule is 1-2 *businesses* per category, so this counts
-  // businesses. Counting attendees instead made a single two-representative
-  // booking read as "2/2 booked" and flag the sector full, which would turn
-  // away the second, genuinely different business the rule exists to admit.
+  // Close lightbox on Escape key
+  useEffect(() => {
+    if (!activePhoto) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActivePhoto(null);
+      if (e.key === 'ArrowRight' && activePhoto.images.length > 1) {
+        const nextIdx = (activePhoto.index + 1) % activePhoto.images.length;
+        setActivePhoto({
+          ...activePhoto,
+          index: nextIdx,
+          url: activePhoto.images[nextIdx],
+        });
+      }
+      if (e.key === 'ArrowLeft' && activePhoto.images.length > 1) {
+        const prevIdx = (activePhoto.index - 1 + activePhoto.images.length) % activePhoto.images.length;
+        setActivePhoto({
+          ...activePhoto,
+          index: prevIdx,
+          url: activePhoto.images[prevIdx],
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePhoto]);
+
+  // Industry slot statistics (Target: 1-2 per category)
   const industryStats = useMemo(() => {
     const map: Record<string, { approvedOrPaid: number; pending: number }> = {};
     for (const app of applications) {
@@ -487,10 +526,91 @@ const ApplicationsTab: React.FC<{
   }, [applications, filter, searchQuery]);
 
   const copyRef = async (app: Application) => {
-    // Only confirm a copy that actually happened.
     if (!(await copyToClipboard(app.reference))) return;
     setCopiedId(app.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const exportCsv = () => {
+    const headers = [
+      'Reference',
+      'Status',
+      'Business Name',
+      'Contact Name',
+      'Role / Position',
+      'Email',
+      'Phone',
+      'Industry Sector',
+      'CIPC Reg Number',
+      'Website',
+      'Attendees Count',
+      'Total Fee (ZAR)',
+      'Second Rep Name',
+      'Second Rep Role',
+      'Second Rep Email',
+      'Second Rep Phone',
+      'About Business',
+      'Products & Services',
+      'Community Value',
+      'Looking For',
+      'Photos Count',
+      'Photo URLs',
+      'Ticket Code',
+      'Created At',
+      'Reviewed At',
+    ];
+
+    const rows = visible.map((a) => [
+      a.reference,
+      a.status,
+      a.businessName,
+      a.contactName,
+      a.applicantRole ?? '',
+      a.email,
+      a.phone,
+      a.industry,
+      a.registrationNumber ?? '',
+      a.website ?? '',
+      String(a.attendeeCount || 1),
+      a.totalPriceZAR ? a.totalPriceZAR.toFixed(2) : '',
+      a.rep2Name ?? '',
+      a.rep2Role ?? '',
+      a.rep2Email ?? '',
+      a.rep2Phone ?? '',
+      a.about,
+      a.productsServices ?? '',
+      a.communityContribution ?? '',
+      a.lookingFor ?? '',
+      String((a.images ?? []).length),
+      (a.images ?? []).join(' ; '),
+      a.ticketCode ?? '',
+      a.createdAt,
+      a.reviewedAt ?? '',
+    ]);
+
+    const csvContent = [
+      headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(','),
+      ...rows.map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')),
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `silvercrest-applications-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportJson = () => {
+    const jsonStr = JSON.stringify(visible, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `silvercrest-applications-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   if (applications.length === 0) {
@@ -543,26 +663,39 @@ const ApplicationsTab: React.FC<{
         )}
       </div>
 
-      {/* Search Bar & Filter Pills */}
+      {/* Top Action Bar: Search, Filters & Export Tools */}
       <div className="space-y-4 mb-6">
-        <div className="relative">
-          <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search applications by business name, founder, email, reference, or sector..."
-            className="w-full pl-10 pr-16 py-2.5 rounded-md bg-ink-raised border border-white/12 text-sm text-bone placeholder:text-muted/50 focus:border-gold focus:outline-none transition-colors"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-bone uppercase font-bold"
-            >
-              Clear
-            </button>
-          )}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search applications by business name, founder, email, reference, or sector..."
+              className="w-full pl-10 pr-16 py-2.5 rounded-md bg-ink-raised border border-white/12 text-sm text-bone placeholder:text-muted/50 focus:border-gold focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-bone uppercase font-bold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={exportCsv} title="Download applications as CSV spreadsheet">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-gold" />
+              <span>Export CSV ({visible.length})</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportJson} title="Download raw JSON backup">
+              <Download className="w-3.5 h-3.5" />
+              <span>JSON</span>
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center justify-between">
@@ -721,30 +854,41 @@ const ApplicationsTab: React.FC<{
 
                     {app.images && app.images.length > 0 && (
                       <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">
-                          Photos ({app.images.length}):
-                        </span>
-                        {/* Thumbnails that open full size in a new tab. Deciding
-                            who is in the room is a visual judgement, so the
-                            photos need to be looked at properly, not squinted
-                            at in a list. */}
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] uppercase tracking-wider text-muted font-semibold">
+                            Attached Photos ({app.images.length}):
+                          </span>
+                          <span className="text-[10px] text-gold/80">Click image to enlarge &amp; inspect</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2.5">
                           {app.images.map((url, i) => (
-                            <a
+                            <button
                               key={url}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Open full size"
-                              className="relative w-24 h-24 rounded-sm overflow-hidden border border-white/12 bg-black/40 hover:border-gold/60 transition-colors"
+                              type="button"
+                              onClick={() =>
+                                setActivePhoto({
+                                  url,
+                                  businessName: app.businessName,
+                                  index: i,
+                                  images: app.images ?? [],
+                                })
+                              }
+                              className="group relative w-24 h-24 rounded-md overflow-hidden border border-white/12 bg-black/40 hover:border-gold transition-all text-left focus:outline-none focus:border-gold"
+                              title={`Click to view ${app.businessName} photo ${i + 1}`}
                             >
                               <img
                                 src={url}
                                 alt={`${app.businessName} photo ${i + 1}`}
                                 loading="lazy"
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
-                            </a>
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="w-5 h-5 text-gold" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-white text-[9px] font-mono">
+                                #{i + 1}
+                              </span>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -785,6 +929,112 @@ const ApplicationsTab: React.FC<{
               </div>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* ── Interactive Image Lightbox Modal ── */}
+      {activePhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn"
+          onClick={() => setActivePhoto(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative max-w-4xl w-full bg-ink-raised border border-gold/30 rounded-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Lightbox Header */}
+            <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-black/60">
+              <div>
+                <h4 className="text-sm font-bold text-bone">{activePhoto.businessName}</h4>
+                <p className="text-[11px] text-gold">
+                  Photo {activePhoto.index + 1} of {activePhoto.images.length}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={activePhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded bg-white/10 hover:bg-gold/20 text-muted hover:text-gold transition-colors"
+                  title="Open original in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setActivePhoto(null)}
+                  className="p-1.5 rounded bg-white/10 hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors"
+                  title="Close viewer (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Lightbox Image Stage */}
+            <div className="relative flex-1 bg-black flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
+              <img
+                src={activePhoto.url}
+                alt={`${activePhoto.businessName} photo`}
+                className="max-h-[65vh] max-w-full object-contain rounded-sm"
+              />
+
+              {activePhoto.images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prevIdx =
+                        (activePhoto.index - 1 + activePhoto.images.length) % activePhoto.images.length;
+                      setActivePhoto({
+                        ...activePhoto,
+                        index: prevIdx,
+                        url: activePhoto.images[prevIdx],
+                      });
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 border border-white/20 text-white hover:text-gold hover:border-gold transition-all"
+                    title="Previous photo"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextIdx = (activePhoto.index + 1) % activePhoto.images.length;
+                      setActivePhoto({
+                        ...activePhoto,
+                        index: nextIdx,
+                        url: activePhoto.images[nextIdx],
+                      });
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 border border-white/20 text-white hover:text-gold hover:border-gold transition-all"
+                    title="Next photo"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Lightbox Footer */}
+            <div className="px-5 py-3 border-t border-white/10 bg-black/40 flex items-center justify-between text-xs text-muted">
+              <span>Use &larr; / &rarr; keys to browse</span>
+              <a
+                href={activePhoto.url}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-gold hover:underline font-semibold"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download High-Res
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>

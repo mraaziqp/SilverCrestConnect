@@ -324,26 +324,47 @@ export function clearLastMailFailure(): void {
   lastFailure = null;
 }
 
+export async function sendMailSafe(
+  mailer: Mailer,
+  to: string,
+  message: RenderedEmail,
+  context: string,
+  timeoutMs = 8_000,
+): Promise<SendResult> {
+  const sendPromise = mailer.send(to, message);
+  const timeoutPromise = new Promise<SendResult>((resolve) => {
+    const t = setTimeout(() => {
+      console.warn(`[email] ${context} to ${to} timed out after ${timeoutMs}ms`);
+      resolve({ ok: false, error: 'Email delivery timed out' });
+    }, timeoutMs);
+    if (typeof t === 'object' && 'unref' in t) (t as { unref(): void }).unref();
+  });
+
+  try {
+    const result = await Promise.race([sendPromise, timeoutPromise]);
+    if (!result.ok) {
+      lastFailure = { at: new Date().toISOString(), context, error: result.error ?? 'unknown' };
+      console.error(`[email] ${context} to ${to} FAILED: ${result.error}`);
+    } else if (!result.skipped) {
+      lastFailure = null;
+      console.log(`[email] ${context} sent to ${to} (${result.id ?? 'no id'})`);
+    }
+    return result;
+  } catch (err) {
+    const msg = (err as Error).message ?? 'Unknown mail error';
+    lastFailure = { at: new Date().toISOString(), context, error: msg };
+    console.error(`[email] ${context} to ${to} threw:`, err);
+    return { ok: false, error: msg };
+  }
+}
+
 export function sendInBackground(
   mailer: Mailer,
   to: string,
   message: RenderedEmail,
   context: string,
-): void {
-  mailer
-    .send(to, message)
-    .then((result) => {
-      if (!result.ok) {
-        lastFailure = { at: new Date().toISOString(), context, error: result.error ?? 'unknown' };
-        console.error(`[email] ${context} to ${to} FAILED: ${result.error}`);
-      } else if (!result.skipped) {
-        lastFailure = null;
-        console.log(`[email] ${context} sent to ${to} (${result.id ?? 'no id'})`);
-      }
-    })
-    .catch((err) => {
-      console.error(`[email] ${context} to ${to} threw:`, err);
-    });
+): Promise<SendResult> {
+  return sendMailSafe(mailer, to, message, context);
 }
 
 /** Extracts the bare address from "Name <a@b.com>". */

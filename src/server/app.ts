@@ -323,52 +323,52 @@ export async function createApp(options: AppOptions): Promise<Express> {
 
     await store.addApplication(application);
 
-    sendInBackground(
-      mailer,
-      application.email,
-      applicationReceived({
-        contactName: application.contactName,
-        businessName: application.businessName,
-        reference: application.reference,
-        attendeeCount: application.attendeeCount,
-      }),
-      'application-received',
-    );
-
-    // And tell the team, because nobody watches a dashboard all day and the
-    // applicant cannot pay until someone reviews this. Falls back through the
-    // addresses already configured, so it works without another setting.
-    const notifyTo = (
+    const organizerEmail = (
       process.env.ADMIN_NOTIFY_TO ||
       mailerConfig.replyTo ||
-      settings.contactEmail ||
-      ''
+      EVENT.contactEmail ||
+      'connect@scconsults.co.za'
     ).trim();
 
-    if (notifyTo) {
+    // Send confirmation to applicant and notification to Wesley/organizer,
+    // awaiting both so serverless environments do not terminate early.
+    await Promise.allSettled([
       sendInBackground(
         mailer,
-        notifyTo,
-        applicationNotice({
-          businessName: application.businessName,
+        application.email,
+        applicationReceived({
           contactName: application.contactName,
-          applicantRole: application.applicantRole,
-          email: application.email,
-          phone: application.phone,
-          industry: application.industry,
+          businessName: application.businessName,
           reference: application.reference,
           attendeeCount: application.attendeeCount,
-          totalPriceZAR: application.totalPriceZAR,
-          about: application.about,
-          productsServices: application.productsServices,
-          communityContribution: application.communityContribution,
-          rep2Name: application.rep2Name,
-          rep2Role: application.rep2Role,
-          adminUrl: `${payfast.appUrl}/admin`,
         }),
-        'application-notice',
-      );
-    }
+        'application-received',
+      ),
+      organizerEmail
+        ? sendInBackground(
+            mailer,
+            organizerEmail,
+            applicationNotice({
+              businessName: application.businessName,
+              contactName: application.contactName,
+              applicantRole: application.applicantRole,
+              email: application.email,
+              phone: application.phone,
+              industry: application.industry,
+              reference: application.reference,
+              attendeeCount: application.attendeeCount,
+              totalPriceZAR: application.totalPriceZAR,
+              about: application.about,
+              productsServices: application.productsServices,
+              communityContribution: application.communityContribution,
+              rep2Name: application.rep2Name,
+              rep2Role: application.rep2Role,
+              adminUrl: `${payfast.appUrl}/admin`,
+            }),
+            'application-notice',
+          )
+        : Promise.resolve(),
+    ]);
 
     return res.status(201).json({
       success: true,
@@ -696,23 +696,32 @@ export async function createApp(options: AppOptions): Promise<Express> {
         updated.totalPriceZAR ||
         (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
-      sendInBackground(
-        mailer,
-        updated.email,
-        applicationApproved({
-          contactName: updated.contactName,
-          businessName: updated.businessName,
-          reference: updated.reference,
-          payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
-          seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
-          attendeeCount,
-          totalAmountZAR,
-          // With payments closed the link would lead nowhere useful, so the
-          // mail tells them they are approved and that payment follows.
-          paymentsOpen: payfast.paymentsOpen,
-        }),
-        'application-approved',
-      );
+      const organizerEmail = (
+        process.env.ADMIN_NOTIFY_TO ||
+        mailerConfig.replyTo ||
+        EVENT.contactEmail ||
+        'connect@scconsults.co.za'
+      ).trim();
+
+      const approvedMail = applicationApproved({
+        contactName: updated.contactName,
+        businessName: updated.businessName,
+        reference: updated.reference,
+        payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(updated.reference)}`,
+        seatsRemaining: Math.max(0, settings.capacity - await store.countPaidSeats()),
+        attendeeCount,
+        totalAmountZAR,
+        // With payments closed the link would lead nowhere useful, so the
+        // mail tells them they are approved and that payment follows.
+        paymentsOpen: payfast.paymentsOpen,
+      });
+
+      await Promise.allSettled([
+        sendInBackground(mailer, updated.email, approvedMail, 'application-approved'),
+        organizerEmail && organizerEmail !== updated.email
+          ? sendInBackground(mailer, organizerEmail, approvedMail, 'application-approved-copy')
+          : Promise.resolve(),
+      ]);
     }
 
     // A manual PAID (EFT or cash at the door) still deserves a ticket email.
@@ -724,18 +733,27 @@ export async function createApp(options: AppOptions): Promise<Express> {
         updated.totalPriceZAR ||
         (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
 
-      sendInBackground(
-        mailer,
-        updated.email,
-        ticketConfirmed({
-          contactName: updated.contactName,
-          businessName: updated.businessName,
-          ticketCode: updated.ticketCode,
-          amountZAR: totalAmountZAR,
-          attendeeCount,
-        }),
-        'ticket-confirmed-manual',
-      );
+      const ticketMail = ticketConfirmed({
+        contactName: updated.contactName,
+        businessName: updated.businessName,
+        ticketCode: updated.ticketCode,
+        amountZAR: totalAmountZAR,
+        attendeeCount,
+      });
+
+      const organizerEmail = (
+        process.env.ADMIN_NOTIFY_TO ||
+        mailerConfig.replyTo ||
+        EVENT.contactEmail ||
+        'connect@scconsults.co.za'
+      ).trim();
+
+      await Promise.allSettled([
+        sendInBackground(mailer, updated.email, ticketMail, 'ticket-confirmed-manual'),
+        organizerEmail && organizerEmail !== updated.email
+          ? sendInBackground(mailer, organizerEmail, ticketMail, 'ticket-confirmed-manual-copy')
+          : Promise.resolve(),
+      ]);
     }
 
     return res.json({ success: true, application: updated });
@@ -773,6 +791,72 @@ export async function createApp(options: AppOptions): Promise<Express> {
     const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="silvercrest-payments-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  });
+
+  /** Full CSV export for all applications with all submitted SME details. */
+  app.get('/api/admin/applications.csv', async (_req: Request, res: Response) => {
+    const apps = await store.listApplications();
+    const rows = [
+      [
+        'Reference',
+        'Status',
+        'Business Name',
+        'Contact Name',
+        'Role / Position',
+        'Email',
+        'Phone',
+        'Industry Sector',
+        'CIPC Reg Number',
+        'Website',
+        'Attendees Count',
+        'Total Fee (ZAR)',
+        'Second Rep Name',
+        'Second Rep Role',
+        'Second Rep Email',
+        'Second Rep Phone',
+        'About Business',
+        'Products & Services',
+        'Community Value',
+        'Looking For',
+        'Photos Count',
+        'Photo URLs',
+        'Ticket Code',
+        'Created At',
+        'Reviewed At',
+      ],
+      ...apps.map((a) => [
+        a.reference,
+        a.status,
+        a.businessName,
+        a.contactName,
+        a.applicantRole ?? '',
+        a.email,
+        a.phone,
+        a.industry,
+        a.registrationNumber ?? '',
+        a.website ?? '',
+        String(a.attendeeCount || 1),
+        a.totalPriceZAR ? a.totalPriceZAR.toFixed(2) : '',
+        a.rep2Name ?? '',
+        a.rep2Role ?? '',
+        a.rep2Email ?? '',
+        a.rep2Phone ?? '',
+        a.about,
+        a.productsServices ?? '',
+        a.communityContribution ?? '',
+        a.lookingFor ?? '',
+        String((a.images ?? []).length),
+        (a.images ?? []).join(' ; '),
+        a.ticketCode ?? '',
+        a.createdAt,
+        a.reviewedAt ?? '',
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="silvercrest-applications-${new Date().toISOString().slice(0, 10)}.csv"`);
     res.send(csv);
   });
 
@@ -1125,6 +1209,12 @@ async function handleItn(
     });
 
     if (status === 'COMPLETE') {
+      const organizerEmail = (
+        process.env.ADMIN_NOTIFY_TO ||
+        EVENT.contactEmail ||
+        'connect@scconsults.co.za'
+      ).trim();
+
       if (payment.kind === 'TICKET' && payment.applicationId) {
         // A completed ticket advances the application and issues the pass.
         const application = await store.getApplication(payment.applicationId);
@@ -1135,30 +1225,35 @@ async function handleItn(
             paymentId: payment.id,
             ticketCode,
           });
-          sendInBackground(
-            mailer,
-            application.email,
-            ticketConfirmed({
-              contactName: application.contactName,
-              businessName: application.businessName,
-              ticketCode,
-              amountZAR: payment.amountZAR,
-              attendeeCount: application.attendeeCount || 1,
-            }),
-            'ticket-confirmed',
-          );
+
+          const ticketEmail = ticketConfirmed({
+            contactName: application.contactName,
+            businessName: application.businessName,
+            ticketCode,
+            amountZAR: payment.amountZAR,
+            attendeeCount: application.attendeeCount || 1,
+          });
+
+          await Promise.allSettled([
+            sendInBackground(mailer, application.email, ticketEmail, 'ticket-confirmed'),
+            organizerEmail && organizerEmail !== application.email
+              ? sendInBackground(mailer, organizerEmail, ticketEmail, 'ticket-confirmed-copy')
+              : Promise.resolve(),
+          ]);
         }
       } else if (payment.kind === 'DONATION') {
-        sendInBackground(
-          mailer,
-          payment.email,
-          donationReceipt({
-            name: payment.name,
-            amountZAR: payment.amountZAR,
-            reference: payment.reference,
-          }),
-          'donation-receipt',
-        );
+        const receiptEmail = donationReceipt({
+          name: payment.name,
+          amountZAR: payment.amountZAR,
+          reference: payment.reference,
+        });
+
+        await Promise.allSettled([
+          sendInBackground(mailer, payment.email, receiptEmail, 'donation-receipt'),
+          organizerEmail && organizerEmail !== payment.email
+            ? sendInBackground(mailer, organizerEmail, receiptEmail, 'donation-receipt-copy')
+            : Promise.resolve(),
+        ]);
       }
     }
 
