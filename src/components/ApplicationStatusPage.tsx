@@ -18,6 +18,7 @@ import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
 import type { ApplicationStatus, CheckoutResponse, EventSettings, ProgrammeItem } from '../types';
 import { copyToClipboard } from '../lib/clipboard';
+import { rememberApplication } from '../lib/savedApplications';
 
 interface StatusResponse {
   success: true;
@@ -97,6 +98,9 @@ export const ApplicationStatusPage: React.FC<{ reference: string }> = ({ referen
       const result = await api<StatusResponse>(
         `/api/applications/${encodeURIComponent(reference)}`,
       );
+      // Also remembered here, so a link opened from an email or forwarded to a
+      // colleague leaves that device able to find its way back.
+      rememberApplication(result.application.reference, result.application.businessName);
       setData(result.application);
       if (result.event) setEventData(result.event);
       if (result.programme) setProgramme(result.programme);

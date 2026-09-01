@@ -14,6 +14,7 @@ import { EVENT, INDUSTRY_CATEGORIES } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import type { EventSettings } from '../types';
 import { copyToClipboard } from '../lib/clipboard';
+import { rememberApplication, applicationUrl } from '../lib/savedApplications';
 import { ApplicationPhotos } from './ApplicationPhotos';
 
 interface ApplicationFormProps {
@@ -82,6 +83,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
   const [images, setImages] = useState<string[]>([]);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const basePrice = event?.ticketPriceZAR ?? EVENT.ticketPriceZAR;
   const additionalRepPrice = event?.additionalRepPriceZAR ?? EVENT.additionalRepPriceZAR;
@@ -157,6 +159,9 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
         method: 'POST',
         body: payload,
       });
+      // Saved on this device so a returning applicant has a way back even if
+      // they never copied the code and the email has not arrived.
+      rememberApplication(response.reference, values.businessName);
       setResult({ reference: response.reference, message: response.message });
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -224,8 +229,36 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
                 </button>
               </div>
             </div>
+            {/* A bookmarkable link, not just a code. Saved on this device too,
+                so the banner on the home page brings them back — but a link
+                they can send to themselves survives a new phone. */}
+            <div className="mt-4 rounded-sm border border-white/10 bg-black/30 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-brand text-muted font-semibold">
+                Your status page — bookmark this
+              </p>
+              <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+                <code className="font-mono text-[11px] text-bone/90 break-all">
+                  {applicationUrl(result.reference)}
+                </code>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!(await copyToClipboard(applicationUrl(result.reference)))) return;
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="px-2.5 py-1 rounded bg-white/5 border border-white/15 text-muted hover:text-gold hover:border-gold/40 transition-colors inline-flex items-center gap-1.5 text-[11px] font-semibold shrink-0"
+                  title="Copy the link to your application"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Copied' : 'Copy link'}</span>
+                </button>
+              </div>
+            </div>
+
             <p className="mt-4 text-[12px] text-muted/70">
-              Keep this reference handy. Once approved, you will receive your private payment link to secure your seat.
+              We have saved this on this device, so you can come back to it from the home page.
+              Once approved, you will also receive your private payment link by email.
             </p>
 
             <Button className="mt-8 w-full sm:w-auto" onClick={onClose}>
