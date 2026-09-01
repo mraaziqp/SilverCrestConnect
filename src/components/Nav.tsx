@@ -11,7 +11,6 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Monogram, ButtonLink } from './Brand';
-import { SavedApplicationBanner } from './SavedApplicationBanner';
 import { EVENT } from '../config/event';
 import type { EventSettings } from '../types';
 
@@ -55,7 +54,6 @@ export const Nav: React.FC<NavProps> = ({ event }) => {
           : 'bg-ink/85 backdrop-blur-sm border-b border-white/8',
       ].join(' ')}
     >
-      <SavedApplicationBanner />
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
         <div className="flex items-center justify-between h-[72px]">
           {/* Wordmark */}
