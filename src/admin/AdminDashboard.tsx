@@ -203,6 +203,18 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
     }
   };
 
+  const deleteApplication = async (id: string) => {
+    try {
+      await api(`/api/admin/applications/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        token,
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Could not delete that application.');
+    }
+  };
+
   /**
    * The CSV route needs the bearer header, so it cannot be a plain link.
    * Fetch it, then hand the browser a blob.
@@ -307,7 +319,12 @@ const Dashboard: React.FC<{ token: string; onSignOut: () => void }> = ({ token, 
           <>
             {tab === 'overview' && overview && <OverviewTab overview={overview} />}
             {tab === 'applications' && (
-              <ApplicationsTab applications={applications} onUpdate={updateStatus} token={token} />
+              <ApplicationsTab
+                applications={applications}
+                onUpdate={updateStatus}
+                onDelete={deleteApplication}
+                token={token}
+              />
             )}
             {tab === 'payments' && <PaymentsTab payments={payments} onExport={downloadCsv} />}
             {tab === 'settings' && <SettingsTab token={token} onSaved={load} />}
@@ -453,11 +470,14 @@ const OverviewTab: React.FC<{ overview: Overview }> = ({ overview }) => {
 const ApplicationsTab: React.FC<{
   applications: Application[];
   onUpdate: (id: string, status: ApplicationStatus) => void;
+  onDelete: (id: string) => void;
   token?: string;
-}> = ({ applications, onUpdate, token }) => {
+}> = ({ applications, onUpdate, onDelete, token }) => {
   const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<{ id: string; text: string; error?: boolean } | null>(null);
   const [activePhoto, setActivePhoto] = useState<{
     url: string;
     businessName: string;
@@ -529,6 +549,27 @@ const ApplicationsTab: React.FC<{
     if (!(await copyToClipboard(app.reference))) return;
     setCopiedId(app.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const resendEmail = async (app: Application) => {
+    setResendingId(app.id);
+    setActionMsg(null);
+    try {
+      const res = await api<{ success: boolean; message: string }>(
+        `/api/admin/applications/${encodeURIComponent(app.id)}/resend-email`,
+        { method: 'POST', token },
+      );
+      setActionMsg({ id: app.id, text: res.message || 'Email sent successfully!' });
+      setTimeout(() => setActionMsg(null), 6000);
+    } catch (err) {
+      setActionMsg({
+        id: app.id,
+        text: err instanceof ApiRequestError ? err.message : 'Could not send email.',
+        error: true,
+      });
+    } finally {
+      setResendingId(null);
+    }
   };
 
   const exportCsv = () => {
@@ -907,7 +948,7 @@ const ApplicationsTab: React.FC<{
                   <p className="text-[11px] text-muted/50 sm:text-right">
                     {formatDateTime(app.createdAt)}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 items-center">
                     {app.status !== 'APPROVED' && app.status !== 'PAID' && (
                       <MiniButton onClick={() => onUpdate(app.id, 'APPROVED')}>Approve</MiniButton>
                     )}
@@ -924,7 +965,54 @@ const ApplicationsTab: React.FC<{
                         Reject
                       </MiniButton>
                     )}
+
+                    <MiniButton
+                      onClick={() => resendEmail(app)}
+                      disabled={resendingId === app.id}
+                      title={`Send / resend the relevant status email to ${app.email}`}
+                    >
+                      {resendingId === app.id ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin text-gold" />
+                          <span>Sending…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3 h-3 text-gold" />
+                          <span>Send Mail</span>
+                        </>
+                      )}
+                    </MiniButton>
+
+                    <MiniButton
+                      danger
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to permanently delete application "${app.businessName}" (${app.reference})? This cannot be undone.`,
+                          )
+                        ) {
+                          onDelete(app.id);
+                        }
+                      }}
+                      title="Permanently delete this test application for cleanup"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                      <span>Delete</span>
+                    </MiniButton>
                   </div>
+
+                  {actionMsg && actionMsg.id === app.id && (
+                    <div
+                      className={`mt-1.5 p-2 rounded text-[11px] ${
+                        actionMsg.error
+                          ? 'bg-red-500/10 border border-red-500/30 text-red-400'
+                          : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold'
+                      }`}
+                    >
+                      {actionMsg.text}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -1300,17 +1388,21 @@ const MiniButton: React.FC<{
   children: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
   title?: string;
-}> = ({ children, onClick, danger, title }) => (
+  className?: string;
+}> = ({ children, onClick, danger, disabled, title, className = '' }) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
     title={title}
     className={[
-      'px-3 py-1.5 rounded-sm text-[10px] uppercase tracking-[0.12em] font-semibold border transition-colors',
+      'px-2.5 py-1.5 rounded-sm text-[10px] uppercase tracking-[0.12em] font-semibold border transition-colors inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed',
       danger
-        ? 'border-red-500/30 text-red-300 hover:bg-red-500/10'
+        ? 'border-red-500/30 text-red-300 hover:bg-red-500/10 hover:border-red-500/60'
         : 'border-white/15 text-muted hover:text-gold hover:border-gold/50',
+      className,
     ].join(' ')}
   >
     {children}

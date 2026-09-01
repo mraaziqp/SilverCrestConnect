@@ -214,6 +214,13 @@ export class FirestoreStore implements DataStore {
     return updated;
   }
 
+  async deleteApplication(id: string): Promise<boolean> {
+    const existing = await this.getApplication(id);
+    if (!existing) return false;
+    await this.db.collection(COLLECTIONS.applications).doc(existing.id).delete();
+    return true;
+  }
+
   async countApplicationsByStatus(): Promise<Record<ApplicationStatus, number>> {
     const counts: Record<ApplicationStatus, number> = {
       PENDING_REVIEW: 0,

@@ -267,6 +267,13 @@ export class RtdbStore implements DataStore {
     return updated;
   }
 
+  async deleteApplication(id: string): Promise<boolean> {
+    const existing = await this.getApplication(id);
+    if (!existing) return false;
+    await this.restPut(`${PATHS.applications}/${existing.id}`, null);
+    return true;
+  }
+
   async countApplicationsByStatus(): Promise<Record<ApplicationStatus, number>> {
     const counts: Record<ApplicationStatus, number> = {
       PENDING_REVIEW: 0,

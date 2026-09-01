@@ -279,6 +279,16 @@ export class JsonStore implements DataStore {
     return this.db.applications[index];
   }
 
+  async deleteApplication(id: string): Promise<boolean> {
+    const before = this.db.applications.length;
+    this.db.applications = this.db.applications.filter((a) => a.id !== id && a.reference !== id);
+    if (this.db.applications.length !== before) {
+      await this.save();
+      return true;
+    }
+    return false;
+  }
+
   async countApplicationsByStatus(): Promise<Record<ApplicationStatus, number>> {
     const counts: Record<ApplicationStatus, number> = {
       PENDING_REVIEW: 0,

@@ -759,6 +759,101 @@ export async function createApp(options: AppOptions): Promise<Express> {
     return res.json({ success: true, application: updated });
   });
 
+  /** Deletes an application (e.g. for testing / cleanup). */
+  app.delete('/api/admin/applications/:id', async (req: Request, res: Response) => {
+    const application = await store.getApplication(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    const deleted = await store.deleteApplication(application.id);
+    if (!deleted) {
+      return res.status(500).json({ success: false, error: 'Could not delete application.' });
+    }
+
+    return res.json({
+      success: true,
+      message: `Application "${application.businessName}" (${application.reference}) deleted successfully.`,
+    });
+  });
+
+  /** Resends the relevant status email to the applicant and organizer. */
+  app.post('/api/admin/applications/:id/resend-email', async (req: Request, res: Response) => {
+    const app = await store.getApplication(req.params.id);
+    if (!app) {
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    const settings = await store.getSettings();
+    const attendeeCount = app.attendeeCount || 1;
+    const additionalRepFee = settings.additionalRepPriceZAR ?? settings.ticketPriceZAR;
+    const totalAmountZAR =
+      app.totalPriceZAR ||
+      (attendeeCount === 2 ? settings.ticketPriceZAR + additionalRepFee : settings.ticketPriceZAR);
+
+    let mail: RenderedEmail;
+    let context: string;
+
+    if (app.status === 'APPROVED') {
+      mail = applicationApproved({
+        contactName: app.contactName,
+        businessName: app.businessName,
+        reference: app.reference,
+        payUrl: `${payfast.appUrl}/pay/${encodeURIComponent(app.reference)}`,
+        seatsRemaining: Math.max(0, settings.capacity - (await store.countPaidSeats())),
+        attendeeCount,
+        totalAmountZAR,
+        paymentsOpen: payfast.paymentsOpen,
+      });
+      context = 'application-approved-resend';
+    } else if (app.status === 'PAID') {
+      mail = ticketConfirmed({
+        contactName: app.contactName,
+        businessName: app.businessName,
+        ticketCode: app.ticketCode ?? app.reference,
+        amountZAR: totalAmountZAR,
+        attendeeCount,
+      });
+      context = 'ticket-confirmed-resend';
+    } else {
+      // PENDING_REVIEW, WAITLISTED, REJECTED
+      mail = applicationReceived({
+        contactName: app.contactName,
+        businessName: app.businessName,
+        reference: app.reference,
+        attendeeCount,
+      });
+      context = 'application-received-resend';
+    }
+
+    const organizerEmail = (
+      process.env.ADMIN_NOTIFY_TO ||
+      mailerConfig.replyTo ||
+      EVENT.contactEmail ||
+      'connect@scconsults.co.za'
+    ).trim();
+
+    const results = await Promise.allSettled([
+      sendInBackground(mailer, app.email, mail, context),
+      organizerEmail && organizerEmail !== app.email
+        ? sendInBackground(mailer, organizerEmail, mail, `${context}-copy`)
+        : Promise.resolve(),
+    ]);
+
+    const mainSend = results[0];
+    if (mainSend.status === 'fulfilled' && (mainSend.value as { ok?: boolean; error?: string })?.ok === false) {
+      return res.status(500).json({
+        success: false,
+        error: (mainSend.value as { error?: string })?.error ?? 'Failed to deliver email.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Email resent successfully to ${app.email} ("${mail.subject}")`,
+    });
+  });
+
   app.get('/api/admin/payments', async (req: Request, res: Response) => {
     const kind = typeof req.query.kind === 'string' ? req.query.kind : undefined;
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;

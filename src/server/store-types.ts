@@ -40,6 +40,7 @@ export interface DataStore {
   findApplicationByEmail(email: string): Promise<Application | undefined>;
   addApplication(app: Application): Promise<Application>;
   updateApplication(id: string, patch: Partial<Application>): Promise<Application | undefined>;
+  deleteApplication(id: string): Promise<boolean>;
   countApplicationsByStatus(): Promise<Record<ApplicationStatus, number>>;
   countPaidSeats(): Promise<number>;
 
