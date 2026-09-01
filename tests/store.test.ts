@@ -135,3 +135,55 @@ test('paid seats count attendees, not applications', async () => {
 
   await fs.rm(dir, { recursive: true, force: true });
 });
+
+test('deleteApplication removes application and returns boolean', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'scc-del-'));
+  const store = new JsonStore(dir, false);
+  await store.init();
+
+  await store.addApplication({
+    id: 'app_delete_me',
+    reference: 'SCC26-DEL1',
+    businessName: 'Delete Me Co',
+    contactName: 'Tester',
+    email: 'del@example.co.za',
+    phone: '+27 21 555 0100',
+    industry: 'Testing',
+    about: 'To be deleted.',
+    status: 'PENDING_REVIEW',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  assert.equal((await store.getApplication('SCC26-DEL1'))?.businessName, 'Delete Me Co');
+
+  // Deleting existing returns true and removes the record
+  const deleted = await store.deleteApplication('app_delete_me');
+  assert.equal(deleted, true);
+  assert.equal(await store.getApplication('SCC26-DEL1'), undefined);
+
+  // Deleting non-existent returns false
+  const deleteAgain = await store.deleteApplication('app_delete_me');
+  assert.equal(deleteAgain, false);
+
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('getGallery returns default gallery when empty and persists updates', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'scc-gal-'));
+  const store = new JsonStore(dir, false);
+  await store.init();
+
+  const gallery = await store.getGallery();
+  assert.equal(Array.isArray(gallery), true);
+  assert.ok(gallery.length > 0, 'must not be empty');
+
+  // Update gallery
+  const updated = await store.updateGallery([
+    { id: 'img_1', url: 'https://example.com/photo.jpg', caption: 'Custom caption' },
+  ]);
+  assert.equal(updated.length, 1);
+  assert.equal((await store.getGallery())[0].caption, 'Custom caption');
+
+  await fs.rm(dir, { recursive: true, force: true });
+});

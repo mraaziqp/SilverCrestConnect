@@ -13,8 +13,10 @@ import assert from 'node:assert/strict';
 
 import {
   applicationApproved,
+  applicationNotice,
   applicationReceived,
   donationReceipt,
+  programmeBroadcastEmail,
   ticketConfirmed,
 } from '../src/server/email/render.ts';
 import { createMailer, loadMailerConfig, describeMailer } from '../src/server/email/mailer.ts';
@@ -53,6 +55,36 @@ const RENDERERS = [
   {
     name: 'donationReceipt',
     build: () => donationReceipt({ name: 'Aisha Patel', amountZAR: 250, reference: 'DON-QQ1122' }),
+  },
+  {
+    name: 'applicationNotice',
+    build: () =>
+      applicationNotice({
+        businessName: 'VerifiedBizlink',
+        contactName: 'Mohammed Raaziq Parker',
+        applicantRole: 'Founder',
+        email: 'mo@example.co.za',
+        phone: '+27 83 798 4913',
+        industry: 'Legal Services & Compliance',
+        reference: 'SCC26-XYZ999',
+        attendeeCount: 1,
+        totalPriceZAR: 450,
+        about: 'Connecting businesses with verified compliance resources.',
+      }),
+  },
+  {
+    name: 'programmeBroadcastEmail',
+    build: () =>
+      programmeBroadcastEmail({
+        contactName: 'Wesley Bosman',
+        businessName: 'Bosman & Sons Catering',
+        dateLabel: '23 October 2026',
+        venueCity: 'Cape Town',
+        customMessage: 'We are thrilled to unveil the full programme for Silver Crest Connect 2026.',
+        programme: [
+          { time: '09:00', duration: '30 mins', title: 'Registration & Welcome Coffee', detail: 'Meet and greet other attendees' },
+        ],
+      }),
   },
 ];
 

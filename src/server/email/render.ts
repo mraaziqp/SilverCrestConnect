@@ -37,8 +37,9 @@ const GOLD_BORDER = 'rgba(197,160,89,0.30)';
 const LOGO_URL = `${EVENT.website}/logo.png`;
 
 /** Escapes text interpolated into the HTML part. Applicant names are user input. */
-function esc(value: string): string {
-  return value
+function esc(value?: string | null): string {
+  if (value === undefined || value === null) return '';
+  return String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
