@@ -18,11 +18,23 @@ export interface RenderedEmail {
   text: string;
 }
 
+/* ── Brand palette ─────────────────────────────────────────────── */
 const GOLD = '#C5A059';
+const GOLD_LIGHT = '#D4B577';
+const GOLD_DARK = '#A88940';
 const INK = '#0A0A0A';
-const SURFACE = '#141414';
-const BONE = '#FFFFFF';
-const MUTED = '#A1A1AA';
+const SURFACE = '#111111';
+const CARD = '#161616';
+const BONE = '#F5F0E8';
+const WHITE = '#FFFFFF';
+const MUTED = '#9A9A9F';
+const DIVIDER = 'rgba(197,160,89,0.20)';
+const DIVIDER_SUBTLE = 'rgba(255,255,255,0.06)';
+const GOLD_BG = 'rgba(197,160,89,0.06)';
+const GOLD_BORDER = 'rgba(197,160,89,0.30)';
+
+/** Logo URL — served from the public site. Falls back gracefully if blocked. */
+const LOGO_URL = `${EVENT.website}/logo.png`;
 
 /** Escapes text interpolated into the HTML part. Applicant names are user input. */
 function esc(value: string): string {
@@ -39,96 +51,127 @@ function money(amount: number): string {
   return `R${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${fraction}`;
 }
 
+/* ── Shell ─────────────────────────────────────────────────────── */
+
 interface ShellOptions {
   preheader: string;
   heading: string;
+  /** Optional single-line subheading beneath the heading. */
+  subheading?: string;
   body: string;
   /** Optional single call to action. */
   cta?: { label: string; url: string };
-  /** Optional highlighted reference panel. */
+  /** Optional highlighted reference / ticket panel. */
   panel?: { label: string; value: string; note?: string };
+  /** Optional event details card (for ticket confirmations). */
+  eventCard?: boolean;
 }
 
-function shell({ preheader, heading, body, cta, panel }: ShellOptions): string {
+function shell({ preheader, heading, subheading, body, cta, panel, eventCard }: ShellOptions): string {
+  const year = new Date().getFullYear();
+
   return `<!doctype html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>${esc(heading)}</title>
+<!--[if mso]>
+<style>table{border-collapse:collapse;}td{font-family:Arial,Helvetica,sans-serif;}</style>
+<![endif]-->
 </head>
-<body style="margin:0;padding:0;background:${INK};">
+<body style="margin:0;padding:0;background:${INK};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <!-- Preheader: shown in the inbox preview, hidden in the body. -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:${INK};">${esc(preheader)}${'&nbsp;&zwnj;'.repeat(30)}</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${INK};">
-<tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${INK};min-height:100%;">
+<tr><td align="center" style="padding:32px 16px 48px;">
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${SURFACE};border:1px solid rgba(197,160,89,0.25);">
+  <!-- ═══ Outer card ═══ -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;border-radius:8px;overflow:hidden;">
 
-    <tr><td style="padding:36px 36px 0;text-align:center;">
-      <div style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:${GOLD};font-weight:bold;">
+    <!-- ── Top gold accent line ── -->
+    <tr><td style="height:3px;background:linear-gradient(90deg,${GOLD_DARK},${GOLD},${GOLD_LIGHT},${GOLD},${GOLD_DARK});font-size:0;line-height:0;">&nbsp;</td></tr>
+
+    <!-- ── Header with logo ── -->
+    <tr><td style="background:${SURFACE};padding:36px 40px 28px;text-align:center;">
+
+      <!-- Logo -->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr><td style="text-align:center;">
+          <a href="${esc(EVENT.website)}" style="text-decoration:none;" target="_blank">
+            <img src="${esc(LOGO_URL)}" width="56" height="50" alt="Silver Crest" style="display:block;margin:0 auto;border:0;outline:none;" />
+          </a>
+        </td></tr>
+      </table>
+
+      <!-- Brand name -->
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;letter-spacing:5px;text-transform:uppercase;color:${GOLD};font-weight:bold;padding-top:16px;">
         Silver Crest Connect
       </div>
-      <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${MUTED};padding-top:8px;">
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:${MUTED};padding-top:6px;">
         ${esc(EVENT.tagline)}
       </div>
-      <div style="height:1px;background:${GOLD};opacity:0.3;margin:28px 0 0;"></div>
+
     </td></tr>
 
-    <tr><td style="padding:32px 36px 0;">
-      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.3;color:${BONE};font-weight:normal;">
+    <!-- ── Gold divider ── -->
+    <tr><td style="background:${SURFACE};padding:0 40px;">
+      <div style="height:1px;background:${DIVIDER};"></div>
+    </td></tr>
+
+    <!-- ── Heading ── -->
+    <tr><td style="background:${SURFACE};padding:28px 40px 0;">
+      <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;color:${WHITE};font-weight:normal;letter-spacing:0.5px;">
         ${esc(heading)}
       </h1>
+      ${subheading ? `<p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED};line-height:1.5;">${esc(subheading)}</p>` : ''}
     </td></tr>
 
-    <tr><td style="padding:20px 36px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:${MUTED};">
+    <!-- ── Body ── -->
+    <tr><td style="background:${SURFACE};padding:22px 40px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${MUTED};">
       ${body}
     </td></tr>
 
-    ${
-      panel
-        ? `<tr><td style="padding:28px 36px 0;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(197,160,89,0.08);border:1px solid rgba(197,160,89,0.3);">
-        <tr><td style="padding:20px;text-align:center;">
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${GOLD};font-weight:bold;">${esc(panel.label)}</div>
-          <div style="font-family:'Courier New',Courier,monospace;font-size:22px;letter-spacing:3px;color:${BONE};padding-top:10px;">${esc(panel.value)}</div>
-          ${panel.note ? `<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${MUTED};padding-top:10px;">${esc(panel.note)}</div>` : ''}
-        </td></tr>
-      </table>
-    </td></tr>`
-        : ''
-    }
+    ${panel ? renderPanel(panel) : ''}
 
-    ${
-      cta
-        ? `<tr><td style="padding:28px 36px 0;" align="center">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-        <tr><td style="background:${GOLD};">
-          <a href="${esc(cta.url)}" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#000000;text-decoration:none;">${esc(cta.label)}</a>
-        </td></tr>
+    ${eventCard ? renderEventCard() : ''}
+
+    ${cta ? renderCta(cta) : ''}
+
+    <!-- ── Footer ── -->
+    <tr><td style="background:${SURFACE};padding:32px 40px 36px;">
+      <div style="height:1px;background:${DIVIDER_SUBTLE};margin-bottom:24px;"></div>
+
+      <!-- Event details row -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.8;color:#6B6B72;">
+            <span style="color:${BONE};font-weight:bold;">${esc(EVENT.dateLabel)}</span><br>
+            ${esc(EVENT.timeLabel)} &middot; ${esc(EVENT.venueCity)}<br>
+            ${EVENT.presentedBy ? `Presented by ${esc(EVENT.presentedBy)}<br>` : ''}
+            <a href="mailto:${esc(EVENT.contactEmail)}" style="color:${GOLD};text-decoration:none;">${esc(EVENT.contactEmail)}</a>
+          </td>
+        </tr>
       </table>
-      <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};padding-top:14px;word-break:break-all;">
-        Or paste this into your browser:<br>${esc(cta.url)}
+
+      <!-- Cause note -->
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:16px;line-height:1.6;">
+        A portion of proceeds funds the ${esc(EVENT.causeShort)}.
       </div>
-    </td></tr>`
-        : ''
-    }
 
-    <tr><td style="padding:32px 36px 36px;">
-      <div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:20px;"></div>
-      <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:#6B6B72;">
-        <strong style="color:${MUTED};">${esc(EVENT.dateLabel)}</strong> &middot; ${esc(EVENT.timeLabel)} &middot; ${esc(EVENT.venueCity)}<br>
-        Presented by ${esc(EVENT.presentedBy)}<br>
-        <a href="mailto:${esc(EVENT.contactEmail)}" style="color:${GOLD};text-decoration:none;">${esc(EVENT.contactEmail)}</a>
+      <!-- Copyright -->
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#44444A;padding-top:12px;letter-spacing:0.5px;">
+        &copy; ${year} ${esc(EVENT.copyrightText)}
       </div>
     </td></tr>
 
-  </table>
+    <!-- ── Bottom gold accent line ── -->
+    <tr><td style="height:2px;background:linear-gradient(90deg,${GOLD_DARK},${GOLD},${GOLD_LIGHT},${GOLD},${GOLD_DARK});font-size:0;line-height:0;">&nbsp;</td></tr>
 
-  <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:20px;">
-    A portion of proceeds funds the ${esc(EVENT.causeShort)}.
-  </div>
+  </table>
 
 </td></tr>
 </table>
@@ -136,19 +179,105 @@ function shell({ preheader, heading, body, cta, panel }: ShellOptions): string {
 </html>`;
 }
 
-/** Shared footer for every plain-text part. */
+/* ── Panel (reference / ticket code) ──────────────────────────── */
+
+function renderPanel(panel: { label: string; value: string; note?: string }): string {
+  return `
+    <tr><td style="background:${SURFACE};padding:28px 40px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${GOLD_BG};border:1px solid ${GOLD_BORDER};border-radius:6px;overflow:hidden;">
+        <!-- Ticket-stub top edge -->
+        <tr><td style="height:4px;background:${GOLD};font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="padding:22px 24px;text-align:center;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${GOLD};font-weight:bold;">
+            ${esc(panel.label)}
+          </div>
+          <div style="font-family:'Courier New',Courier,monospace;font-size:26px;letter-spacing:4px;color:${WHITE};padding-top:12px;font-weight:bold;">
+            ${esc(panel.value)}
+          </div>
+          ${panel.note ? `<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${MUTED};padding-top:12px;line-height:1.5;">${esc(panel.note)}</div>` : ''}
+        </td></tr>
+      </table>
+    </td></tr>`;
+}
+
+/* ── CTA button ───────────────────────────────────────────────── */
+
+function renderCta(cta: { label: string; url: string }): string {
+  return `
+    <tr><td style="background:${SURFACE};padding:28px 40px 0;" align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="background:${GOLD};border-radius:4px;">
+          <a href="${esc(cta.url)}" style="display:inline-block;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#000000;text-decoration:none;line-height:1;" target="_blank">
+            ${esc(cta.label)}
+          </a>
+        </td></tr>
+      </table>
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:14px;word-break:break-all;line-height:1.5;">
+        Or paste this into your browser:<br>
+        <a href="${esc(cta.url)}" style="color:${GOLD_LIGHT};text-decoration:none;">${esc(cta.url)}</a>
+      </div>
+    </td></tr>`;
+}
+
+/* ── Event details card (for ticket confirmations) ────────────── */
+
+function renderEventCard(): string {
+  return `
+    <tr><td style="background:${SURFACE};padding:24px 40px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${CARD};border:1px solid ${DIVIDER_SUBTLE};border-radius:6px;overflow:hidden;">
+        <tr><td style="padding:20px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED};width:90px;vertical-align:top;">
+                <strong style="color:${GOLD};">Date</strong>
+              </td>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${BONE};">
+                Friday, ${esc(EVENT.dateLabel)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED};vertical-align:top;">
+                <strong style="color:${GOLD};">Time</strong>
+              </td>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${BONE};">
+                ${esc(EVENT.timeLabel)} (Registration from 08:30)
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED};vertical-align:top;">
+                <strong style="color:${GOLD};">Location</strong>
+              </td>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${BONE};">
+                ${esc(EVENT.venueCity)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED};vertical-align:top;">
+                <strong style="color:${GOLD};">Includes</strong>
+              </td>
+              <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${GOLD_LIGHT};">
+                Light breakfast, refreshments &amp; welcome pack
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>`;
+}
+
+/* ── Shared footer for every plain-text part ──────────────────── */
+
 function textFooter(): string {
   return `
 ---
 ${EVENT.fullName}
-${EVENT.dateLabel} - ${EVENT.timeLabel} - ${EVENT.venueCity}
-Presented by ${EVENT.presentedBy}
+${EVENT.dateLabel} - ${EVENT.timeLabel} - ${EVENT.venueCity}${EVENT.presentedBy ? `\nPresented by ${EVENT.presentedBy}` : ''}
 ${EVENT.contactEmail}
 
 A portion of proceeds funds the ${EVENT.causeShort}.`;
 }
 
-// ------------------------------------------------------------------ templates
+// ================================================================== templates
 
 /** Sent immediately on application. Sets the expectation that vetting comes next. */
 export function applicationReceived(input: {
@@ -164,11 +293,12 @@ export function applicationReceived(input: {
     html: shell({
       preheader: `We have received your application for ${businessName}. Reference: ${reference}.`,
       heading: 'Application Received',
+      subheading: `${EVENT.fullName} · ${EVENT.dateLabel}`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Thank you for applying to attend <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)} for <strong style="color:${BONE};">${esc(businessName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
+<p style="margin:0 0 16px;">Thank you for applying to attend <strong style="color:${WHITE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)} for <strong style="color:${WHITE};">${esc(businessName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
 <p style="margin:0 0 16px;">Because Connect is a curated event aiming for <strong>1–2 businesses per category</strong>, applications are reviewed to maintain a diverse, high-value mix of non-competing businesses and professionals.</p>
 <p style="margin:0 0 16px;">Our team is reviewing your application. If approved, you will receive an email with your private payment instructions to secure your spot.</p>
-<p style="margin:0;">There is no payment required at this stage.</p>`,
+<p style="margin:0;color:${GOLD};">There is no payment required at this stage.</p>`,
       panel: {
         label: 'Your Reference Number',
         value: reference,
@@ -216,7 +346,7 @@ export function applicationApproved(input: {
 
   const scarcity =
     seatsRemaining > 0 && seatsRemaining <= 5
-      ? `<p style="margin:0 0 16px;color:${GOLD};">Only ${seatsRemaining} ${seatsRemaining === 1 ? 'seat' : 'seats'} remaining.</p>`
+      ? `<p style="margin:0 0 16px;color:${GOLD};font-weight:bold;">Only ${seatsRemaining} ${seatsRemaining === 1 ? 'seat' : 'seats'} remaining.</p>`
       : '';
 
   return {
@@ -228,9 +358,10 @@ export function applicationApproved(input: {
         ? `${businessName} is approved! Complete payment of ${money(totalAmountZAR)} to secure your seat.`
         : `${businessName} is approved. We will send your payment link shortly.`,
       heading: 'Application Approved',
+      subheading: `${esc(businessName)} · ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Good news — your application for <strong style="color:${BONE};">${esc(businessName)}</strong> has been approved for <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)}.</p>
-<p style="margin:0 0 16px;">${paymentsOpen ? 'Your seat is now available to secure. ' : ''}Total attendance fee: <strong style="color:${BONE};">${money(totalAmountZAR)}</strong> for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).</p>
+<p style="margin:0 0 16px;">Good news — your application for <strong style="color:${WHITE};">${esc(businessName)}</strong> has been approved for <strong style="color:${WHITE};">${esc(EVENT.fullName)}</strong> on ${esc(EVENT.dateLabel)}.</p>
+<p style="margin:0 0 16px;">${paymentsOpen ? 'Your seat is now available to secure. ' : ''}Total attendance fee: <strong style="color:${WHITE};">${money(totalAmountZAR)}</strong> for ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'} (includes light breakfast, morning refreshments, and full event access).</p>
 ${
   paymentsOpen
     ? `<p style="margin:0 0 16px;">Click below to complete your payment securely via PayFast.</p>
@@ -370,14 +501,9 @@ export function ticketConfirmed(input: {
     html: shell({
       preheader: `You're confirmed for Silver Crest Connect '26! Ticket code: ${ticketCode}.`,
       heading: "YOU'RE CONFIRMED",
+      subheading: `Payment of ${money(amountZAR)} received · ${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Payment of <strong style="color:${BONE};">${money(amountZAR)}</strong> received. <strong style="color:${BONE};">${esc(businessName)}</strong> is officially confirmed for <strong style="color:${BONE};">${esc(EVENT.fullName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
-<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:16px;margin:20px 0;border-radius:4px;">
-  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Date:</strong> Friday, ${esc(EVENT.dateLabel)}</p>
-  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Time:</strong> ${esc(EVENT.timeLabel)} (Registration from 08:30)</p>
-  <p style="margin:0 0 8px;font-size:14px;color:${BONE};"><strong>Location:</strong> ${esc(EVENT.venueCity)}</p>
-  <p style="margin:0;font-size:14px;color:${GOLD};"><strong>Includes:</strong> Light breakfast, refreshments, and welcome pack</p>
-</div>
+<p style="margin:0 0 16px;">Payment of <strong style="color:${WHITE};">${money(amountZAR)}</strong> received. <strong style="color:${WHITE};">${esc(businessName)}</strong> is officially confirmed for <strong style="color:${WHITE};">${esc(EVENT.fullName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
 <p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival you will receive your welcome pack. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
 <p style="margin:0;">A portion of proceeds goes towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
       panel: {
@@ -385,6 +511,7 @@ export function ticketConfirmed(input: {
         value: ticketCode,
         note: 'Present this ticket code upon arrival at registration.',
       },
+      eventCard: true,
     }),
     text: `Hi ${contactName},
 
@@ -420,8 +547,9 @@ export function donationReceipt(input: {
     html: shell({
       preheader: `Your ${money(amountZAR)} donation to the ${EVENT.causeShort} has been received.`,
       heading: 'Thank you',
+      subheading: `Your generosity makes a difference`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(name)},</p>
-<p style="margin:0 0 16px;">Your donation of <strong style="color:${BONE};">${money(amountZAR)}</strong> has been received. A portion goes towards supplies for the ${esc(EVENT.cause)}.</p>
+<p style="margin:0 0 16px;">Your donation of <strong style="color:${WHITE};">${money(amountZAR)}</strong> has been received. A portion goes towards supplies for the ${esc(EVENT.cause)}.</p>
 <p style="margin:0;">This email is your receipt.</p>`,
       panel: {
         label: 'Receipt reference',
@@ -456,11 +584,11 @@ export function programmeBroadcastEmail(input: {
   const agendaHtml = programme
     .map(
       (p) => `
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
-      <td style="padding:10px 0;font-family:monospace;font-size:12px;color:${GOLD};width:130px;vertical-align:top;">${esc(p.time)}</td>
-      <td style="padding:10px 0;vertical-align:top;">
+    <tr>
+      <td style="padding:12px 0;font-family:'Courier New',Courier,monospace;font-size:12px;color:${GOLD};width:130px;vertical-align:top;border-bottom:1px solid ${DIVIDER_SUBTLE};">${esc(p.time)}</td>
+      <td style="padding:12px 0;vertical-align:top;border-bottom:1px solid ${DIVIDER_SUBTLE};">
         <div style="font-weight:bold;color:${BONE};font-size:13px;">${esc(p.title)}</div>
-        <div style="color:${MUTED};font-size:12px;margin-top:2px;">${esc(p.detail)}</div>
+        <div style="color:${MUTED};font-size:12px;margin-top:3px;line-height:1.5;">${esc(p.detail)}</div>
       </td>
     </tr>`,
     )
@@ -475,13 +603,14 @@ export function programmeBroadcastEmail(input: {
     html: shell({
       preheader: `The official event programme for ${EVENT.fullName} on ${dateLabel}.`,
       heading: 'Event Programme',
+      subheading: `${dateLabel} · ${venueCity}`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
-<p style="margin:0 0 16px;">Here is the latest schedule for <strong>${esc(businessName)}</strong> for <strong>${esc(EVENT.fullName)}</strong> on <strong>${esc(dateLabel)}</strong> in ${esc(venueCity)}.</p>
-${customMessage ? `<p style="margin:0 0 16px;color:${GOLD};">${esc(customMessage)}</p>` : ''}
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+<p style="margin:0 0 16px;">Here is the latest schedule for <strong style="color:${WHITE};">${esc(businessName)}</strong> for <strong style="color:${WHITE};">${esc(EVENT.fullName)}</strong> on <strong style="color:${WHITE};">${esc(dateLabel)}</strong> in ${esc(venueCity)}.</p>
+${customMessage ? `<p style="margin:0 0 16px;color:${GOLD};font-style:italic;">${esc(customMessage)}</p>` : ''}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
   ${agendaHtml}
 </table>
-<p style="margin:16px 0 0;font-size:12px;color:${MUTED};">We look forward to hosting you!</p>`,
+<p style="margin:16px 0 0;font-size:13px;color:${MUTED};">We look forward to hosting you!</p>`,
     }),
     text: `Hi ${contactName},
 
@@ -494,4 +623,3 @@ We look forward to hosting you!
 ${textFooter()}`,
   };
 }
-
