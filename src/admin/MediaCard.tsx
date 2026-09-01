@@ -96,16 +96,16 @@ export const MediaCard: React.FC<MediaCardProps> = ({
         )}
 
         {/* Actions. Always visible on touch, where there is no hover. */}
-        <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
           {onMoveLeft && (
             <button
               type="button"
               onClick={onMoveLeft}
               disabled={disabled}
               aria-label={`Move ${label ?? 'image'} earlier`}
-              className="p-1.5 rounded-sm bg-black/70 text-bone hover:text-gold disabled:opacity-40 transition-colors"
+              className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded bg-black/80 text-bone hover:text-gold disabled:opacity-40 transition-colors"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
           )}
           {onMoveRight && (
@@ -114,9 +114,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({
               onClick={onMoveRight}
               disabled={disabled}
               aria-label={`Move ${label ?? 'image'} later`}
-              className="p-1.5 rounded-sm bg-black/70 text-bone hover:text-gold disabled:opacity-40 transition-colors"
+              className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded bg-black/80 text-bone hover:text-gold disabled:opacity-40 transition-colors"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           )}
           <button
@@ -124,9 +124,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             onClick={onRemove}
             disabled={disabled}
             aria-label={`Remove ${label ?? 'image'}`}
-            className="p-1.5 rounded-sm bg-black/70 text-bone hover:text-red-400 disabled:opacity-40 transition-colors"
+            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded bg-black/80 text-bone hover:text-red-400 disabled:opacity-40 transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>

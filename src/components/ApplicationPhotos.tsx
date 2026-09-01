@@ -109,9 +109,9 @@ export const ApplicationPhotos: React.FC<ApplicationPhotosProps> = ({
               onClick={() => onChange(images.filter((_, i) => i !== index))}
               disabled={disabled || busy}
               aria-label={`Remove photo ${index + 1}`}
-              className="absolute top-1 right-1 p-1 rounded-sm bg-black/75 text-bone hover:text-red-400 transition-colors disabled:opacity-40"
+              className="absolute top-1.5 right-1.5 p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center rounded bg-black/85 text-bone hover:text-red-400 hover:bg-black transition-colors disabled:opacity-40"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         ))}

@@ -187,7 +187,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ open, onClose,
         role="dialog"
         aria-modal="true"
         aria-labelledby="application-title"
-        className="relative w-full max-w-2xl my-6 rounded-lg border border-gold/25 bg-ink-raised shadow-2xl max-h-[92vh] overflow-y-auto"
+        className="relative w-full max-w-2xl my-6 rounded-lg border border-gold/25 bg-ink-raised shadow-2xl max-h-[92vh] overflow-y-auto touch-scroll overscroll-contain"
       >
         <button
           type="button"

@@ -57,7 +57,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
       <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
         {/* Ticket card */}
         <Card featured className="min-w-0 p-6 sm:p-8 lg:p-10">
-          <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <span className="inline-block px-2.5 py-1 rounded bg-gold/15 border border-gold/30 text-[10px] uppercase tracking-brand text-gold font-bold mb-2">
                 1–2 Per Category · Curated Access
@@ -67,7 +67,7 @@ export const Tickets: React.FC<TicketsProps> = ({ seatsRemaining, event }) => {
               </h3>
               <p className="mt-1 text-xs text-muted">Includes light breakfast & morning refreshments</p>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               {priceReady ? (
                 <p className="font-display text-4xl sm:text-5xl font-bold text-gold leading-none">
                   {formatZAR(ticketPrice)}
