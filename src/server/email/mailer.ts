@@ -305,6 +305,25 @@ class ConsoleMailer implements Mailer {
  * recorded even if the receipt bounces, and an applicant must not see a 500
  * because a mail server was briefly down.
  */
+/**
+ * The last delivery failure, kept so /admin can show it.
+ *
+ * A send that fails only writes to the log, and nobody reads a serverless log.
+ * The applicant simply never receives their reference or payment link, and the
+ * first anyone hears of it is someone asking why they were never contacted.
+ * Holding the last failure lets the dashboard say so out loud.
+ */
+let lastFailure: { at: string; context: string; error: string } | null = null;
+
+export function getLastMailFailure(): { at: string; context: string; error: string } | null {
+  return lastFailure;
+}
+
+/** Cleared once something gets through, so a fixed problem stops being reported. */
+export function clearLastMailFailure(): void {
+  lastFailure = null;
+}
+
 export function sendInBackground(
   mailer: Mailer,
   to: string,
@@ -315,8 +334,10 @@ export function sendInBackground(
     .send(to, message)
     .then((result) => {
       if (!result.ok) {
+        lastFailure = { at: new Date().toISOString(), context, error: result.error ?? 'unknown' };
         console.error(`[email] ${context} to ${to} FAILED: ${result.error}`);
       } else if (!result.skipped) {
+        lastFailure = null;
         console.log(`[email] ${context} sent to ${to} (${result.id ?? 'no id'})`);
       }
     })
@@ -347,6 +368,16 @@ export function describeMailer(
   if (!mailer.configured) {
     warnings.push(
       'No mail driver configured — emails are logged to the server console, not delivered. Applicants will not receive their reference or payment link.',
+    );
+  }
+
+  const failure = getLastMailFailure();
+  if (failure) {
+    const unverified = /not verified|domain is not/i.test(failure.error);
+    warnings.push(
+      unverified
+        ? `EMAIL IS NOT BEING DELIVERED. The sending domain in EMAIL_FROM is not verified with the mail provider, so every message is refused. Verify the domain, or send from one that is. (Last failure: ${failure.context}.)`
+        : `The last email failed to send (${failure.context}): ${failure.error}`,
     );
   }
 
