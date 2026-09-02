@@ -182,6 +182,14 @@ export interface EventSettings {
   cause: string;
   causeShort: string;
   customLogoUrl?: string;
+  /** Donation section copy. Editable because the funding claim it makes is
+   *  the organiser's to word, not ours to hardcode. */
+  donateHeading: string;
+  donateLead: string;
+  /** The line under the on-the-day section explaining where money goes. */
+  impactFundingNote: string;
+  /** Sponsor rails are hidden entirely when this is off. */
+  sponsorsEnabled: boolean;
   /** Heading above the previous-drive gallery on the donate section. */
   galleryHeading: string;
   galleryBody: string;

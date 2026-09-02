@@ -8,6 +8,7 @@
 import React from 'react';
 import { Images, PiggyBank, QrCode } from 'lucide-react';
 import { Section, SectionHeading } from './Brand';
+import { fillCopy } from '../lib/copy';
 import { IMPACT_ITEMS as DEFAULT_IMPACT_ITEMS, EVENT } from '../config/event';
 import type { ImpactItem, EventSettings } from '../types';
 
@@ -51,7 +52,10 @@ export const ImpactStand: React.FC<ImpactStandProps> = ({
       </div>
 
       <p className="mt-12 text-center text-[13px] text-muted/70 max-w-2xl mx-auto leading-relaxed">
-        A portion of ticket proceeds, on-site contributions, and donations funds supplies for the {causeShort}.
+        {fillCopy(
+          event?.impactFundingNote || '100% of every donation goes towards supplies for the {cause}.',
+          { cause: causeShort },
+        )}
       </p>
     </Section>
   );

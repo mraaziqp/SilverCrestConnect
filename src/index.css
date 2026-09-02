@@ -70,6 +70,19 @@
     cursor: not-allowed;
   }
 
+  /* Quieter than outline: for dense toolbars where a row of bordered
+     buttons would read as a wall. */
+  .btn-ghost {
+    border: 1px solid transparent;
+    color: var(--color-muted);
+    background-color: transparent;
+    font-weight: 600;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--color-bone);
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+
   .btn-outline {
     border: 1px solid rgba(197, 160, 89, 0.55);
     color: var(--color-bone);

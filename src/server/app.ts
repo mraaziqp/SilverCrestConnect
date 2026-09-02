@@ -50,6 +50,7 @@ import {
   type Mailer,
   type MailerConfig,
 } from './email/mailer.js';
+import type { RenderedEmail } from './email/render.js';
 import {
   applicationApproved,
   applicationNotice,

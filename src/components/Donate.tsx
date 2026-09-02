@@ -7,6 +7,7 @@
 import React, { useMemo, useState } from 'react';
 import { Heart, Loader2, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Section, SectionHeading, Card, Button, FieldError } from './Brand';
+import { fillCopy } from '../lib/copy';
 import { EVENT, DONATION_PRESETS, DONATION_MIN_ZAR, DONATION_MAX_ZAR, DEFAULT_GALLERY } from '../config/event';
 import { api, ApiRequestError, formatZAR } from '../lib/api';
 import { redirectToPayFast } from '../lib/payfast';
@@ -87,10 +88,31 @@ export const Donate: React.FC<DonateProps> = ({
         eyebrow="Support the Cause"
         title={
           <>
-            Fund the <span className="text-gold">{causeShort}</span>
+            {(() => {
+              // The heading is editable, and names the cause via {cause}. The
+              // cause itself is highlighted wherever it lands in the sentence.
+              const heading = fillCopy(
+                event?.donateHeading || 'Fund the {cause}',
+                { cause: causeShort },
+              );
+              const [before, after] = heading.split(causeShort);
+              return after === undefined ? (
+                heading
+              ) : (
+                <>
+                  {before}
+                  <span className="text-gold">{causeShort}</span>
+                  {after}
+                </>
+              );
+            })()}
           </>
         }
-        lead={`You do not have to attend to make an impact. A portion of every donation goes towards supplies for the ${causeShort}.`}
+        lead={fillCopy(
+          event?.donateLead ||
+            'You do not have to attend to make an impact. 100% of every donation goes towards supplies for the {cause}.',
+          { cause: causeShort },
+        )}
       />
 
       {/* Running total, when there is one worth showing. */}

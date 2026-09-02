@@ -139,16 +139,36 @@ function LandingPage() {
           seatsRemaining={summary?.seatsRemaining ?? null}
           event={summary?.event}
         />
-        <SponsorRail sponsors={summary?.sponsors} placement="hero" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="hero"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
         <About event={summary?.event} />
-        <SponsorRail sponsors={summary?.sponsors} placement="about" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="about"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
         <Programme welcomePack={summary?.welcomePack} funnelSteps={summary?.funnelSteps} />
-        <SponsorRail sponsors={summary?.sponsors} placement="how-to-join" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="how-to-join"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
         <Tickets
           seatsRemaining={summary?.seatsRemaining ?? null}
           event={summary?.event}
         />
-        <SponsorRail sponsors={summary?.sponsors} placement="tickets" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="tickets"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
         <Donate
           totalRaisedZAR={summary?.totalRaisedZAR ?? null}
           supporters={summary?.supporters ?? null}
@@ -158,14 +178,29 @@ function LandingPage() {
           paymentsOpen={summary?.paymentsOpen !== false}
           event={summary?.event}
         />
-        <SponsorRail sponsors={summary?.sponsors} placement="donate" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="donate"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
         <Supporters />
         <ImpactStand
           impactItems={summary?.impactItems}
           event={summary?.event}
         />
-        <SponsorRail sponsors={summary?.sponsors} placement="impact" heading={sponsorHeading} />
-        <SponsorRail sponsors={summary?.sponsors} placement="footer" heading={sponsorHeading} />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="impact"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
+        <SponsorRail
+          sponsors={summary?.sponsors}
+          placement="footer"
+          heading={sponsorHeading}
+          enabled={summary?.event?.sponsorsEnabled !== false}
+        />
       </main>
       <Footer event={summary?.event} />
     </>

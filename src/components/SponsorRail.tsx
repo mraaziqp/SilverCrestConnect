@@ -17,6 +17,8 @@ import type { Sponsor, SponsorPlacement } from '../types';
 interface SponsorRailProps {
   sponsors?: Sponsor[];
   placement: SponsorPlacement;
+  /** When false, no rail renders anywhere. Controlled from the dashboard. */
+  enabled?: boolean;
   /** Heading above the rail. Hidden when blank. */
   heading?: string;
   className?: string;
@@ -25,9 +27,13 @@ interface SponsorRailProps {
 export const SponsorRail: React.FC<SponsorRailProps> = ({
   sponsors = [],
   placement,
+  enabled = true,
   heading,
   className = '',
 }) => {
+  // Switched off in settings: nothing renders, whatever is stored.
+  if (!enabled) return null;
+
   const mine = sponsors.filter((s) => s.placement === placement && s.logoUrl);
   if (mine.length === 0) return null;
 

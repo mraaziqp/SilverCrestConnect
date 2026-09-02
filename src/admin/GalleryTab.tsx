@@ -18,9 +18,6 @@ import {
   RotateCcw,
   Save,
   Trash2,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   Check,
   Copy,
   Layers,
@@ -94,7 +91,7 @@ export const GalleryTab: React.FC<{ token: string }> = ({ token }) => {
         const seenUrls = new Set<string>();
 
         (appsRes.applications ?? []).forEach((app) => {
-          (app.photoUrls ?? []).forEach((url) => {
+          (app.images ?? []).forEach((url: string) => {
             if (url && !seenUrls.has(url)) {
               seenUrls.add(url);
               discovered.push({

@@ -39,11 +39,11 @@ export const EVENT = {
     'An exclusive half-day business-to-business networking showcase for local SME founders, where business growth directly supports community outreach.',
   aboutTitle: 'A room built for real business, funding real community work.',
   aboutLead:
-    'Silver Crest Connect brings together local business founders for focused business-to-business networking. A portion of every ticket sold funds our Year-End Community Outreach Drive.',
+    'Silver Crest Connect brings together local business founders for focused business-to-business networking. Every ticket sold helps fund our Year-End Community Outreach Drive.',
   aboutBody:
     'Curated introductions between founders, practical keynote sessions, and a dedicated SME Spotlight where each business owner has the floor to present their services.',
 
-  /** Attendance fee per SME (primary representative), in ZAR. A portion funds the outreach drive. */
+  /** Attendance fee per SME (primary representative), in ZAR. Helps fund the outreach drive. */
   ticketPriceZAR: 450,
   /** Additional fee in ZAR for a second representative / employee / co-worker. */
   additionalRepPriceZAR: 350,
@@ -60,7 +60,7 @@ export const EVENT = {
   contactPhone: '',
 
   footerNote:
-    'A portion of the proceeds from tickets and donations goes towards supplies for the Year-End Community Outreach Drive.',
+    '100% of every donation goes towards supplies for the Year-End Community Outreach Drive.',
   copyrightText: 'Silver Crest Connect. All rights reserved.',
 
   social: {
@@ -90,7 +90,7 @@ export const PILLARS = [
   {
     id: 'impact',
     title: 'Make An Impact',
-    body: `A portion of attendance proceeds (R${EVENT.ticketPriceZAR} per SME) funds ${EVENT.cause}.`,
+    body: `Attendance proceeds (R${EVENT.ticketPriceZAR} per SME) help fund ${EVENT.cause}.`,
   },
 ] as const;
 

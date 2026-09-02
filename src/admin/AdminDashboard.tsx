@@ -18,7 +18,6 @@ import {
   Copy,
   Download,
   ExternalLink,
-  Eye,
   FileSpreadsheet,
   FileText,
   HandCoins,
@@ -1984,6 +1983,65 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               placeholder="Year-End Community Outreach Drive"
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Donation Section Heading
+            </label>
+            <input
+              type="text"
+              value={settings.donateHeading || ''}
+              onChange={(e) => setSettings({ ...settings, donateHeading: e.target.value })}
+              placeholder="Fund the {cause}"
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+            <p className="mt-1.5 text-[11px] text-muted/60">
+              Write <code className="text-gold">{'{cause}'}</code> where the drive's name should
+              appear — it is filled in from "Cause (short name)" above and shown in gold.
+            </p>
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Donation Section Lead
+            </label>
+            <textarea
+              rows={2}
+              value={settings.donateLead || ''}
+              onChange={(e) => setSettings({ ...settings, donateLead: e.target.value })}
+              placeholder="You do not have to attend to make an impact. 100% of every donation goes towards supplies for the {cause}."
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
+              Funding Note (under "On the Day")
+            </label>
+            <textarea
+              rows={2}
+              value={settings.impactFundingNote || ''}
+              onChange={(e) => setSettings({ ...settings, impactFundingNote: e.target.value })}
+              placeholder="100% of every donation goes towards supplies for the {cause}."
+              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={settings.sponsorsEnabled !== false}
+                onChange={(e) => setSettings({ ...settings, sponsorsEnabled: e.target.checked })}
+                className="mt-0.5 w-4 h-4 accent-[#C5A059]"
+              />
+              <span>
+                <span className="block text-[13px] text-bone font-semibold">
+                  Show sponsor logos on the site
+                </span>
+                <span className="block mt-0.5 text-[11.5px] text-muted/70 leading-relaxed">
+                  Turn this off to hide every "In partnership with" band across the site without
+                  deleting the logos. They stay in the Sponsors tab, ready to switch back on.
+                </span>
+              </span>
+            </label>
           </div>
           <div>
             <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">

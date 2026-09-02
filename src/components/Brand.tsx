@@ -158,8 +158,8 @@ export const GoldRule: React.FC<{ className?: string }> = ({ className = '' }) =
 );
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'gold' | 'outline';
-  size?: 'md' | 'lg';
+  variant?: 'gold' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -172,8 +172,12 @@ export const Button: React.FC<ButtonProps> = ({
   <button
     {...rest}
     className={[
-      variant === 'gold' ? 'btn-gold' : 'btn-outline',
-      size === 'lg' ? 'px-8 py-4 text-sm' : 'px-6 py-3 text-xs',
+      variant === 'gold' ? 'btn-gold' : variant === 'ghost' ? 'btn-ghost' : 'btn-outline',
+      size === 'lg'
+        ? 'px-8 py-4 text-sm'
+        : size === 'sm'
+          ? 'px-3 py-1.5 text-[11px]'
+          : 'px-6 py-3 text-xs',
       'uppercase tracking-[0.16em] rounded-sm transition-colors duration-200',
       'inline-flex items-center justify-center gap-2.5 whitespace-nowrap',
       className,
@@ -184,8 +188,8 @@ export const Button: React.FC<ButtonProps> = ({
 );
 
 type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-  variant?: 'gold' | 'outline';
-  size?: 'md' | 'lg';
+  variant?: 'gold' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
 };
 
 export const ButtonLink: React.FC<AnchorProps> = ({
@@ -198,8 +202,12 @@ export const ButtonLink: React.FC<AnchorProps> = ({
   <a
     {...rest}
     className={[
-      variant === 'gold' ? 'btn-gold' : 'btn-outline',
-      size === 'lg' ? 'px-8 py-4 text-sm' : 'px-6 py-3 text-xs',
+      variant === 'gold' ? 'btn-gold' : variant === 'ghost' ? 'btn-ghost' : 'btn-outline',
+      size === 'lg'
+        ? 'px-8 py-4 text-sm'
+        : size === 'sm'
+          ? 'px-3 py-1.5 text-[11px]'
+          : 'px-6 py-3 text-xs',
       'uppercase tracking-[0.16em] rounded-sm transition-colors duration-200',
       'inline-flex items-center justify-center gap-2.5 whitespace-nowrap',
       className,

@@ -37,6 +37,9 @@ const TEXT_FIELDS: Record<string, number> = {
   aboutBody: 2000,
   cause: 200,
   causeShort: 120,
+  donateHeading: 160,
+  donateLead: 600,
+  impactFundingNote: 400,
   galleryHeading: 120,
   sponsorsHeading: 120,
   galleryBody: 600,
@@ -54,6 +57,8 @@ const NUMBER_FIELDS: Record<string, { min: number; max: number }> = {
   capacityMin: { min: 1, max: 10_000 },
   capacityMax: { min: 1, max: 10_000 },
 };
+
+const BOOLEAN_FIELDS = ['sponsorsEnabled'] as const;
 
 const URL_FIELDS = ['website', 'companyWebsite', 'customLogoUrl'] as const;
 
@@ -119,6 +124,7 @@ export function validateSettings(
     ...Object.keys(TEXT_FIELDS),
     ...Object.keys(NUMBER_FIELDS),
     ...URL_FIELDS,
+    ...BOOLEAN_FIELDS,
     'contactEmail',
     'date',
     'startTime',
@@ -192,6 +198,20 @@ export function validateSettings(
       continue;
     }
     (out as Record<string, unknown>)[field] = value;
+  }
+
+  // ---- booleans
+  for (const field of BOOLEAN_FIELDS) {
+    if (!(field in body)) continue;
+    const raw = body[field];
+    if (typeof raw === 'boolean') {
+      out[field] = raw;
+    } else if (raw === 'true' || raw === 'false') {
+      // A form control may hand back the string rather than the value.
+      out[field] = raw === 'true';
+    } else {
+      errors[field] = 'Must be true or false.';
+    }
   }
 
   // ---- email

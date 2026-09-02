@@ -160,7 +160,7 @@ function shell({ preheader, heading, subheading, body, cta, panel, eventCard }: 
 
       <!-- Cause note -->
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:16px;line-height:1.6;">
-        A portion of proceeds funds the ${esc(EVENT.causeShort)}.
+        100% of every donation funds the ${esc(EVENT.causeShort)}.
       </div>
 
       <!-- Copyright -->
@@ -275,7 +275,7 @@ ${EVENT.fullName}
 ${EVENT.dateLabel} - ${EVENT.timeLabel} - ${EVENT.venueCity}${EVENT.presentedBy ? `\nPresented by ${EVENT.presentedBy}` : ''}
 ${EVENT.contactEmail}
 
-A portion of proceeds funds the ${EVENT.causeShort}.`;
+100% of every donation funds the ${EVENT.causeShort}.`;
 }
 
 // ================================================================== templates
@@ -506,7 +506,7 @@ export function ticketConfirmed(input: {
       body: `<p style="margin:0 0 16px;">Hi ${esc(contactName)},</p>
 <p style="margin:0 0 16px;">Payment of <strong style="color:${WHITE};">${money(amountZAR)}</strong> received. <strong style="color:${WHITE};">${esc(businessName)}</strong> is officially confirmed for <strong style="color:${WHITE};">${esc(EVENT.fullName)}</strong> (${attendeeCount} ${attendeeCount === 1 ? 'attendee' : 'attendees'}).</p>
 <p style="margin:0 0 16px;"><strong>What to expect:</strong> On arrival you will receive your welcome pack. You will also have the floor during the SME Spotlight to introduce your business to the room.</p>
-<p style="margin:0;">A portion of proceeds goes towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
+<p style="margin:0;">Proceeds go towards supplies for the ${esc(EVENT.causeShort)}. We look forward to hosting you.</p>`,
       panel: {
         label: 'Your Digital Ticket Code',
         value: ticketCode,
@@ -530,7 +530,7 @@ On arrival you will receive your welcome pack. You will also have the floor duri
 YOUR TICKET CODE: ${ticketCode}
 Present this code upon arrival at registration.
 
-A portion of proceeds funds the ${EVENT.causeShort}. We look forward to hosting you!
+100% of every donation funds the ${EVENT.causeShort}. We look forward to hosting you!
 ${textFooter()}`,
   };
 }
@@ -550,7 +550,7 @@ export function donationReceipt(input: {
       heading: 'Thank you',
       subheading: `Your generosity makes a difference`,
       body: `<p style="margin:0 0 16px;">Hi ${esc(name)},</p>
-<p style="margin:0 0 16px;">Your donation of <strong style="color:${WHITE};">${money(amountZAR)}</strong> has been received. A portion goes towards supplies for the ${esc(EVENT.cause)}.</p>
+<p style="margin:0 0 16px;">Your donation of <strong style="color:${WHITE};">${money(amountZAR)}</strong> has been received, and goes in full towards supplies for the ${esc(EVENT.cause)}.</p>
 <p style="margin:0;">This email is your receipt.</p>`,
       panel: {
         label: 'Receipt reference',
@@ -560,7 +560,7 @@ export function donationReceipt(input: {
     }),
     text: `Hi ${name},
 
-Your donation of ${money(amountZAR)} has been received. A portion goes
+Your donation of ${money(amountZAR)} has been received, and goes in full
 towards supplies for the ${EVENT.cause}.
 
 This email is your receipt.
