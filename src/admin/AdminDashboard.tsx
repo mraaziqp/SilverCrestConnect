@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { Monogram, Button, Card } from '../components/Brand';
 import { GalleryTab } from './GalleryTab';
+import { SettingsField } from './SettingsField';
 import { api, ApiRequestError, formatZAR, formatDateTime } from '../lib/api';
 import { copyToClipboard } from '../lib/clipboard';
 import { SponsorsTab } from './SponsorsTab';
@@ -1648,6 +1649,51 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
           <h3 className="font-display text-lg font-bold text-bone">Date, Time &amp; Venue</h3>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <SettingsField
+            label="Event Name"
+            value={settings.name}
+            onChange={(name) => setSettings({ ...settings, name })}
+            placeholder="Silver Crest Connect"
+            maxLength={80}
+            hint="Used across the site and in every email."
+          />
+          <SettingsField
+            label="Edition"
+            value={settings.edition}
+            onChange={(edition) => setSettings({ ...settings, edition })}
+            placeholder="'26"
+            maxLength={12}
+            hint="Appended to the name, e.g. Silver Crest Connect '26."
+          />
+          <SettingsField
+            label="Event Website"
+            value={settings.website}
+            onChange={(website) => setSettings({ ...settings, website })}
+            placeholder="https://scconnect.co.za"
+            hint="This site's own address."
+          />
+          <SettingsField
+            label="City"
+            value={settings.city}
+            onChange={(city) => setSettings({ ...settings, city })}
+            placeholder="Cape Town"
+            maxLength={80}
+          />
+          <SettingsField
+            label="Sponsors Caption"
+            value={settings.sponsorsHeading}
+            onChange={(sponsorsHeading) => setSettings({ ...settings, sponsorsHeading })}
+            placeholder="In partnership with"
+            maxLength={120}
+            hint="The line above each row of sponsor logos."
+          />
+          <SettingsField
+            label="End Time (HH:MM)"
+            value={settings.endTime}
+            onChange={(endTime) => setSettings({ ...settings, endTime })}
+            placeholder="13:00"
+            hint="Start time is set below. Both feed the displayed time label."
+          />
           <div>
             <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
               Event Date (YYYY-MM-DD)
@@ -2067,17 +2113,17 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
-              Footer Note ("Where your money goes")
-            </label>
-            <textarea
-              rows={2}
-              value={settings.footerNote}
-              onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
-              className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
-            />
-          </div>
+          <SettingsField
+            className="sm:col-span-2 lg:col-span-3"
+            label='Footer Note ("Where your money goes")'
+            value={settings.footerNote}
+            onChange={(footerNote) => setSettings({ ...settings, footerNote })}
+            rows={4}
+            maxLength={600}
+            hint="Shown in the footer of every page. This is where the funding promise is
+                  stated in full — worth being precise about what applies to donations and
+                  what applies to ticket proceeds."
+          />
           <div>
             <label className="block text-[11px] uppercase tracking-[0.14em] text-muted mb-2 font-semibold">
               Copyright Footer Notice

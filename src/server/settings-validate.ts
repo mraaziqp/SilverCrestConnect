@@ -46,7 +46,10 @@ const TEXT_FIELDS: Record<string, number> = {
   footerNote: 600,
   copyrightText: 200,
   contactPhone: 40,
-  timezone: 64,
+  // timezone is deliberately not editable: startsAtISO is built with a fixed
+  // +02:00 below, so accepting a different zone would store a value that
+  // changes nothing. South Africa observes no daylight saving, and this event
+  // is in Cape Town. Making it real means making the offset follow it.
 };
 
 /** Whole-number fields, with their permitted range. */
