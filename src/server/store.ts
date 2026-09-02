@@ -76,12 +76,12 @@ export const DEFAULT_SETTINGS: EventSettings = {
   galleryHeading: 'Our last outreach drive',
   sponsorsHeading: 'In partnership with',
   galleryBody:
-    'Every rand raised here goes towards supplies for the next drive. These are photographs from the last one.',
+    'A portion of what is raised here goes towards supplies for the next drive. These are photographs from the last one.',
   donateHeading: 'Fund the {cause}',
   donateLead:
-    'You do not have to attend to make an impact. 100% of every donation goes towards supplies for the {cause}.',
+    'You do not have to attend to make an impact. A portion of every donation goes towards supplies for the {cause}.',
   impactFundingNote:
-    '100% of every donation goes towards supplies for the {cause}.',
+    'A portion of every donation goes towards supplies for the {cause}.',
   sponsorsEnabled: true,
 };
 

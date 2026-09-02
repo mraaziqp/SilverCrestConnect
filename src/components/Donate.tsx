@@ -110,7 +110,7 @@ export const Donate: React.FC<DonateProps> = ({
         }
         lead={fillCopy(
           event?.donateLead ||
-            'You do not have to attend to make an impact. 100% of every donation goes towards supplies for the {cause}.',
+            'You do not have to attend to make an impact. A portion of every donation goes towards supplies for the {cause}.',
           { cause: causeShort },
         )}
       />
@@ -347,9 +347,14 @@ const PreviousDrive: React.FC<{
   return (
     <div className="lg:sticky lg:top-24 space-y-4">
       <div>
-        <p className="text-[11px] uppercase tracking-brand text-gold font-semibold">
-          {heading || 'Where Your Donations Go'}
-        </p>
+        {/* Blank means no label. It used to fall back to a default, so the only
+            way to remove it was to type something like "N/A" — which then
+            appeared on the page exactly as typed. */}
+        {heading?.trim() ? (
+          <p className="text-[11px] uppercase tracking-brand text-gold font-semibold">
+            {heading}
+          </p>
+        ) : null}
         <h4 className="mt-1 font-display text-lg font-bold text-bone">
           Previous Outreach Drive
         </h4>

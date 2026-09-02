@@ -53,7 +53,7 @@ export const ImpactStand: React.FC<ImpactStandProps> = ({
 
       <p className="mt-12 text-center text-[13px] text-muted/70 max-w-2xl mx-auto leading-relaxed">
         {fillCopy(
-          event?.impactFundingNote || '100% of every donation goes towards supplies for the {cause}.',
+          event?.impactFundingNote || 'A portion of every donation goes towards supplies for the {cause}.',
           { cause: causeShort },
         )}
       </p>

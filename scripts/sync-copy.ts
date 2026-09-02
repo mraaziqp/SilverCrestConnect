@@ -46,6 +46,9 @@ const TEXT_FIELDS = [
   'galleryHeading',
   'galleryBody',
   'footerNote',
+  'donateLead',
+  'impactFundingNote',
+  'impactLead',
 ] as const;
 
 /** Phrase-level corrections, applied in order. */
@@ -76,6 +79,12 @@ const REWRITES: ReadonlyArray<readonly [RegExp, string]> = [
   [/100% of proceeds go directly towards supplies for the/g, 'A portion of proceeds goes towards supplies for the'],
   [/100% of proceeds fund the/g, 'A portion of proceeds funds the'],
   [/100% of attendance proceeds/g, 'A portion of attendance proceeds'],
+  // Reintroduced later in a new phrasing, on the donation lead and the impact
+  // note. Worth matching explicitly: the claim keeps coming back whenever that
+  // copy is rewritten, and it is the one sentence that must not be wrong.
+  [/100% of every donation goes towards/g, 'A portion of every donation goes towards'],
+  [/100% of every donation funds/g, 'A portion of every donation funds'],
+  [/100% of every donation/g, 'A portion of every donation'],
   // "100% of X directly fund Y" -> "A portion of X funds Y": the subject turns
   // singular with the rewrite above, so the verb has to follow it.
   [/A portion of attendance proceeds([^.]*?) directly fund /g, 'A portion of attendance proceeds$1 funds '],

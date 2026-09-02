@@ -60,7 +60,7 @@ export const EVENT = {
   contactPhone: '',
 
   footerNote:
-    '100% of every donation goes towards supplies for the Year-End Community Outreach Drive.',
+    'A portion of every donation goes towards supplies for the Year-End Community Outreach Drive.',
   copyrightText: 'Silver Crest Connect. All rights reserved.',
 
   social: {

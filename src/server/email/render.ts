@@ -160,7 +160,7 @@ function shell({ preheader, heading, subheading, body, cta, panel, eventCard }: 
 
       <!-- Cause note -->
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#5A5A60;padding-top:16px;line-height:1.6;">
-        100% of every donation funds the ${esc(EVENT.causeShort)}.
+        A portion of every donation funds the ${esc(EVENT.causeShort)}.
       </div>
 
       <!-- Copyright -->
@@ -275,7 +275,7 @@ ${EVENT.fullName}
 ${EVENT.dateLabel} - ${EVENT.timeLabel} - ${EVENT.venueCity}${EVENT.presentedBy ? `\nPresented by ${EVENT.presentedBy}` : ''}
 ${EVENT.contactEmail}
 
-100% of every donation funds the ${EVENT.causeShort}.`;
+A portion of every donation funds the ${EVENT.causeShort}.`;
 }
 
 // ================================================================== templates
@@ -530,7 +530,7 @@ On arrival you will receive your welcome pack. You will also have the floor duri
 YOUR TICKET CODE: ${ticketCode}
 Present this code upon arrival at registration.
 
-100% of every donation funds the ${EVENT.causeShort}. We look forward to hosting you!
+A portion of every donation funds the ${EVENT.causeShort}. We look forward to hosting you!
 ${textFooter()}`,
   };
 }

@@ -2054,7 +2054,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               rows={2}
               value={settings.donateLead || ''}
               onChange={(e) => setSettings({ ...settings, donateLead: e.target.value })}
-              placeholder="You do not have to attend to make an impact. 100% of every donation goes towards supplies for the {cause}."
+              placeholder="You do not have to attend to make an impact. A portion of every donation goes towards supplies for the {cause}."
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
           </div>
@@ -2066,7 +2066,7 @@ const SettingsTab: React.FC<{ token: string; onSaved: () => void }> = ({ token, 
               rows={2}
               value={settings.impactFundingNote || ''}
               onChange={(e) => setSettings({ ...settings, impactFundingNote: e.target.value })}
-              placeholder="100% of every donation goes towards supplies for the {cause}."
+              placeholder="A portion of every donation goes towards supplies for the {cause}."
               className="w-full rounded-sm bg-black/60 border border-white/15 px-3.5 py-2.5 text-sm text-bone focus:border-gold focus:outline-none"
             />
           </div>
